@@ -1,7 +1,10 @@
 /**
  * DataModel for Standard NoReturn Characters, NPCs, and Creatures.
  * Based on 1st_Edition_NoReturn-Charakterbogen_1.2(DE)_edit.pdf and Corebook rules.
+ * Dynamically calculates modifiers from embedded species, mutation, trait, and consumable items.
  */
+import { parseSkillModifiers } from "./item-data.mjs";
+
 export const HIT_ZONES = [
   { code: "12", labelKey: "NORETURN.Health.Zones.12", lethal: true },
   { code: "11", labelKey: "NORETURN.Health.Zones.11", lethal: false },
@@ -15,6 +18,107 @@ export const HIT_ZONES = [
   { code: "3", labelKey: "NORETURN.Health.Zones.3", lethal: false },
   { code: "2", labelKey: "NORETURN.Health.Zones.2", lethal: true }
 ];
+
+export const PLAYABLE_SPECIES_PRESETS = {
+  Mensch: {
+    speciesId: "mensch",
+    name: "Mensch",
+    subspecies: "Homo Sapiens",
+    costGp: 0,
+    legality: "Beim Zentrum registriert und legal",
+    psiAllowed: true,
+    freePsiCount: 0,
+    baseStats: { psyche: 80, organismus: 100, adrenalin: 2, infektionsresistenz: "2d6" },
+    attributeModifiers: {},
+    attributeLimits: { primaryMax: 4, secondaryMax: 4 },
+    skillModifiers: "",
+    specialRules: "Standard-Mensch (PSI Kategorie A erlaubt)."
+  },
+  Adivasi: {
+    speciesId: "adivasi",
+    name: "Adivasi",
+    subspecies: "Homo Sapiens Adivasi (Indigo)",
+    costGp: 40,
+    legality: "Illegal in Zentrumsgebieten (geduldet imReservat)",
+    psiAllowed: true,
+    freePsiCount: 0,
+    baseStats: { psyche: 100, organismus: 100, adrenalin: 2, infektionsresistenz: "2d6+3" },
+    attributeModifiers: {},
+    attributeLimits: { primaryMax: 4, secondaryMax: 4 },
+    skillModifiers: "rennen:+6",
+    specialRules: "Rennen +6W6, immer -1 Chaospoint, Giftresistenz Stufe 2, Rundum-Ultraschallsicht (bei freien Ohren), Common Sense."
+  },
+  Evo: {
+    speciesId: "evo",
+    name: "Evo",
+    subspecies: "Homo Sapiens Evolutio (Zitadellen-Züchtung)",
+    costGp: 30,
+    legality: "Beim Zentrum registriert und legal",
+    psiAllowed: false,
+    freePsiCount: 0,
+    baseStats: { psyche: 80, organismus: 100, adrenalin: 2, infektionsresistenz: "2d6" },
+    attributeModifiers: { konstitution: 1 },
+    attributeLimits: { primaryMax: 5, secondaryMax: 4 },
+    skillModifiers: "",
+    specialRules: "Konstitution +1 Startwert (Erschaffungsmaximum 5 in KO), nicht PSI-begabt."
+  },
+  Mutant: {
+    speciesId: "mutant",
+    name: "Mutant",
+    subspecies: "Tier-Mensch-Hybrid (Mutantengrad 1–12)",
+    costGp: 10,
+    legality: "Illegal (500 N$ Kopfgeld durch das Zentrum)",
+    psiAllowed: false,
+    freePsiCount: 0,
+    baseStats: { psyche: 70, organismus: 100, adrenalin: 3, infektionsresistenz: "1d6" },
+    attributeModifiers: {},
+    attributeLimits: { primaryMax: 4, secondaryMax: 4 },
+    skillModifiers: "",
+    specialRules: "Mutantengrad 1–12 (je 10 GP = 1 MP für sichtbare/verborgene Mutationen), nicht PSI-begabt."
+  },
+  Zeneritone: {
+    speciesId: "zeneritone",
+    name: "Zeneritone",
+    subspecies: "Homo Sapiens Zener",
+    costGp: 0,
+    legality: "Bei Entdeckung als Zeneritone illegal (Lebendergreifung durch Zentrum)",
+    psiAllowed: true,
+    freePsiCount: 7,
+    baseStats: { psyche: 50, organismus: 100, adrenalin: 2, infektionsresistenz: "1d6-2" },
+    attributeModifiers: {},
+    attributeLimits: { primaryMax: 3, secondaryMax: 4 },
+    skillModifiers: "",
+    specialRules: "Kindliche Statur (8–11 J.), erhält bei Erschaffung 7 kostenlose PSI-Kräfte (Kategorie A) auf Stufe 1."
+  },
+  Prodigy: {
+    speciesId: "prodigy",
+    name: "Prodigy",
+    subspecies: "Homo Sapiens Prodigium",
+    costGp: 10,
+    legality: "Bei Entdeckung als Prodigy illegal (hohes Kopfgeld)",
+    psiAllowed: true,
+    freePsiCount: 3,
+    baseStats: { psyche: 60, organismus: 100, adrenalin: 2, infektionsresistenz: "1d6-1" },
+    attributeModifiers: {},
+    attributeLimits: { primaryMax: 4, secondaryMax: 4 },
+    skillModifiers: "",
+    specialRules: "Erhält bei Erschaffung 3 kostenlose PSI-Kräfte (Kategorie A) auf Stufe 1."
+  },
+  Blendling: {
+    speciesId: "blendling",
+    name: "Blendling",
+    subspecies: "§842.74.RD (Mensch-Adivasi-Hybrid)",
+    costGp: 20,
+    legality: "Illegal (300 N$ Kopfgeld durch das Zentrum)",
+    psiAllowed: true,
+    freePsiCount: 0,
+    baseStats: { psyche: 90, organismus: 100, adrenalin: 2, infektionsresistenz: "1d6+3" },
+    attributeModifiers: {},
+    attributeLimits: { primaryMax: 4, secondaryMax: 4 },
+    skillModifiers: "rennen:+4",
+    specialRules: "Rennen +4W6, immer -1 Chaospoint, Mutantenkraft Giftresistenz Stufe 1 automatisch."
+  }
+};
 
 export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
   static defineSchema() {
@@ -77,8 +181,8 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
         }),
         special: new fields.SchemaField({
           adrenalin: new fields.SchemaField({
-            stufe: new fields.NumberField({ required: true, integer: true, min: 0, initial: 1 }),
-            pool: new fields.NumberField({ required: true, integer: true, min: 0, initial: 1 })
+            stufe: new fields.NumberField({ required: true, integer: true, min: 0, initial: 2 }),
+            pool: new fields.NumberField({ required: true, integer: true, min: 0, initial: 2 })
           })
         })
       }),
@@ -96,7 +200,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
           max: new fields.NumberField({ required: true, integer: true, min: 0, max: 100, initial: 100 }),
           value: new fields.NumberField({ required: true, integer: true, min: 0, max: 100, initial: 80 })
         }),
-        infektionsresistenz: new fields.StringField({ required: true, initial: "1d6" }),
+        infektionsresistenz: new fields.StringField({ required: true, initial: "2d6" }),
         regeneration: new fields.SchemaField({
           geschwindigkeit: new fields.NumberField({ required: true, integer: true, min: 0, initial: 1 }),
           pool: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 })
@@ -120,7 +224,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
         maxHpTier: new fields.NumberField({
           required: true,
           integer: true,
-          choices: [30, 50, 70, 90],
+          choices: [15, 30, 50, 70, 90],
           initial: 30
         }),
         sonstigeMali: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
@@ -141,14 +245,120 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
   }
 
   prepareDerivedData() {
-    // 1. Primary Attributes
-    for (const attr of Object.values(this.attributes.primary)) {
-      attr.overall = Math.max(0, (attr.base || 0) + (attr.mod || 0));
+    const items = this.parent?.items ?? [];
+
+    // 1. Collect dynamic modifiers from Species, Mutations, Traits, and Active Consumables
+    const itemAttrMods = {
+      geschick: 0,
+      staerke: 0,
+      konstitution: 0,
+      schnelligkeit: 0,
+      wissen: 0,
+      wahrnehmung: 0,
+      charisma: 0,
+      logik: 0,
+      fahrzeuge: 0,
+      schmerztoleranz: 0,
+      adrenalin: 0
+    };
+    const skillBonuses = {};
+    let mutationArmorBonus = 0;
+    let mutationArmorMk = "A";
+    let mutationMaxHpOverride = 0;
+    let mutationRegenSpeed = 0;
+    let mutationRegenPool = 0;
+    let activeSpeciesItem = null;
+
+    const addAttrMods = (modsObj, multiplier = 1) => {
+      if (!modsObj) return;
+      for (const k of Object.keys(itemAttrMods)) {
+        const v = Number(modsObj[k] || 0) * multiplier;
+        if (v) itemAttrMods[k] += v;
+      }
+    };
+
+    const addSkillMods = (modStr, multiplier = 1) => {
+      const parsed = parseSkillModifiers(modStr);
+      for (const [k, v] of Object.entries(parsed)) {
+        skillBonuses[k] = (skillBonuses[k] || 0) + v * multiplier;
+      }
+    };
+
+    for (const item of items) {
+      if (item.type === "species") {
+        activeSpeciesItem = item;
+        addAttrMods(item.system.attributeModifiers, 1);
+        addSkillMods(item.system.skillModifiers, 1);
+      } else if (item.type === "mutation" && item.system.active !== false) {
+        const lvl = Math.max(1, Number(item.system.level) || 1);
+        addAttrMods(item.system.attributeModifiers, lvl);
+        addSkillMods(item.system.skillModifiers, lvl);
+        const cb = item.system.combatBonuses;
+        if (cb) {
+          if (cb.armorBonus > mutationArmorBonus) {
+            mutationArmorBonus = Number(cb.armorBonus) || 0;
+            mutationArmorMk = cb.materialCategory || "A";
+          }
+          if (cb.maxHpOverride > mutationMaxHpOverride) {
+            mutationMaxHpOverride = Number(cb.maxHpOverride) || 0;
+          }
+          if (cb.regenSpeed > mutationRegenSpeed) {
+            mutationRegenSpeed = Number(cb.regenSpeed) || 0;
+          }
+          if (cb.regenPool > mutationRegenPool) {
+            mutationRegenPool = Number(cb.regenPool) || 0;
+          }
+        }
+      } else if (item.type === "trait") {
+        addAttrMods(item.system.attributeModifiers, 1);
+        addSkillMods(item.system.skillModifiers, 1);
+      } else if (item.type === "consumable" && item.system.active) {
+        addAttrMods(item.system.attributeModifiers, 1);
+        addSkillMods(item.system.skillModifiers, 1);
+      }
     }
 
-    // 2. Secondary Attributes
-    for (const attr of Object.values(this.attributes.secondary)) {
-      attr.total = Math.max(0, (attr.base || 0) + (attr.mod || 0));
+    // If no embedded species item exists, fall back to PLAYABLE_SPECIES_PRESETS based on personal.spezies
+    if (!activeSpeciesItem && this.personal?.spezies) {
+      const preset = PLAYABLE_SPECIES_PRESETS[this.personal.spezies];
+      if (preset) {
+        addAttrMods(preset.attributeModifiers, 1);
+        addSkillMods(preset.skillModifiers, 1);
+        this.speciesSummary = preset;
+      }
+    } else if (activeSpeciesItem) {
+      this.speciesSummary = activeSpeciesItem.system;
+    }
+
+    this.skillBonuses = skillBonuses;
+    this.itemAttrMods = itemAttrMods;
+
+    // 2. Primary Attributes (base + manual mod + item modifier)
+    for (const [key, attr] of Object.entries(this.attributes.primary)) {
+      const dynMod = itemAttrMods[key] || 0;
+      attr.itemMod = dynMod;
+      attr.overall = Math.max(0, (attr.base || 0) + (attr.mod || 0) + dynMod);
+    }
+
+    // 3. Secondary Attributes (base + manual mod + item modifier)
+    for (const [key, attr] of Object.entries(this.attributes.secondary)) {
+      const dynMod = itemAttrMods[key] || 0;
+      attr.itemMod = dynMod;
+      attr.total = Math.max(0, (attr.base || 0) + (attr.mod || 0) + dynMod);
+    }
+
+    // Adrenaline effective level
+    this.attributes.special.adrenalin.effectiveStufe = Math.max(
+      0,
+      (Number(this.attributes.special.adrenalin.stufe) || 0) + (itemAttrMods.adrenalin || 0)
+    );
+
+    // Apply regeneration bonuses from mutations/abnormalities if higher than base
+    if (mutationRegenSpeed > this.status.regeneration.geschwindigkeit) {
+      this.status.regeneration.geschwindigkeit = mutationRegenSpeed;
+    }
+    if (mutationRegenPool > this.status.regeneration.pool) {
+      this.status.regeneration.pool = mutationRegenPool;
     }
 
     const painTolerance = this.attributes.secondary.schmerztoleranz.total;
@@ -156,17 +366,16 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     const schnelligkeit = this.attributes.primary.schnelligkeit.overall;
     const staerke = this.attributes.primary.staerke.overall;
 
-    // 3. Aggregate equipped armor & stemmen skill from parent Actor's items
+    // 4. Aggregate equipped armor & stemmen skill from parent Actor's items
     let stemmenLevel = 0;
     let maxArmorComfort = 0;
     const zoneBonusArmor = {};
     const zoneMaterial = {};
     for (const z of HIT_ZONES) {
-      zoneBonusArmor[z.code] = 0;
-      zoneMaterial[z.code] = "A";
+      zoneBonusArmor[z.code] = mutationArmorBonus;
+      zoneMaterial[z.code] = mutationArmorBonus > 0 ? mutationArmorMk : "A";
     }
 
-    const items = this.parent?.items ?? [];
     for (const item of items) {
       if (item.type === "skill" && (item.system.skillId === "stemmen" || item.name.toLowerCase() === "stemmen")) {
         stemmenLevel = Math.max(stemmenLevel, Number(item.system.level || 0));
@@ -186,14 +395,15 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       }
     }
 
-    // 4. Carry Capacity (Tragkraft) = (Stärke + Stemmen) * 10 kg
-    this.status.tragkraft = (staerke + stemmenLevel) * 10;
+    // 5. Carry Capacity (Tragkraft) = (Stärke + Stemmen + Bonus) * 10 kg
+    const stemmenBonus = skillBonuses["stemmen"] || 0;
+    this.status.tragkraft = (staerke + stemmenLevel + stemmenBonus) * 10;
 
-    // 5. Armor Comfort Penalty
+    // 6. Armor Comfort Penalty
     this.health.comfortPenalty = Math.max(0, maxArmorComfort - konstitution);
 
-    // 6. Hit Zones & Wound Penalties
-    const tierMax = Number(this.health.maxHpTier) || 30;
+    // 7. Hit Zones & Wound Penalties
+    const tierMax = Math.max(Number(this.health.maxHpTier) || 30, mutationMaxHpOverride);
     const stageSize = Math.max(1, tierMax / 10);
     let totalWoundPenalty = 0;
 

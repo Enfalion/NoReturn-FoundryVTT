@@ -2,32 +2,38 @@
   "TYPES": {
     "Actor": {
       "character": "Character (Standard Sheet)",
-      "robot": "Robotics / Cyborg (Robotics Sheet)",
+      "robot": "Robotics / Cyborg (Hybrid Sheet)",
       "npc": "NPC (Non-Player Character)",
-      "creature": "Creature"
+      "creature": "Creature / Mutated Beast"
     },
     "Item": {
-      "skill": "Skill",
+      "skill": "Skill / PSI",
       "weapon": "Weapon",
       "armor": "Armor / Clothing",
       "gear": "Gear / Equipment",
+      "consumable": "Drug / Pharmaceutical",
       "cyberware": "Cyberware / Biomechanics",
-      "robotModule": "Robotics Module / Implant"
+      "robotModule": "Robotics Module / Implant",
+      "species": "Species / Subspecies",
+      "mutation": "Mutation / Biological Abnormality",
+      "trait": "Character Trait (Justice / Chaos)",
+      "condition": "Disease / Poison / Toxin"
     }
   },
   "NORETURN": {
     "SystemTitle": "NoReturn – Post-Apocalyptic Sci-Fi RPG (1st Edition)",
     "Sheet": {
       "CharacterTitle": "NoReturn Character Sheet",
-      "RobotTitle": "NoReturn Robotics Sheet",
+      "RobotTitle": "NoReturn Hybrid Robotics Sheet",
       "ItemTitle": "NoReturn Item",
       "Tabs": {
         "Overview": "Overview & Attributes",
-        "Skills": "Skills & PSI",
+        "Skills": "Skills, PSI & Conditions",
         "Combat": "Combat & Hit Zones",
-        "Inventory": "Gear & Goods",
+        "Inventory": "Drugs, Gear & Goods",
         "Augmentation": "Robotics & Cyberware",
-        "Bio": "Traits & Notes",
+        "Bio": "Species, Mutations & Traits",
+        "RobotChassis": "Chassis, Power & Modules",
         "RobotZones": "Zone Stats & Tuning",
         "RobotModules": "Implants & Cybersense"
       }
@@ -43,7 +49,7 @@
       "Haarfarbe": "Hair Color",
       "Augenfarbe": "Eye Color",
       "Hautfarbe": "Skin Color",
-      "Berufung": "Calling / Profession",
+      "Berufung": "Calling / Concept",
       "Modell": "Robotics Model / Chassis",
       "Seriennummer": "Serial Number",
       "Besitzer": "Owner / Operator",
@@ -117,6 +123,7 @@
     "Health": {
       "Header": "Hit Zones & Damage Overview",
       "MaxHpTier": "Maximum Hit Points per Zone",
+      "Tier15": "15 HP – Small Creature / Fragile (1.5 HP / Stage)",
       "Tier30": "30 HP – Mortal (3 HP / Stage)",
       "Tier50": "50 HP – Robotics & Tough (5 HP / Stage)",
       "Tier70": "70 HP – Incredibly Tough (7 HP / Stage)",
@@ -150,6 +157,15 @@
       }
     },
     "Robotics": {
+      "ChassisHeader": "Chassis Status, Power Supply & Structural System",
+      "ChassisOverview": "Chassis & System Status",
+      "ChassisStatus": "Chassis Status",
+      "PowerSupply": "Power Supply / Reactor",
+      "Battery": "Battery / ZEUS Charge",
+      "EnergyDrainBase": "Base Energy Drain",
+      "EnergyDrain": "Energy Drain",
+      "ModuleSockets": "Module Sockets (Capacity)",
+      "StructuralHp": "Structural Hit Points",
       "UpgradesHeader": "Level Upgrades per Zone (Tuning)",
       "DesignHeader": "Design per Zone",
       "ValuesHeader": "Overview of Stats per Zone",
@@ -169,8 +185,54 @@
         "military": "Military (Army / Ghost)"
       }
     },
+    "Species": {
+      "Header": "Species & Subspecies",
+      "MutationsHeader": "Species, Mutations & Biological Abnormalities",
+      "ApplyPreset": "Apply Species Base Stats & Rules",
+      "AddSpecies": "Add Species",
+      "AddMutation": "Add Mutation / Abnormality",
+      "Subspecies": "Classification / Subspecies",
+      "CostGp": "GP Cost",
+      "CostMp": "MP Cost",
+      "CostMpGp": "Cost (MP / GP)",
+      "Legality": "Legality (Center)",
+      "SkillModifiers": "Skill Modifiers (e.g. rennen:+6)",
+      "SpecialRules": "Special Rules & Bonuses",
+      "Categories": {
+        "sichtbar": "Visible Mutation",
+        "verborgen": "Hidden Mutation",
+        "abnormitaet": "Biological Abnormality",
+        "auffaelligkeit": "Physical Peculiarity"
+      }
+    },
+    "Consumables": {
+      "Header": "Drugs, Stimulants & Pharmaceuticals",
+      "AddConsumable": "Add Drug / Medicine",
+      "Active": "Active",
+      "Dosage": "Dosage",
+      "Duration": "Duration",
+      "Addiction": "Addiction Rating",
+      "StatBoosts": "Stat Boosts / Positive Effects",
+      "Drawbacks": "Side Effects / Drawbacks",
+      "BoostsDrawbacks": "Effects & Side Effects"
+    },
+    "Conditions": {
+      "Header": "Diseases, Poisons & Infection Triggers",
+      "AddCondition": "Add Disease / Toxin",
+      "Incubation": "Incubation",
+      "Interval": "Interval",
+      "Intensity": "Intensity (MW)",
+      "ResistanceRoll": "Resistance Check",
+      "RollResistance": "Roll Resistance Check in Chat",
+      "RollBtn": "Roll",
+      "SymptomStages": "Symptom Stages (Grade I–III)",
+      "DamagePenalties": "Damage & Penalties per Stage",
+      "Antidote": "Antidote / Treatment",
+      "Resisted": "RESISTED! (No Outbreak / No Progression)",
+      "Infected": "INFECTED / SYMPTOM PROGRESSION! (Check Failed)"
+    },
     "Skills": {
-      "Header": "Skills",
+      "Header": "Skills & PSI Disciplines",
       "Name": "Skill",
       "Attribute": "Attribute",
       "Category": "Category",
@@ -214,7 +276,7 @@
       "RollInitiative": "Initiative (Mexican Standoff)"
     },
     "Inventory": {
-      "GearHeader": "Equipment, Pharmaceuticals & Goods",
+      "GearHeader": "Everyday Equipment, Tools & Goods",
       "CyberwareHeader": "Cyberware, Biomechanics & Robotics Modules",
       "Quantity": "Qty",
       "Weight": "Weight (kg)",
@@ -226,7 +288,10 @@
     },
     "Traits": {
       "Charaktermerkmale": "Character Traits (Justice / Chaos)",
-      "Mutationen": "Mutations & Abnormalities",
+      "AddTrait": "Add Trait",
+      "Cost": "Cost (JP / CP)",
+      "PassiveModifiers": "Passive Modifiers & Effect",
+      "Mutationen": "Mutations & Abnormalities (Note)",
       "Begabungen": "Aptitudes (-1 XP on Attribute Group)",
       "Talente": "Talents (-1 XP on Skill)",
       "StyleSkills": "Style Skills",

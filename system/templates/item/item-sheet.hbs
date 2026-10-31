@@ -134,6 +134,47 @@
         </div>
       {{/if}}
 
+      {{#if (eq itemType "consumable")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Inventory.Quantity"}}</span>
+            <input type="number" name="system.quantity" value="{{system.quantity}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Consumables.Dosage"}}</span>
+            <input type="text" name="system.dosage" value="{{system.dosage}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Consumables.Duration"}}</span>
+            <input type="text" name="system.duration" value="{{system.duration}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Consumables.Addiction"}}</span>
+            <input type="text" name="system.addictionRating" value="{{system.addictionRating}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Inventory.Price"}}</span>
+            <input type="number" name="system.price" value="{{system.price}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Consumables.Active"}}</span>
+            <input type="checkbox" name="system.active" {{checked system.active}} />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Consumables.StatBoosts"}}</span>
+            <input type="text" name="system.statBoosts" value="{{system.statBoosts}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Consumables.Drawbacks"}}</span>
+            <input type="text" name="system.drawbacks" value="{{system.drawbacks}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Species.SkillModifiers"}}</span>
+            <input type="text" name="system.skillModifiers" value="{{system.skillModifiers}}" />
+          </label>
+        </div>
+      {{/if}}
+
       {{#if (or (eq itemType "cyberware") (eq itemType "robotModule"))}}
         <div class="nr-stat-grid">
           <label>
@@ -149,12 +190,154 @@
             <input type="number" name="system.organismusCost" value="{{system.organismusCost}}" step="0.5" min="0" />
           </label>
           <label>
+            <span>{{localize "NORETURN.Robotics.EnergyDrain"}}</span>
+            <input type="number" name="system.energyDrain" value="{{system.energyDrain}}" step="0.25" min="0" />
+          </label>
+          <label>
             <span>{{localize "NORETURN.Inventory.Price"}}</span>
             <input type="number" name="system.price" value="{{system.price}}" min="0" />
           </label>
           <label class="full-span">
             <span>{{localize "NORETURN.Inventory.Effects"}}</span>
             <input type="text" name="system.effects" value="{{system.effects}}" />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "species")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Species.Subspecies"}}</span>
+            <input type="text" name="system.subspecies" value="{{system.subspecies}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Species.CostGp"}}</span>
+            <input type="number" name="system.costGp" value="{{system.costGp}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Species.Legality"}}</span>
+            <input type="text" name="system.legality" value="{{system.legality}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Status.Infektionsresistenz"}}</span>
+            <input type="text" name="system.baseStats.infektionsresistenz" value="{{system.baseStats.infektionsresistenz}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Status.Psyche"}}</span>
+            <input type="number" name="system.baseStats.psyche" value="{{system.baseStats.psyche}}" min="0" max="100" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Attributes.adrenalin"}}</span>
+            <input type="number" name="system.baseStats.adrenalin" value="{{system.baseStats.adrenalin}}" min="0" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Species.SkillModifiers"}}</span>
+            <input type="text" name="system.skillModifiers" value="{{system.skillModifiers}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Species.SpecialRules"}}</span>
+            <input type="text" name="system.specialRules" value="{{system.specialRules}}" />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "mutation")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Skills.Category"}}</span>
+            <select name="system.category">
+              <option value="sichtbar" {{#if (eq system.category "sichtbar")}}selected{{/if}}>{{localize "NORETURN.Species.Categories.sichtbar"}}</option>
+              <option value="verborgen" {{#if (eq system.category "verborgen")}}selected{{/if}}>{{localize "NORETURN.Species.Categories.verborgen"}}</option>
+              <option value="abnormitaet" {{#if (eq system.category "abnormitaet")}}selected{{/if}}>{{localize "NORETURN.Species.Categories.abnormitaet"}}</option>
+              <option value="auffaelligkeit" {{#if (eq system.category "auffaelligkeit")}}selected{{/if}}>{{localize "NORETURN.Species.Categories.auffaelligkeit"}}</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.Level"}}</span>
+            <input type="number" name="system.level" value="{{system.level}}" min="1" max="{{system.maxLevel}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Species.CostMp"}}</span>
+            <input type="number" name="system.costMp" value="{{system.costMp}}" step="0.5" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Species.CostGp"}}</span>
+            <input type="number" name="system.costGp" value="{{system.costGp}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Status.Organismus"}}</span>
+            <input type="number" name="system.organismusCost" value="{{system.organismusCost}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Status.Psyche"}}</span>
+            <input type="number" name="system.psycheCost" value="{{system.psycheCost}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Species.SkillModifiers"}}</span>
+            <input type="text" name="system.skillModifiers" value="{{system.skillModifiers}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Inventory.Effects"}}</span>
+            <input type="text" name="system.effects" value="{{system.effects}}" />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "trait")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Skills.Category"}}</span>
+            <select name="system.traitType">
+              <option value="justice" {{#if (eq system.traitType "justice")}}selected{{/if}}>Justice (JP)</option>
+              <option value="chaos" {{#if (eq system.traitType "chaos")}}selected{{/if}}>Chaos (CP)</option>
+              <option value="begabung" {{#if (eq system.traitType "begabung")}}selected{{/if}}>Begabung</option>
+              <option value="talent" {{#if (eq system.traitType "talent")}}selected{{/if}}>Talent</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Traits.Cost"}}</span>
+            <input type="number" name="system.cost" value="{{system.cost}}" min="0" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Traits.PassiveModifiers"}}</span>
+            <input type="text" name="system.passiveModifiers" value="{{system.passiveModifiers}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Species.SkillModifiers"}}</span>
+            <input type="text" name="system.skillModifiers" value="{{system.skillModifiers}}" />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "condition")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Conditions.Incubation"}}</span>
+            <input type="text" name="system.incubationTime" value="{{system.incubationTime}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Conditions.Interval"}}</span>
+            <input type="text" name="system.testInterval" value="{{system.testInterval}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Conditions.ResistanceRoll"}}</span>
+            <input type="text" name="system.resistanceFormula" value="{{system.resistanceFormula}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Conditions.Intensity"}}</span>
+            <input type="number" name="system.intensity" value="{{system.intensity}}" min="1" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Conditions.SymptomStages"}}</span>
+            <input type="text" name="system.symptomStages" value="{{system.symptomStages}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Conditions.DamagePenalties"}}</span>
+            <input type="text" name="system.damagePerStage" value="{{system.damagePerStage}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Conditions.Antidote"}}</span>
+            <input type="text" name="system.antidote" value="{{system.antidote}}" />
           </label>
         </div>
       {{/if}}

@@ -2,15 +2,20 @@
  * NoReturn RPG System for Foundry VTT v14.
  * Entry point registering DataModels, ApplicationV2 Sheets, Roll Engine, and Chat Hooks.
  */
-import { NoReturnCharacterData } from "./data/character-data.mjs";
+import { NoReturnCharacterData, PLAYABLE_SPECIES_PRESETS } from "./data/character-data.mjs";
 import { NoReturnRobotData } from "./data/robot-data.mjs";
 import {
   NoReturnSkillData,
   NoReturnWeaponData,
   NoReturnArmorData,
   NoReturnGearData,
+  NoReturnConsumableData,
   NoReturnCyberwareData,
-  NoReturnRobotModuleData
+  NoReturnRobotModuleData,
+  NoReturnSpeciesData,
+  NoReturnMutationData,
+  NoReturnTraitData,
+  NoReturnConditionData
 } from "./data/item-data.mjs";
 import { NoReturnCharacterSheet } from "./sheets/character-sheet.mjs";
 import { NoReturnRobotSheet } from "./sheets/robot-sheet.mjs";
@@ -24,7 +29,8 @@ Hooks.once("init", () => {
   game.noreturn = {
     NoReturnRoll,
     NoReturnCharacterData,
-    NoReturnRobotData
+    NoReturnRobotData,
+    PLAYABLE_SPECIES_PRESETS
   };
 
   // Register Actor TypeDataModels
@@ -41,8 +47,13 @@ Hooks.once("init", () => {
     weapon: NoReturnWeaponData,
     armor: NoReturnArmorData,
     gear: NoReturnGearData,
+    consumable: NoReturnConsumableData,
     cyberware: NoReturnCyberwareData,
-    robotModule: NoReturnRobotModuleData
+    robotModule: NoReturnRobotModuleData,
+    species: NoReturnSpeciesData,
+    mutation: NoReturnMutationData,
+    trait: NoReturnTraitData,
+    condition: NoReturnConditionData
   };
 
   // Configure Combat Initiative (Mexican Standoff = Schnelligkeit + Reaktion in W6)
@@ -67,7 +78,19 @@ Hooks.once("init", () => {
   });
 
   DocumentSheetConfig.registerSheet(Item, "noreturn", NoReturnItemSheet, {
-    types: ["skill", "weapon", "armor", "gear", "cyberware", "robotModule"],
+    types: [
+      "skill",
+      "weapon",
+      "armor",
+      "gear",
+      "consumable",
+      "cyberware",
+      "robotModule",
+      "species",
+      "mutation",
+      "trait",
+      "condition"
+    ],
     makeDefault: true,
     label: "NORETURN.Sheet.ItemTitle"
   });

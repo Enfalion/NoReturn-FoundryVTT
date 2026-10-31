@@ -459,4 +459,95 @@ export class NoReturnRoll {
 
     return roll;
   }
+
+  /**
+   * Roll Disease / Toxin Resistance Check (Infektionsresistenz / Widerstandsprobe vs. Intensität)
+   * with automatic success/failure evaluation and symptom stage output in Chat.
+   */
+  static async rollConditionResistance(actor, conditionItem) {
+    if (!conditionItem) return null;
+    const sys = conditionItem.system || {};
+    const intensity = Math.max(1, Number(sys.intensity) || 5);
+    let rawFormula = String(sys.resistanceFormula || "@status.infektionsresistenz").trim();
+
+    if (rawFormula === "@status.infektionsresistenz" || !rawFormula) {
+      rawFormula = actor?.system?.status?.infektionsresistenz || "2d6";
+    } else if (actor?.system?.attributes?.primary?.[rawFormula]) {
+      const pool = Math.max(1, Number(actor.system.attributes.primary[rawFormula].overall) || 1);
+      rawFormula = pool > 1 ? `${pool - 1}d6 + 1d6x6` : "1d6x6";
+    } else if (rawFormula.toLowerCase() === "willenskraft") {
+      const wi = Number(actor?.system?.attributes?.primary?.wissen?.overall || 1);
+      const wkItem = actor?.items?.find(
+        (i) => i.type === "skill" && (i.system.skillId === "willenskraft" || i.name.toLowerCase() === "willenskraft")
+      );
+      const pool = Math.max(1, wi + (Number(wkItem?.system?.level) || 0));
+      rawFormula = pool > 1 ? `${pool - 1}d6 + 1d6x6` : "1d6x6";
+    }
+
+    // Normalize German dice notation (e.g. "2W6+3" -> "2d6+3")
+    const normalizedFormula = rawFormula.replace(/(\d+)W(\d+)/gi, "$1d$2").replace(/p\./gi, "");
+
+    const roll = new Roll(normalizedFormula);
+    await roll.evaluate();
+
+    const total = roll.total;
+    const isSuccess = total >= intensity;
+    const statusLabel = isSuccess
+      ? game?.i18n?.localize("NORETURN.Conditions.Resisted") ?? "WIDERSTANDEN (Erfolg)"
+      : game?.i18n?.localize("NORETURN.Conditions.Infected") ?? "INFIZIERT / SYMPTOMSCHUB (Fehlschlag)";
+    const statusClass = isSuccess ? "success" : "failure";
+
+    const content = `
+      <div class="noreturn-chat-card condition-card">
+        <header class="card-header">
+          <h3><i class="fas fa-biohazard"></i> ${conditionItem.name}</h3>
+          <span class="card-subtitle">${
+            game?.i18n?.localize("NORETURN.Conditions.ResistanceRoll") ?? "Widerstandsprobe"
+          } (${normalizedFormula})</span>
+        </header>
+        <div class="card-meta">
+          <span>${game?.i18n?.localize("NORETURN.Conditions.Incubation") ?? "Inkubation"}: <strong>${
+            sys.incubationTime || "–"
+          }</strong></span>
+          <span>${game?.i18n?.localize("NORETURN.Conditions.Interval") ?? "Intervall"}: <strong>${
+            sys.testInterval || "–"
+          }</strong></span>
+        </div>
+        <div class="card-totals-row">
+          <div class="stat-box">
+            <span class="stat-label">${game?.i18n?.localize("NORETURN.Dice.ResultTotal") ?? "Ergebnis"}</span>
+            <span class="stat-value">${total}</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">${game?.i18n?.localize("NORETURN.Conditions.Intensity") ?? "Intensität (MW)"}</span>
+            <span class="stat-value">${intensity}</span>
+          </div>
+        </div>
+        <div class="card-outcome ${statusClass}">
+          <strong>${statusLabel}</strong>
+        </div>
+        ${
+          !isSuccess
+            ? `<div class="condition-details">
+                ${sys.symptomStages ? `<p><strong>Verlauf / Stadien:</strong> ${sys.symptomStages}</p>` : ""}
+                ${sys.damagePerStage ? `<p><strong>Schaden:</strong> ${sys.damagePerStage}</p>` : ""}
+                ${sys.penaltiesPerStage ? `<p><strong>Mali:</strong> ${sys.penaltiesPerStage}</p>` : ""}
+                ${sys.antidote ? `<p><strong>Gegenmittel:</strong> ${sys.antidote}</p>` : ""}
+              </div>`
+            : ""
+        }
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      flavor: `${conditionItem.name} – ${
+        game?.i18n?.localize("NORETURN.Conditions.ResistanceRoll") ?? "Widerstandsprobe"
+      }`,
+      content,
+      rolls: [roll]
+    });
+
+    return { roll, total, intensity, isSuccess };
+  }
 }

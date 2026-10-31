@@ -2,32 +2,38 @@
   "TYPES": {
     "Actor": {
       "character": "Charakter (Standardbogen)",
-      "robot": "Robotik / Cyborg (Robotikbogen)",
+      "robot": "Robotik / Cyborg (Hybridbogen)",
       "npc": "NSC (Nicht-Spieler-Charakter)",
-      "creature": "Kreatur"
+      "creature": "Kreatur / Mutierte Bestie"
     },
     "Item": {
-      "skill": "Fertigkeit",
+      "skill": "Fertigkeit / PSI",
       "weapon": "Waffe",
       "armor": "Rüstung / Bekleidung",
       "gear": "Ausrüstung / Gut",
+      "consumable": "Droge / Pharmazeutikum",
       "cyberware": "Cyberware / Biomechanik",
-      "robotModule": "Robotik-Modul / Einbau"
+      "robotModule": "Robotik-Modul / Einbau",
+      "species": "Spezies / Subspezies",
+      "mutation": "Mutation / Biologische Abnormität",
+      "trait": "Charaktermerkmal (Justice / Chaos)",
+      "condition": "Krankheit / Gift / Toxin"
     }
   },
   "NORETURN": {
     "SystemTitle": "NoReturn – Endzeit Rollenspiel (1. Edition)",
     "Sheet": {
       "CharacterTitle": "NoReturn Charakterbogen",
-      "RobotTitle": "NoReturn Robotikbogen",
+      "RobotTitle": "NoReturn Hybrid-Robotikbogen",
       "ItemTitle": "NoReturn Gegenstand",
       "Tabs": {
         "Overview": "Übersicht & Attribute",
-        "Skills": "Fertigkeiten & PSI",
+        "Skills": "Fertigkeiten, PSI & Krankheiten",
         "Combat": "Kampf & Trefferzonen",
-        "Inventory": "Ausrüstung & Güter",
+        "Inventory": "Drogen, Ausrüstung & Güter",
         "Augmentation": "Robotik & Cyberware",
-        "Bio": "Merkmale & Notizen",
+        "Bio": "Spezies, Mutationen & Merkmale",
+        "RobotChassis": "Chassis, Energie & Einbauten",
         "RobotZones": "Zonen-Werte & Tuning",
         "RobotModules": "Einbauten & Cybersense"
       }
@@ -43,7 +49,7 @@
       "Haarfarbe": "Haarfarbe",
       "Augenfarbe": "Augenfarbe",
       "Hautfarbe": "Hautfarbe",
-      "Berufung": "Berufung",
+      "Berufung": "Berufung / Konzept",
       "Modell": "Robotik-Modell / Chassis",
       "Seriennummer": "Seriennummer",
       "Besitzer": "Besitzer / Operator",
@@ -117,6 +123,7 @@
     "Health": {
       "Header": "Trefferzonen & Schadensübersicht",
       "MaxHpTier": "Maximale Trefferpunkte je Zone",
+      "Tier15": "15 TP – Kleintier / Schwach (1,5 TP / Stufe)",
       "Tier30": "30 TP – Normalsterblich (3 TP / Stufe)",
       "Tier50": "50 TP – Robotik & Hart (5 TP / Stufe)",
       "Tier70": "70 TP – Unglaublich hart (7 TP / Stufe)",
@@ -150,6 +157,15 @@
       }
     },
     "Robotics": {
+      "ChassisHeader": "Chassis-Status, Energieversorgung & Struktursystem",
+      "ChassisOverview": "Chassis & Systemstatus",
+      "ChassisStatus": "Chassis-Status",
+      "PowerSupply": "Energiequelle / Reaktor",
+      "Battery": "Batterie / ZEUS-Ladung",
+      "EnergyDrainBase": "Basis-Energieverbrauch",
+      "EnergyDrain": "Energieverbrauch (Drain)",
+      "ModuleSockets": "Modul-Sockel (Kapazität)",
+      "StructuralHp": "Struktur-Trefferpunkte",
       "UpgradesHeader": "Stufen Upgrades je Zone (Tuning)",
       "DesignHeader": "Design je Zone",
       "ValuesHeader": "Übersicht der Werte je Zone",
@@ -169,8 +185,54 @@
         "military": "Military (Army / Ghost)"
       }
     },
+    "Species": {
+      "Header": "Spezies & Subspezies",
+      "MutationsHeader": "Spezies, Mutationen & Biologische Abnormitäten",
+      "ApplyPreset": "Spezies-Startwerte & Regeln anwenden",
+      "AddSpecies": "Spezies hinzufügen",
+      "AddMutation": "Mutation / Abnormität hinzufügen",
+      "Subspecies": "Klassifizierung / Subspezies",
+      "CostGp": "GP-Kosten",
+      "CostMp": "MP-Kosten",
+      "CostMpGp": "Kosten (MP / GP)",
+      "Legality": "Legalität (Zentrum)",
+      "SkillModifiers": "Fertigkeits-Modifikatoren (z.B. rennen:+6)",
+      "SpecialRules": "Sonderregeln & Boni",
+      "Categories": {
+        "sichtbar": "Sichtbare Mutation",
+        "verborgen": "Verborgene Mutation",
+        "abnormitaet": "Biologische Abnormität",
+        "auffaelligkeit": "Auffälligkeit"
+      }
+    },
+    "Consumables": {
+      "Header": "Drogen, Stimulanzien & Pharmazeutika",
+      "AddConsumable": "Droge / Medikament hinzufügen",
+      "Active": "Aktiv",
+      "Dosage": "Dosierung",
+      "Duration": "Wirkungsdauer",
+      "Addiction": "Suchtpotenzial",
+      "StatBoosts": "Boni / Positive Effekte",
+      "Drawbacks": "Nebenwirkungen / Nachteile",
+      "BoostsDrawbacks": "Wirkung & Nebenwirkungen"
+    },
+    "Conditions": {
+      "Header": "Krankheiten, Gifte & Infektions-Trigger",
+      "AddCondition": "Krankheit / Gift hinzufügen",
+      "Incubation": "Inkubation",
+      "Interval": "Intervall",
+      "Intensity": "Intensität (MW)",
+      "ResistanceRoll": "Widerstandsprobe",
+      "RollResistance": "Widerstandsprobe im Chat würfeln",
+      "RollBtn": "Probe",
+      "SymptomStages": "Symptom-Stadien (Grad I–III)",
+      "DamagePenalties": "Schaden & Mali je Stadium",
+      "Antidote": "Gegenmittel / Therapie",
+      "Resisted": "WIDERSTANDEN! (Kein Ausbruch / Kein Fortschreiten)",
+      "Infected": "INFIZIERT / SYMPTOMSCHUB! (Probe nicht bestanden)"
+    },
     "Skills": {
-      "Header": "Fertigkeiten",
+      "Header": "Fertigkeiten & PSI-Disziplinen",
       "Name": "Fertigkeit",
       "Attribute": "Attribut",
       "Category": "Kategorie",
@@ -214,7 +276,7 @@
       "RollInitiative": "Initiative (Mexican Standoff)"
     },
     "Inventory": {
-      "GearHeader": "Ausrüstung, Pharmazeutika & Güter",
+      "GearHeader": "Alltägliche Ausrüstung, Werkzeuge & Güter",
       "CyberwareHeader": "Cyberware, Biomechanik & Robotik-Module",
       "Quantity": "Anz.",
       "Weight": "Gewicht (kg)",
@@ -226,7 +288,10 @@
     },
     "Traits": {
       "Charaktermerkmale": "Charaktermerkmale (Justice / Chaos)",
-      "Mutationen": "Mutationen & Abnormitäten",
+      "AddTrait": "Merkmal hinzufügen",
+      "Cost": "Kosten (JP / CP)",
+      "PassiveModifiers": "Passive Modifikatoren & Effekt",
+      "Mutationen": "Mutationen & Abnormitäten (Notiz)",
       "Begabungen": "Begabungen (-1 EP auf Attributsgruppe)",
       "Talente": "Talente (-1 EP auf Fertigkeit)",
       "StyleSkills": "Style-Skills",

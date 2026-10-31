@@ -1,5 +1,5 @@
 <div class="noreturn-sheet robot-sheet-root">
-  <!-- Robotics Sheet Header -->
+  <!-- Hybrid Robotics & Character Sheet Header -->
   <header class="sheet-header robot-header">
     <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" />
     <div class="header-fields">
@@ -8,6 +8,9 @@
           <input name="name" type="text" value="{{actor.name}}" placeholder="{{localize 'NORETURN.Personal.Name'}}" />
         </h1>
         <div class="header-quick-actions">
+          <button type="button" class="nr-btn" data-action="rollInitiative">
+            <i class="fas fa-bolt"></i> {{localize "NORETURN.Combat.RollInitiative"}}
+          </button>
           <button type="button" class="nr-btn" data-action="rollHitZone">
             <i class="fas fa-crosshairs"></i> {{localize "NORETURN.Health.RollHitZone"}}
           </button>
@@ -15,6 +18,19 @@
       </div>
 
       <div class="personal-grid">
+        <label>
+          <span>{{localize "NORETURN.Personal.Spezies"}}</span>
+          <div class="flexrow">
+            <select name="system.personal.spezies">
+              {{#each speciesOptions}}
+                <option value="{{this}}" {{#if (eq ../system.personal.spezies this)}}selected{{/if}}>{{this}}</option>
+              {{/each}}
+            </select>
+            <button type="button" class="nr-icon-btn" data-action="applySpeciesPreset" title="{{localize 'NORETURN.Species.ApplyPreset'}}">
+              <i class="fas fa-dna"></i>
+            </button>
+          </div>
+        </label>
         <label>
           <span>{{localize "NORETURN.Personal.Modell"}}</span>
           <input type="text" name="system.personal.modell" value="{{system.personal.modell}}" />
@@ -32,38 +48,377 @@
           <input type="text" name="system.personal.besitzer" value="{{system.personal.besitzer}}" />
         </label>
         <label>
-          <span>{{localize "NORETURN.Status.OrganismusVerlust"}}</span>
-          <input type="number" value="{{system.allOver.summeOrganismusverlust}}" disabled />
+          <span>{{localize "NORETURN.Robotics.ChassisStatus"}}</span>
+          <input type="text" name="system.chassis.status" value="{{system.chassis.status}}" />
+        </label>
+        <label>
+          <span>{{localize "NORETURN.Robotics.Battery"}} ({{system.chassis.battery.value}} / {{system.chassis.battery.max}})</span>
+          <input type="number" name="system.chassis.battery.value" value="{{system.chassis.battery.value}}" min="0" max="{{system.chassis.battery.max}}" />
+        </label>
+        <label>
+          <span>{{localize "NORETURN.Robotics.StructuralHp"}}</span>
+          <input type="text" value="{{system.chassis.structuralHp.value}} / {{system.chassis.structuralHp.max}} TP" disabled />
         </label>
         <label>
           <span>{{localize "NORETURN.Status.Organismus"}}</span>
           <input type="number" value="{{system.allOver.restOrganismus}}" disabled />
         </label>
       </div>
+
+      {{#if isUnconscious}}
+        <div class="nr-alert danger"><i class="fas fa-skull"></i> {{localize "NORETURN.Health.UnconsciousWarning"}}</div>
+      {{else if isImmobilized}}
+        <div class="nr-alert warning"><i class="fas fa-crutch"></i> {{localize "NORETURN.Health.ImmobilizedWarning"}}</div>
+      {{/if}}
     </div>
   </header>
 
-  <!-- Navigation Tabs -->
+  <!-- Navigation Tabs (Hybrid Character + Robotics Architecture) -->
   <nav class="sheet-tabs tabs" role="tablist">
+    <a class="item {{#if (eq activeTab 'overview')}}active{{/if}}" data-action="switchTab" data-tab="overview">
+      <i class="fas fa-id-card"></i> {{localize "NORETURN.Sheet.Tabs.Overview"}}
+    </a>
+    <a class="item {{#if (eq activeTab 'chassis')}}active{{/if}}" data-action="switchTab" data-tab="chassis">
+      <i class="fas fa-microchip"></i> {{localize "NORETURN.Sheet.Tabs.RobotChassis"}}
+    </a>
     <a class="item {{#if (eq activeTab 'zones')}}active{{/if}}" data-action="switchTab" data-tab="zones">
       <i class="fas fa-robot"></i> {{localize "NORETURN.Sheet.Tabs.RobotZones"}}
     </a>
-    <a class="item {{#if (eq activeTab 'modules')}}active{{/if}}" data-action="switchTab" data-tab="modules">
-      <i class="fas fa-microchip"></i> {{localize "NORETURN.Sheet.Tabs.RobotModules"}}
+    <a class="item {{#if (eq activeTab 'skills')}}active{{/if}}" data-action="switchTab" data-tab="skills">
+      <i class="fas fa-dice-d6"></i> {{localize "NORETURN.Sheet.Tabs.Skills"}}
     </a>
     <a class="item {{#if (eq activeTab 'combat')}}active{{/if}}" data-action="switchTab" data-tab="combat">
       <i class="fas fa-crosshairs"></i> {{localize "NORETURN.Sheet.Tabs.Combat"}}
     </a>
     <a class="item {{#if (eq activeTab 'bio')}}active{{/if}}" data-action="switchTab" data-tab="bio">
-      <i class="fas fa-book-dead"></i> {{localize "NORETURN.Sheet.Tabs.Bio"}}
+      <i class="fas fa-dna"></i> {{localize "NORETURN.Sheet.Tabs.Bio"}}
     </a>
   </nav>
 
   <section class="sheet-body">
-    <!-- TAB 1: ZONEN-WERTE & TUNING (1st_Edition_NoReturn-Robotikbogen.pdf) -->
+    <!-- TAB 1: HYBRID CORE ATTRIBUTES, DERIVED STATS & QUICK SKILLS -->
+    {{#if (eq activeTab "overview")}}
+      <div class="tab-panel active">
+        <div class="nr-two-col">
+          <!-- Left Column: Core Primary, Secondary & Special Attributes -->
+          <div class="nr-card">
+            <h2 class="nr-section-title">{{localize "NORETURN.Attributes.PrimaryHeader"}}</h2>
+            <table class="nr-table attr-table">
+              <thead>
+                <tr>
+                  <th>{{localize "NORETURN.Skills.Attribute"}}</th>
+                  <th>{{localize "NORETURN.Attributes.Base"}}</th>
+                  <th>{{localize "NORETURN.Attributes.Mod"}}</th>
+                  <th>{{localize "NORETURN.Attributes.Overall"}}</th>
+                  <th>{{localize "NORETURN.Attributes.AlphaBio"}}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{#each primaryAttributes}}
+                  <tr>
+                    <td>
+                      <strong>{{localize this.labelKey}}</strong>
+                      <small class="muted">({{localize this.abbrKey}})</small>
+                    </td>
+                    <td>
+                      {{#if this.isZoneDerived}}
+                        <input type="number" value="{{this.base}}" disabled title="{{localize 'NORETURN.Attributes.AllOverHeader'}}" />
+                      {{else}}
+                        <input type="number" name="system.attributes.primary.{{this.key}}.base" value="{{this.base}}" min="1" />
+                      {{/if}}
+                    </td>
+                    <td>
+                      <input type="number" name="system.attributes.primary.{{this.key}}.mod" value="{{this.mod}}" />
+                    </td>
+                    <td class="pool-cell"><strong>{{this.overall}}W6</strong></td>
+                    <td class="center">
+                      <input type="checkbox" name="system.attributes.primary.{{this.key}}.alphaBio" {{checked this.alphaBio}} />
+                    </td>
+                    <td class="center">
+                      <button type="button" class="nr-roll-btn" data-action="rollAttribute" data-attribute="{{this.key}}">
+                        <i class="fas fa-dice-d6"></i>
+                      </button>
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
+
+            <h2 class="nr-section-title">{{localize "NORETURN.Attributes.SecondaryHeader"}}</h2>
+            <table class="nr-table attr-table">
+              <thead>
+                <tr>
+                  <th>{{localize "NORETURN.Skills.Attribute"}}</th>
+                  <th>{{localize "NORETURN.Attributes.Base"}}</th>
+                  <th>{{localize "NORETURN.Attributes.Mod"}}</th>
+                  <th>{{localize "NORETURN.Attributes.Overall"}}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{#each secondaryAttributes}}
+                  <tr>
+                    <td>
+                      <strong>{{localize this.labelKey}}</strong>
+                      <small class="muted">({{localize this.abbrKey}})</small>
+                    </td>
+                    <td>
+                      <input type="number" name="system.attributes.secondary.{{this.key}}.base" value="{{this.base}}" min="0" />
+                    </td>
+                    <td>
+                      <input type="number" name="system.attributes.secondary.{{this.key}}.mod" value="{{this.mod}}" />
+                    </td>
+                    <td class="pool-cell"><strong>{{this.total}}</strong></td>
+                    <td class="center">
+                      {{#if this.rollable}}
+                        <button type="button" class="nr-roll-btn" data-action="rollAttribute" data-attribute="{{this.key}}">
+                          <i class="fas fa-dice-d6"></i>
+                        </button>
+                      {{/if}}
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
+
+            <h2 class="nr-section-title">{{localize "NORETURN.Attributes.SpecialHeader"}}</h2>
+            <div class="nr-stat-grid">
+              <label>
+                <span>{{localize "NORETURN.Attributes.adrenalin"}} ({{localize "NORETURN.Attributes.Base"}})</span>
+                <input type="number" name="system.attributes.special.adrenalin.stufe" value="{{system.attributes.special.adrenalin.stufe}}" min="0" />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Attributes.adrenalin"}} ({{localize "NORETURN.Attributes.Pool"}})</span>
+                <input type="number" name="system.attributes.special.adrenalin.pool" value="{{system.attributes.special.adrenalin.pool}}" min="0" />
+              </label>
+            </div>
+          </div>
+
+          <!-- Right Column: Derived Status, Condition & Resources -->
+          <div class="nr-card">
+            <h2 class="nr-section-title">{{localize "NORETURN.Status.Header"}}</h2>
+            <div class="nr-stat-grid">
+              <label>
+                <span>{{localize "NORETURN.Status.Bekanntheit"}}</span>
+                <input type="number" name="system.status.bekanntheit" value="{{system.status.bekanntheit}}" min="1" max="100" />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Status.Ruf"}}</span>
+                <input type="number" name="system.status.ruf" value="{{system.status.ruf}}" />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Status.Organismus"}} ({{localize "NORETURN.Status.OrganismusVerlust"}}: -{{system.allOver.summeOrganismusverlust}})</span>
+                <input type="number" value="{{system.status.organismus.value}}" disabled />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Status.Psyche"}} (Max {{system.status.psyche.max}})</span>
+                <input type="number" name="system.status.psyche.value" value="{{system.status.psyche.value}}" min="0" max="100" />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Status.Infektionsresistenz"}}</span>
+                <div class="flexrow">
+                  <input type="text" name="system.status.infektionsresistenz" value="{{system.status.infektionsresistenz}}" />
+                  <button type="button" class="nr-roll-btn" data-action="rollInfection">
+                    <i class="fas fa-biohazard"></i>
+                  </button>
+                </div>
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Status.Tragkraft"}}</span>
+                <input type="number" value="{{system.status.tragkraft}}" disabled />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Status.Erfahrung"}} ({{localize "NORETURN.Status.Aktuell"}} / {{localize "NORETURN.Status.Gesamt"}})</span>
+                <div class="flexrow">
+                  <input type="number" name="system.status.erfahrung.aktuell" value="{{system.status.erfahrung.aktuell}}" min="0" />
+                  <input type="number" name="system.status.erfahrung.gesamt" value="{{system.status.erfahrung.gesamt}}" min="0" />
+                </div>
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Status.Bargeld"}}</span>
+                <input type="number" name="system.status.bargeld" value="{{system.status.bargeld}}" min="0" />
+              </label>
+            </div>
+
+            <hr />
+
+            <h2 class="nr-section-title">{{localize "NORETURN.Robotics.ChassisOverview"}}</h2>
+            <div class="nr-stat-grid">
+              <label>
+                <span>{{localize "NORETURN.Robotics.PowerSupply"}}</span>
+                <input type="text" name="system.chassis.powerSupply" value="{{system.chassis.powerSupply}}" />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Robotics.EnergyDrain"}}</span>
+                <input type="number" value="{{system.chassis.energyDrain}}" disabled />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Robotics.ModuleSockets"}} ({{localize "NORETURN.Robotics.CapacityUsed"}} / Max)</span>
+                <input type="text" value="{{system.chassis.moduleSockets.used}} / {{system.chassis.moduleSockets.max}} ({{localize 'NORETURN.Robotics.CapacityFree'}}: {{system.chassis.moduleSockets.free}})" disabled />
+              </label>
+              <label>
+                <span>{{localize "NORETURN.Robotics.StructuralHp"}}</span>
+                <input type="text" value="{{system.chassis.structuralHp.value}} / {{system.chassis.structuralHp.max}} TP" disabled />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    {{/if}}
+
+    <!-- TAB 2: DEDICATED INSTALLED COMPONENTS, CHASSIS STATUS, BATTERY, SOCKETS & CYBERSENSE -->
+    {{#if (eq activeTab "chassis")}}
+      <div class="tab-panel active">
+        <div class="nr-card">
+          <h2 class="nr-section-title">{{localize "NORETURN.Robotics.ChassisHeader"}}</h2>
+          <div class="nr-stat-grid three-col">
+            <label>
+              <span>{{localize "NORETURN.Robotics.ChassisStatus"}}</span>
+              <input type="text" name="system.chassis.status" value="{{system.chassis.status}}" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Robotics.PowerSupply"}}</span>
+              <input type="text" name="system.chassis.powerSupply" value="{{system.chassis.powerSupply}}" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Robotics.Battery"}} ({{localize "NORETURN.Status.Aktuell"}} / Max)</span>
+              <div class="flexrow">
+                <input type="number" name="system.chassis.battery.value" value="{{system.chassis.battery.value}}" min="0" />
+                <input type="number" name="system.chassis.battery.max" value="{{system.chassis.battery.max}}" min="1" />
+              </div>
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Robotics.EnergyDrainBase"}}</span>
+              <input type="number" name="system.chassis.energyDrainBase" value="{{system.chassis.energyDrainBase}}" step="0.25" min="0" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Robotics.EnergyDrain"}} ({{localize "NORETURN.Status.Gesamt"}})</span>
+              <input type="number" value="{{system.chassis.energyDrain}}" disabled />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Robotics.ModuleSockets"}}</span>
+              <input type="text" value="{{system.chassis.moduleSockets.used}} / {{system.chassis.moduleSockets.max}} ({{localize 'NORETURN.Robotics.CapacityFree'}}: {{system.chassis.moduleSockets.free}})" disabled />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Robotics.StructuralHp"}}</span>
+              <input type="text" value="{{system.chassis.structuralHp.value}} / {{system.chassis.structuralHp.max}} TP (-{{system.chassis.structuralHp.damage}})" disabled />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Inventory.TechLevel"}}</span>
+              <input type="text" name="system.personal.techLevel" value="{{system.personal.techLevel}}" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Status.OrganismusVerlust"}}</span>
+              <input type="number" value="{{system.allOver.summeOrganismusverlust}}" disabled />
+            </label>
+          </div>
+        </div>
+
+        <div class="nr-two-col">
+          <!-- Wahrnehmung / Cybersense Box -->
+          <div class="nr-card">
+            <h2 class="nr-section-title">{{localize "NORETURN.Senses.Header"}}</h2>
+            <table class="nr-table senses-table">
+              <thead>
+                <tr>
+                  <th>{{localize "NORETURN.Attributes.wahrnehmung"}}</th>
+                  <th>{{localize "NORETURN.Attributes.Base"}}</th>
+                  <th>{{localize "NORETURN.Senses.CybersenseStufe"}} (+2)</th>
+                  <th>{{localize "NORETURN.Attributes.Overall"}}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>{{localize "NORETURN.Senses.Sehen"}}</strong></td>
+                  <td><input type="number" name="system.wahrnehmung.sehen.base" value="{{system.wahrnehmung.sehen.base}}" min="0" /></td>
+                  <td><input type="number" name="system.wahrnehmung.sehen.cybersenseStufe" value="{{system.wahrnehmung.sehen.cybersenseStufe}}" min="0" /></td>
+                  <td class="pool-cell"><strong>{{system.wahrnehmung.sehen.total}}W6</strong></td>
+                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="sehen"><i class="fas fa-eye"></i></button></td>
+                </tr>
+                <tr>
+                  <td><strong>{{localize "NORETURN.Senses.Hoeren"}}</strong></td>
+                  <td><input type="number" name="system.wahrnehmung.hoeren.base" value="{{system.wahrnehmung.hoeren.base}}" min="0" /></td>
+                  <td><input type="number" name="system.wahrnehmung.hoeren.cybersenseStufe" value="{{system.wahrnehmung.hoeren.cybersenseStufe}}" min="0" /></td>
+                  <td class="pool-cell"><strong>{{system.wahrnehmung.hoeren.total}}W6</strong></td>
+                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="hoeren"><i class="fas fa-ear-listen"></i></button></td>
+                </tr>
+                <tr>
+                  <td><strong>{{localize "NORETURN.Senses.Riechen"}}</strong></td>
+                  <td><input type="number" name="system.wahrnehmung.riechen.base" value="{{system.wahrnehmung.riechen.base}}" min="0" /></td>
+                  <td><input type="number" name="system.wahrnehmung.riechen.cybersenseStufe" value="{{system.wahrnehmung.riechen.cybersenseStufe}}" min="0" /></td>
+                  <td class="pool-cell"><strong>{{system.wahrnehmung.riechen.total}}W6</strong></td>
+                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="riechen"><i class="fas fa-wind"></i></button></td>
+                </tr>
+                <tr>
+                  <td><strong>{{localize "NORETURN.Senses.Schmecken"}}</strong></td>
+                  <td><input type="number" name="system.wahrnehmung.schmecken.base" value="{{system.wahrnehmung.schmecken.base}}" min="0" /></td>
+                  <td><input type="number" name="system.wahrnehmung.schmecken.cybersenseStufe" value="{{system.wahrnehmung.schmecken.cybersenseStufe}}" min="0" /></td>
+                  <td class="pool-cell"><strong>{{system.wahrnehmung.schmecken.total}}W6</strong></td>
+                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="schmecken"><i class="fas fa-utensils"></i></button></td>
+                </tr>
+                <tr>
+                  <td><strong>{{localize "NORETURN.Senses.TastsinnAllOver"}}</strong></td>
+                  <td colspan="2" class="center">Ø 11 Zonen</td>
+                  <td class="pool-cell"><strong>{{system.wahrnehmung.tastsinnAllOver}}W6</strong></td>
+                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="tastsinn"><i class="fas fa-hand"></i></button></td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="all-over-row">
+                  <td colspan="3"><strong>{{localize "NORETURN.Senses.AllOverWahrnehmung"}} (Ø / 5)</strong></td>
+                  <td class="pool-cell"><strong>{{system.wahrnehmung.allOverWahrnehmung}}W6</strong></td>
+                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="allOver"><i class="fas fa-dice-d6"></i></button></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Installed Modules + Sockets -->
+          <div class="nr-card">
+            <div class="nr-section-header">
+              <h2 class="nr-section-title">{{localize "NORETURN.Robotics.ModulesHeader"}}</h2>
+              <button type="button" class="nr-btn small" data-action="createItem" data-type="robotModule">
+                <i class="fas fa-plus"></i> {{localize "NORETURN.Inventory.AddCyberware"}}
+              </button>
+            </div>
+
+            <table class="nr-table modules-table">
+              <thead>
+                <tr>
+                  <th>{{localize "TYPES.Item.robotModule"}}</th>
+                  <th>{{localize "NORETURN.Health.Zone"}}</th>
+                  <th>{{localize "NORETURN.Robotics.Capacity"}}</th>
+                  <th>{{localize "NORETURN.Status.Organismus"}}</th>
+                  <th>{{localize "NORETURN.Inventory.Effects"}}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{#each modules}}
+                  <tr data-item-id="{{this.id}}">
+                    <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
+                    <td>{{this.system.targetZone}} ({{this.system.zone}})</td>
+                    <td class="center">{{this.system.capacityCost}}</td>
+                    <td class="center">-{{this.system.organismusCost}}</td>
+                    <td>{{this.system.effects}}</td>
+                    <td class="actions-cell">
+                      <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
+                      <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {{/if}}
+
+    <!-- TAB 3: ZONEN-WERTE & TUNING (1st_Edition_NoReturn-Robotikbogen.pdf) -->
     {{#if (eq activeTab "zones")}}
       <div class="tab-panel active">
-        <!-- Overview of Values per Zone (Übersicht der Werte je Zone + All over Attribut) -->
         <div class="nr-card">
           <h2 class="nr-section-title">{{localize "NORETURN.Robotics.ValuesHeader"}}</h2>
           <table class="nr-table robot-zones-table">
@@ -195,109 +550,98 @@
       </div>
     {{/if}}
 
-    <!-- TAB 2: EINBAUTEN & CYBERSENSE (WAHRNEHMUNG) -->
-    {{#if (eq activeTab "modules")}}
+    <!-- TAB 4: SKILLS, PSI & CONDITIONS -->
+    {{#if (eq activeTab "skills")}}
       <div class="tab-panel active">
-        <div class="nr-two-col">
-          <!-- Wahrnehmung / Cybersense Box -->
-          <div class="nr-card">
-            <h2 class="nr-section-title">{{localize "NORETURN.Senses.Header"}}</h2>
-            <table class="nr-table senses-table">
-              <thead>
-                <tr>
-                  <th>{{localize "NORETURN.Attributes.wahrnehmung"}}</th>
-                  <th>{{localize "NORETURN.Attributes.Base"}}</th>
-                  <th>{{localize "NORETURN.Senses.CybersenseStufe"}} (+2)</th>
-                  <th>{{localize "NORETURN.Attributes.Overall"}}</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>{{localize "NORETURN.Senses.Sehen"}}</strong></td>
-                  <td><input type="number" name="system.wahrnehmung.sehen.base" value="{{system.wahrnehmung.sehen.base}}" min="0" /></td>
-                  <td><input type="number" name="system.wahrnehmung.sehen.cybersenseStufe" value="{{system.wahrnehmung.sehen.cybersenseStufe}}" min="0" /></td>
-                  <td class="pool-cell"><strong>{{system.wahrnehmung.sehen.total}}W6</strong></td>
-                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="sehen"><i class="fas fa-eye"></i></button></td>
-                </tr>
-                <tr>
-                  <td><strong>{{localize "NORETURN.Senses.Hoeren"}}</strong></td>
-                  <td><input type="number" name="system.wahrnehmung.hoeren.base" value="{{system.wahrnehmung.hoeren.base}}" min="0" /></td>
-                  <td><input type="number" name="system.wahrnehmung.hoeren.cybersenseStufe" value="{{system.wahrnehmung.hoeren.cybersenseStufe}}" min="0" /></td>
-                  <td class="pool-cell"><strong>{{system.wahrnehmung.hoeren.total}}W6</strong></td>
-                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="hoeren"><i class="fas fa-ear-listen"></i></button></td>
-                </tr>
-                <tr>
-                  <td><strong>{{localize "NORETURN.Senses.Riechen"}}</strong></td>
-                  <td><input type="number" name="system.wahrnehmung.riechen.base" value="{{system.wahrnehmung.riechen.base}}" min="0" /></td>
-                  <td><input type="number" name="system.wahrnehmung.riechen.cybersenseStufe" value="{{system.wahrnehmung.riechen.cybersenseStufe}}" min="0" /></td>
-                  <td class="pool-cell"><strong>{{system.wahrnehmung.riechen.total}}W6</strong></td>
-                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="riechen"><i class="fas fa-wind"></i></button></td>
-                </tr>
-                <tr>
-                  <td><strong>{{localize "NORETURN.Senses.Schmecken"}}</strong></td>
-                  <td><input type="number" name="system.wahrnehmung.schmecken.base" value="{{system.wahrnehmung.schmecken.base}}" min="0" /></td>
-                  <td><input type="number" name="system.wahrnehmung.schmecken.cybersenseStufe" value="{{system.wahrnehmung.schmecken.cybersenseStufe}}" min="0" /></td>
-                  <td class="pool-cell"><strong>{{system.wahrnehmung.schmecken.total}}W6</strong></td>
-                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="schmecken"><i class="fas fa-utensils"></i></button></td>
-                </tr>
-                <tr>
-                  <td><strong>{{localize "NORETURN.Senses.TastsinnAllOver"}}</strong></td>
-                  <td colspan="2" class="center">Ø 11 Zonen</td>
-                  <td class="pool-cell"><strong>{{system.wahrnehmung.tastsinnAllOver}}W6</strong></td>
-                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="tastsinn"><i class="fas fa-hand"></i></button></td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr class="all-over-row">
-                  <td colspan="3"><strong>{{localize "NORETURN.Senses.AllOverWahrnehmung"}} (Ø / 5)</strong></td>
-                  <td class="pool-cell"><strong>{{system.wahrnehmung.allOverWahrnehmung}}W6</strong></td>
-                  <td><button type="button" class="nr-roll-btn" data-action="rollSense" data-sense="allOver"><i class="fas fa-dice-d6"></i></button></td>
-                </tr>
-              </tfoot>
-            </table>
+        <div class="nr-card">
+          <div class="nr-section-header">
+            <h2 class="nr-section-title">{{localize "NORETURN.Skills.Header"}}</h2>
+            <button type="button" class="nr-btn small" data-action="createItem" data-type="skill">
+              <i class="fas fa-plus"></i> {{localize "NORETURN.Skills.AddSkill"}}
+            </button>
           </div>
-
-          <!-- Einbauten + Zone -->
-          <div class="nr-card">
-            <div class="nr-section-header">
-              <h2 class="nr-section-title">{{localize "NORETURN.Robotics.ModulesHeader"}}</h2>
-              <button type="button" class="nr-btn small" data-action="createItem" data-type="robotModule">
-                <i class="fas fa-plus"></i> {{localize "NORETURN.Inventory.AddCyberware"}}
-              </button>
-            </div>
-
-            <table class="nr-table modules-table">
-              <thead>
-                <tr>
-                  <th>{{localize "TYPES.Item.robotModule"}}</th>
-                  <th>{{localize "NORETURN.Health.Zone"}}</th>
-                  <th>{{localize "NORETURN.Robotics.Capacity"}}</th>
-                  <th>{{localize "NORETURN.Status.Organismus"}}</th>
-                  <th></th>
+          <table class="nr-table skills-table">
+            <thead>
+              <tr>
+                <th>{{localize "NORETURN.Skills.Name"}}</th>
+                <th>{{localize "NORETURN.Skills.Attribute"}}</th>
+                <th>{{localize "NORETURN.Skills.ZoneRef"}}</th>
+                <th>{{localize "NORETURN.Skills.Level"}}</th>
+                <th>{{localize "NORETURN.Skills.Mod"}}</th>
+                <th>{{localize "NORETURN.Skills.Pool"}}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each skills}}
+                <tr data-item-id="{{this.id}}">
+                  <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
+                  <td>
+                    {{#if this.system.attribute}}
+                      {{localize (concat "NORETURN.Attributes." this.system.attribute)}}
+                    {{else}}
+                      –
+                    {{/if}}
+                  </td>
+                  <td>{{this.system.zoneReference}}</td>
+                  <td class="center">{{this.system.level}}</td>
+                  <td class="center">{{this.system.effectiveMod}}</td>
+                  <td class="pool-cell"><strong>{{this.system.pool}}W6</strong></td>
+                  <td class="actions-cell">
+                    <button type="button" class="nr-roll-btn" data-action="rollSkill"><i class="fas fa-dice-d6"></i></button>
+                    <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {{#each modules}}
-                  <tr data-item-id="{{this.id}}">
-                    <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
-                    <td>{{this.system.targetZone}} ({{this.system.zone}})</td>
-                    <td class="center">{{this.system.capacityCost}}</td>
-                    <td class="center">-{{this.system.organismusCost}}</td>
-                    <td class="actions-cell">
-                      <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
-                      <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
-                    </td>
-                  </tr>
-                {{/each}}
-              </tbody>
-            </table>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="nr-card">
+          <div class="nr-section-header">
+            <h2 class="nr-section-title">{{localize "NORETURN.Conditions.Header"}}</h2>
+            <button type="button" class="nr-btn small" data-action="createItem" data-type="condition">
+              <i class="fas fa-plus"></i> {{localize "NORETURN.Conditions.AddCondition"}}
+            </button>
           </div>
+          <table class="nr-table conditions-table">
+            <thead>
+              <tr>
+                <th>{{localize "TYPES.Item.condition"}}</th>
+                <th>{{localize "NORETURN.Conditions.Incubation"}}</th>
+                <th>{{localize "NORETURN.Conditions.Interval"}}</th>
+                <th>{{localize "NORETURN.Conditions.Intensity"}}</th>
+                <th>{{localize "NORETURN.Conditions.ResistanceRoll"}}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each conditions}}
+                <tr data-item-id="{{this.id}}">
+                  <td>
+                    <a data-action="rollCondition">
+                      <strong><i class="fas fa-biohazard"></i> {{this.name}}</strong>
+                    </a>
+                  </td>
+                  <td>{{this.system.incubationTime}}</td>
+                  <td>{{this.system.testInterval}}</td>
+                  <td class="center">MW {{this.system.intensity}}</td>
+                  <td class="actions-cell">
+                    <button type="button" class="nr-roll-btn" data-action="rollCondition">
+                      <i class="fas fa-biohazard"></i> {{localize "NORETURN.Conditions.RollBtn"}}
+                    </button>
+                    <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
         </div>
       </div>
     {{/if}}
 
-    <!-- TAB 3: COMBAT, DAMAGE & SKILLS -->
+    <!-- TAB 5: COMBAT, STRUCTURAL DAMAGE & WEAPONS -->
     {{#if (eq activeTab "combat")}}
       <div class="tab-panel active">
         <div class="nr-card">
@@ -365,31 +709,32 @@
             </table>
           </div>
 
-          <!-- Skills -->
+          <!-- Armor & Gear -->
           <div class="nr-card">
             <div class="nr-section-header">
-              <h2 class="nr-section-title">{{localize "NORETURN.Skills.Header"}}</h2>
-              <button type="button" class="nr-btn small" data-action="createItem" data-type="skill">
-                <i class="fas fa-plus"></i> {{localize "NORETURN.Skills.AddSkill"}}
+              <h2 class="nr-section-title">{{localize "NORETURN.Combat.ArmorHeader"}}</h2>
+              <button type="button" class="nr-btn small" data-action="createItem" data-type="armor">
+                <i class="fas fa-plus"></i> {{localize "NORETURN.Combat.AddArmor"}}
               </button>
             </div>
             <table class="nr-table">
               <thead>
                 <tr>
-                  <th>{{localize "NORETURN.Skills.Name"}}</th>
-                  <th>{{localize "NORETURN.Skills.Level"}}</th>
-                  <th>{{localize "NORETURN.Skills.Pool"}}</th>
+                  <th>{{localize "NORETURN.Combat.Equipped"}}</th>
+                  <th>{{localize "TYPES.Item.armor"}}</th>
+                  <th>{{localize "NORETURN.Health.Armor"}}</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {{#each skills}}
+                {{#each armors}}
                   <tr data-item-id="{{this.id}}">
+                    <td class="center">
+                      <input type="checkbox" data-action="toggleEquipped" {{checked this.system.equipped}} />
+                    </td>
                     <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
-                    <td class="center">{{this.system.level}}</td>
-                    <td class="pool-cell"><strong>{{this.system.pool}}W6</strong></td>
+                    <td class="center">{{this.system.armorValue}} ({{this.system.materialCategory}})</td>
                     <td class="actions-cell">
-                      <button type="button" class="nr-roll-btn" data-action="rollSkill"><i class="fas fa-dice-d6"></i></button>
                       <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
                     </td>
                   </tr>
@@ -401,7 +746,7 @@
       </div>
     {{/if}}
 
-    <!-- TAB 4: NOTES -->
+    <!-- TAB 6: TRAITS & NOTES -->
     {{#if (eq activeTab "bio")}}
       <div class="tab-panel active">
         <div class="nr-card">

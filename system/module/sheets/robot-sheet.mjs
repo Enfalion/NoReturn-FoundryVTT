@@ -1,19 +1,22 @@
 import { ROBOT_ZONE_ORDER, ROBOT_MODELS } from "../data/robot-data.mjs";
+import { PLAYABLE_SPECIES_PRESETS } from "../data/character-data.mjs";
 import { NoReturnRoll } from "../dice/roll.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
 
 /**
- * ApplicationV2 Sheet for the NoReturn Robotics / Cyborg Sheet (1st_Edition_NoReturn-Robotikbogen.pdf).
+ * Hybrid ApplicationV2 Sheet for NoReturn Robotics / Cyborg / Drone Actors.
+ * Combines full Character Sheet capabilities (Attributes, Skills, PSI, Conditions, Traits, Inventory)
+ * with dedicated Robotics Chassis, Power Supply/Battery, Module Sockets, Energy Drain, and 11-Zone Tuning.
  */
 export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   static DEFAULT_OPTIONS = {
     classes: ["noreturn", "sheet", "actor", "robot-sheet"],
     tag: "form",
     position: {
-      width: 980,
-      height: 860
+      width: 1020,
+      height: 880
     },
     window: {
       resizable: true
@@ -24,6 +27,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     },
     actions: {
       switchTab: NoReturnRobotSheet.#onSwitchTab,
+      rollAttribute: NoReturnRobotSheet.#onRollAttribute,
       rollAllOver: NoReturnRobotSheet.#onRollAllOver,
       rollZoneStat: NoReturnRobotSheet.#onRollZoneStat,
       rollSense: NoReturnRobotSheet.#onRollSense,
@@ -32,9 +36,15 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       rollDamage: NoReturnRobotSheet.#onRollDamage,
       rollHitZone: NoReturnRobotSheet.#onRollHitZone,
       rollSoak: NoReturnRobotSheet.#onRollSoak,
+      rollInitiative: NoReturnRobotSheet.#onRollInitiative,
+      rollInfection: NoReturnRobotSheet.#onRollInfection,
+      rollCondition: NoReturnRobotSheet.#onRollCondition,
+      applySpeciesPreset: NoReturnRobotSheet.#onApplySpeciesPreset,
       createItem: NoReturnRobotSheet.#onCreateItem,
       editItem: NoReturnRobotSheet.#onEditItem,
-      deleteItem: NoReturnRobotSheet.#onDeleteItem
+      deleteItem: NoReturnRobotSheet.#onDeleteItem,
+      toggleEquipped: NoReturnRobotSheet.#onToggleEquipped,
+      toggleActive: NoReturnRobotSheet.#onToggleActive
     }
   };
 
@@ -45,7 +55,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     }
   };
 
-  #activeTab = "zones";
+  #activeTab = "overview";
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
@@ -67,15 +77,45 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       };
     });
 
+    const primaryKeys = ["geschick", "staerke", "konstitution", "schnelligkeit", "wissen", "wahrnehmung"];
+    const primaryAttributes = primaryKeys.map((key) => ({
+      key,
+      labelKey: `NORETURN.Attributes.${key}`,
+      abbrKey: `NORETURN.Attributes.${key}Abbr`,
+      isZoneDerived: ["geschick", "staerke", "konstitution", "schnelligkeit", "wahrnehmung"].includes(key),
+      ...system.attributes.primary[key]
+    }));
+
+    const secondaryKeys = ["charisma", "logik", "fahrzeuge", "schmerztoleranz"];
+    const secondaryAttributes = secondaryKeys.map((key) => ({
+      key,
+      labelKey: `NORETURN.Attributes.${key}`,
+      abbrKey: `NORETURN.Attributes.${key}Abbr`,
+      rollable: key !== "schmerztoleranz",
+      ...system.attributes.secondary[key]
+    }));
+
     const modules = [];
     const skills = [];
     const weapons = [];
+    const armors = [];
     const gear = [];
+    const consumables = [];
+    const speciesItems = [];
+    const mutations = [];
+    const traits = [];
+    const conditions = [];
 
     for (const item of actor.items) {
       if (item.type === "robotModule" || item.type === "cyberware") modules.push(item);
       else if (item.type === "skill") skills.push(item);
       else if (item.type === "weapon") weapons.push(item);
+      else if (item.type === "armor") armors.push(item);
+      else if (item.type === "consumable") consumables.push(item);
+      else if (item.type === "species") speciesItems.push(item);
+      else if (item.type === "mutation") mutations.push(item);
+      else if (item.type === "trait") traits.push(item);
+      else if (item.type === "condition") conditions.push(item);
       else gear.push(item);
     }
 
@@ -91,13 +131,26 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       actor,
       system,
       activeTab: this.#activeTab,
+      speciesOptions: Object.keys(PLAYABLE_SPECIES_PRESETS),
+      activeSpeciesItem: speciesItems[0] || null,
+      speciesSummary: system.speciesSummary || PLAYABLE_SPECIES_PRESETS[system.personal?.spezies] || null,
+      primaryAttributes,
+      secondaryAttributes,
       robotZones,
       robotModels: Object.keys(ROBOT_MODELS),
       modules,
       skills,
       weapons,
+      armors,
       gear,
-      enrichedNotes
+      consumables,
+      speciesItems,
+      mutations,
+      traits,
+      conditions,
+      enrichedNotes,
+      isUnconscious: Boolean(system.isUnconscious),
+      isImmobilized: Boolean(system.isImmobilized)
     };
   }
 
@@ -118,6 +171,25 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       }
     }
 
+    if (item.type === "species") {
+      const existingSpeciesIds = this.document.items
+        .filter((i) => i.type === "species")
+        .map((i) => i.id);
+      if (existingSpeciesIds.length > 0) {
+        await this.document.deleteEmbeddedDocuments("Item", existingSpeciesIds);
+      }
+      const created = await this.document.createEmbeddedDocuments("Item", [item.toObject()]);
+      const bs = item.system.baseStats || {};
+      await this.document.update({
+        "system.personal.spezies": item.name,
+        "system.status.psyche.value": bs.psyche ?? 80,
+        "system.status.infektionsresistenz": bs.infektionsresistenz || "2d6",
+        "system.attributes.special.adrenalin.stufe": bs.adrenalin ?? 2,
+        "system.attributes.special.adrenalin.pool": bs.adrenalin ?? 2
+      });
+      return created;
+    }
+
     return super._onDropItem
       ? super._onDropItem(event, data)
       : this.document.createEmbeddedDocuments("Item", [item.toObject()]);
@@ -130,6 +202,66 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       this.#activeTab = tab;
       this.render();
     }
+  }
+
+  static async #onApplySpeciesPreset(event) {
+    event.preventDefault();
+    const actor = this.document;
+    const speciesKey = actor.system.personal.spezies || "Mensch";
+    const preset = PLAYABLE_SPECIES_PRESETS[speciesKey];
+    if (!preset) return;
+
+    const existingSpeciesIds = actor.items.filter((i) => i.type === "species").map((i) => i.id);
+    if (existingSpeciesIds.length > 0) {
+      await actor.deleteEmbeddedDocuments("Item", existingSpeciesIds);
+    }
+
+    await actor.createEmbeddedDocuments("Item", [
+      {
+        name: preset.name,
+        type: "species",
+        system: {
+          speciesId: preset.speciesId,
+          subspecies: preset.subspecies,
+          costGp: preset.costGp,
+          legality: preset.legality,
+          psiAllowed: preset.psiAllowed,
+          freePsiCount: preset.freePsiCount,
+          baseStats: preset.baseStats,
+          attributeModifiers: preset.attributeModifiers,
+          attributeLimits: preset.attributeLimits,
+          skillModifiers: preset.skillModifiers,
+          specialRules: preset.specialRules
+        }
+      }
+    ]);
+
+    await actor.update({
+      "system.status.psyche.value": preset.baseStats.psyche,
+      "system.status.infektionsresistenz": preset.baseStats.infektionsresistenz,
+      "system.attributes.special.adrenalin.stufe": preset.baseStats.adrenalin,
+      "system.attributes.special.adrenalin.pool": preset.baseStats.adrenalin
+    });
+  }
+
+  static async #onRollAttribute(event, target) {
+    event.preventDefault();
+    const attrKey = target.dataset.attribute;
+    const actor = this.document;
+    const prim = actor.system.attributes.primary?.[attrKey];
+    const sec = actor.system.attributes.secondary?.[attrKey];
+    const pool = prim ? prim.overall : sec ? sec.total : 1;
+    const alphaBio = Boolean(prim?.alphaBio);
+    const label = game.i18n.localize(`NORETURN.Attributes.${attrKey}`);
+
+    await NoReturnRoll.promptAndRoll({
+      actor,
+      title: label,
+      attributeDice: pool,
+      skillDice: 0,
+      allAttributeHazard: alphaBio,
+      skipDialog: event.shiftKey
+    });
   }
 
   static async #onRollAllOver(event, target) {
@@ -200,14 +332,16 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const sec = this.document.system.attributes?.secondary?.[attrKey];
     const attrDice = prim ? prim.overall : sec ? sec.total : 0;
     const skillDice = Number(skill.system.level) || 0;
-    const bonusDice = Number(skill.system.mod) || 0;
+    const bonusDice = Number(skill.system.effectiveMod ?? skill.system.mod) || 0;
 
     await NoReturnRoll.promptAndRoll({
       actor: this.document,
       title: skill.name,
+      flavorSubtitle: attrKey ? game.i18n.localize(`NORETURN.Attributes.${attrKey}`) : "Spezial / PSI",
       attributeDice: attrDice,
       skillDice,
       bonusDice,
+      allAttributeHazard: Boolean(prim?.alphaBio),
       allSkillHazard: Boolean(skill.system.betaBio),
       skipDialog: event.shiftKey
     });
@@ -225,9 +359,11 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
         i.type === "skill" &&
         (i.system.skillId === skillKey || i.name.toLowerCase() === skillKey.toLowerCase())
     );
-    const attrDice = Number(this.document.system.allOver.geschick) || 1;
+    const attrDice = Number(this.document.system.attributes?.primary?.geschick?.overall ?? this.document.system.allOver.geschick) || 1;
     const skillDice = Number(skillItem?.system?.level || 0);
-    const bonusDice = Number(weapon.system.attackBonus) || 0;
+    const bonusDice =
+      (Number(weapon.system.attackBonus) || 0) +
+      (Number(skillItem?.system?.effectiveMod ?? skillItem?.system?.mod) || 0);
 
     const checkResult = await NoReturnRoll.promptAndRoll({
       actor: this.document,
@@ -263,6 +399,46 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     await NoReturnRoll.rollSoak(this.document, zoneCode);
   }
 
+  static async #onRollInitiative(event) {
+    event.preventDefault();
+    const sk = Number(this.document.system.attributes?.primary?.schnelligkeit?.overall ?? this.document.system.allOver.schnelligkeit) || 1;
+    const reaktionItem = this.document.items.find(
+      (i) => i.type === "skill" && (i.system.skillId === "reaktion" || i.name.toLowerCase() === "reaktion")
+    );
+    const reaktionLevel = Number(reaktionItem?.system?.level || 0);
+    const reaktionMod = Number(reaktionItem?.system?.effectiveMod ?? reaktionItem?.system?.mod) || 0;
+
+    await NoReturnRoll.promptAndRoll({
+      actor: this.document,
+      title: game.i18n.localize("NORETURN.Combat.RollInitiative"),
+      attributeDice: sk,
+      skillDice: reaktionLevel,
+      bonusDice: reaktionMod,
+      targetNumber: 10,
+      skipDialog: event.shiftKey
+    });
+  }
+
+  static async #onRollInfection(event) {
+    event.preventDefault();
+    const rawFormula = this.document.system.status.infektionsresistenz || "2d6";
+    const formula = rawFormula.replace(/(\d+)W(\d+)/gi, "$1d$2").replace(/p\./gi, "");
+    const roll = new Roll(formula);
+    await roll.evaluate();
+    await roll.toMessage({
+      speaker: ChatMessage.getSpeaker({ actor: this.document }),
+      flavor: `${game.i18n.localize("NORETURN.Status.Infektionsresistenz")} (${rawFormula})`
+    });
+  }
+
+  static async #onRollCondition(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const condition = this.document.items.get(itemId);
+    if (!condition) return;
+    await NoReturnRoll.rollConditionResistance(this.document, condition);
+  }
+
   static async #onCreateItem(event, target) {
     event.preventDefault();
     const type = target.dataset.type || "robotModule";
@@ -282,5 +458,23 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const itemId = target.closest("[data-item-id]")?.dataset.itemId;
     const item = this.document.items.get(itemId);
     if (item) await item.delete();
+  }
+
+  static async #onToggleEquipped(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const item = this.document.items.get(itemId);
+    if (item && "equipped" in item.system) {
+      await item.update({ "system.equipped": !item.system.equipped });
+    }
+  }
+
+  static async #onToggleActive(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const item = this.document.items.get(itemId);
+    if (item && "active" in item.system) {
+      await item.update({ "system.active": !item.system.active });
+    }
   }
 }

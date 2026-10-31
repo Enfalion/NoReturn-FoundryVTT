@@ -11,30 +11,61 @@ Basierend auf dem offiziellen *Charakterbogen 1.2 (DE)*:
 - **Primär-Attribute:** `Geschick (GE)`, `Stärke (ST)`, `Konstitution (KO)`, `Schnelligkeit (SK)`, `Wissen (WI)` und `Wahrnehmung (WA)` inklusive Modifikatoren, Overall-Wert und umschaltbarer *Alpha-Biomechanik* (macht alle Attributswürfel zum explodierenden *Hazard-Di*).
 - **Sekundär- & Besondere Attribute:** `Charisma (CH)`, `Logik (LO)`, `Fahrzeuge (FA)`, `Schmerztoleranz (TO)` sowie `Adrenalin` (`Stufe` und aktueller `Pool`).
 - **Zustand & Ressourcen:** `Bekanntheit` (100–1), `Ruf`, `Organismus` (inkl. *Leiden 1–3*), `Psyche`, würfelbare `Infektionsresistenz` (ohne Hazard-Di), `Natürliche Regeneration`, `Erfahrung (EP)`, `Justicepoints (JP)`, `Chaospoints (CP)` und `Bargeld (N$)`.
-- **Automatische Berechnungen (`prepareDerivedData`):**
-  - **Tragkraft:** `(Stärke + Stemmen) × 10 kg`.
-  - **11 Trefferzonen (`2` bis `12`):** Wählbare Widerstandsklasse (`30 TP` Normalsterblich, `50 TP` Robotik & Hart, `70 TP` Unglaublich hart, `90 TP` Epischer Widerstand).
-  - **Schmerztoleranz & Wundmali:** Berechnet je Zone automatisch die aktuelle Schadensstufe (`10 Stufen` je Zone) und zieht die `Schmerztoleranz` ab.
-  - **Rüstungs-Integration:** Ausgerüstete Rüstungen addieren ihren `Rüstungswert (RW)` und ihre `Materialkategorie (MK)` automatisch auf die abgedeckten Trefferzonen und berechnen eventuelle Bewegungs-Mali durch `Komfort > Konstitution`.
-  - **Bewusstlosigkeits- & Bewegungs-Warnung:** Automatische Warnanzeige, sobald `Gesamte Mali >= Schnelligkeit` (bewegungsunfähig) oder `Gesamte Mali >= Konstitution` (bewusstlos).
+- **Item-gesteuerte Spezies, Mutationen, Merkmale & Pharmazeutika:**
+  - **Aktives Spezies-Dropdown & `species`-Items:** Auswahl der aktiven Spezies (`Mensch`, `Adivasi`, `Evo`, `Mutant`, `Zeneritone`, `Prodigy`, `Blendling`) direkt auf dem Charakterbogen oder per Drag-and-Drop aus `species.db`. Berechnet automatisch Attributslimits, Basiswerte (`Psyche`, `Organismus`, `Adrenalin`, `Infektionsresistenz`) sowie Fertigkeitsboni (z. B. `+6W6 Rennen` für Adivasi).
+  - **Mutationen & Abnormitäten (`mutation`):** Sichtbare und verborgene Mutationen, biologische Abnormitäten und Auffälligkeiten modifizieren Attribute, natürliche Panzerung, Trefferpunkte, Regeneration und Fertigkeiten dynamisch.
+  - **Charaktermerkmale (`trait`):** Positive Justice-Merkmale, negative Chaos-Merkmale, Begabungen und Talente mit automatischen Fertigkeits- und Attributsmodifikatoren.
+  - **Drogen & Pharmazeutika (`consumable`):** Umschaltbarer Aktiv-Status für Stimulanzien und Medikamente mit Dosierung, Wirkungsdauer, Suchtpotenzial und automatischen Attributs-/Fertigkeits-Boosts.
+  - **Krankheiten & Toxine (`condition`):** Inkubationszeit, Prüfintervall, Intensität, Symptomstadien und interaktiver **Widerstandsprobe-Trigger** (`NoReturnRoll.rollConditionResistance`) direkt aus dem Bogen in den Chat.
 
-### 1.2 Robotikbogen (`robot`)
-Basierend auf dem offiziellen *Robotikbogen (1. Edition)*:
-- **Zonenbasierte Robotik-Verwaltung** für alle 11 Körperzonen (`(12) Kopf`, `(6) r. Brust`, `(8) l. Brust`, `(7) Bauch`, `(5) r. Arm`, `(9) l. Arm`, `(2) Becken`, `(4) r. Oberschenkel`, `(10) l. Oberschenkel`, `(3) r. Unterschenkel`, `(11) l. Unterschenkel`).
-- **Offizielle Robotik-Modelle:** `Biologisch/Normal`, `Casual (Steel/Dark)`, `Work (Industrial/Brutal)`, `High Tech (Pearl)`, `Android (Skin)` und `Military (Army/Ghost)` mit exakten Basiswerten, Kapazitäten, Panzerungen und Organismusverlusten.
-- **Stufen-Upgrades je Zone (Tuning):** Individuelle Steigerung von `Geschick`, `Stärke`, `Konstitution`, `Schnelligkeit`, `Tastsinn (Smart-Skin)` und `Panzerung (+5p.)` unter automatischer Berechnung der verbleibenden Zonen-Kapazität (`Frei / Max`).
-- **All over Attribute:** Automatische Berechnung des gerundeten Durchschnitts (`round(Summe / 11)`) über alle 11 Körperzonen für `GE`, `ST`, `KO`, `SK` und `Tastsinn` sowie der `Summe Organismusverlust`. Sowohl einzelne Zonenwerte als auch die All-Over-Werte sind direkt per Klick würfelbar.
-- **Wahrnehmung & Cybersense:** Verwaltung von `Sehen [Oculus]`, `Hören [Auris]`, `Riechen [Odoratus]`, `Schmecken [Gustatus]` und `Tastsinn [Smart-Skin]` zur Berechnung der `All over Wahrnehmung` (`round(Summe / 5)`).
+### 1.2 Hybrider Robotikbogen (`robot`)
+Der Robotikbogen ist als **vollwertiger Hybrid-Bogen** aufgebaut und vereint alle Kernfunktionen eines Spielercharakters mit dem offiziellen *Robotikbogen (1. Edition)*:
+- **Vollständige Charakter-Attribute & Fertigkeiten:** Besitzt alle primären, sekundären und abgeleiteten Attribute sowie das komplette Fertigkeits-, Waffen-, Rüstungs- und Ausrüstungssystem des Standardbogens (alle Attribute und Fertigkeiten sind direkt aus der Robotik-Ansicht würfelbar).
+- **Dediziertes Robotik- & Chassis-Dashboard:**
+  - **Chassis-Status**, **Energieversorgung / Reaktor**, **Batterie / Energiereserve**, **Modul-Steckplätze** (`Belegt / Max / Frei`), **Energieverbrauch** (`Basis + Module`) und **Struktur-Trefferpunkte**.
+- **Zonenbasiertes 11-Zonen-Tuning:** Verwaltung von `Biologisch/Normal`, `Casual`, `Work`, `High Tech`, `Android` und `Military` je Körperzone inkl. Stufen-Upgrades, `All over Attribute` (`round(Summe / 11)`) und `Cybersense-Wahrnehmung` (`round(Summe / 5)`).
 
 ### 1.3 Würfel- & Kampf-Engine (`./system/module/dice/roll.mjs`)
-- **W6-Pool + Hazard-Di (`1d6x6`):** Jede reguläre Probe enthält standardmäßig genau einen explodierenden *Hazard-Di* (bei einer `6` wird weitergerollt und addiert). Unterstützt *Alpha-Biomechanik* (alle Attributswürfel explodieren) und *Beta-Biomechanik* (alle Fertigkeitswürfel explodieren).
-- **Interaktiver Würfeldialog (`DialogV2`):** Auswahl der Schwierigkeit (`Routine MW 5` bis `Legendär MW 40`), temporäre Bonus-/Maluswürfel, Einsatz von bis zu `5 Adrenalin-Würfeln` (werden automatisch vom Pool abgezogen), `Kampfnachteile (-2W6)` und Salvenmodus (`+1W6 Schaden je 5 statt 10 Punkte Überschuss`). Mit `Shift + Klick` kann der Dialog für Schnellwürfe übersprungen werden.
-- **Patzer & Gute Treffer:** Automatische Erkennung von Patzern (`Gesamtergebnis < 5`) sowie Berechnung der *Guten Treffer* (`+1W6 Bonusschaden` je 10 bzw. 5 Punkte Überschuss).
-- **Trefferzonen (`2W6`) & Schadenswiderstand (`KO + RW`):** Direkt aus dem Bogen oder der Schadens-Chatkarte ausführbar.
+- **W6-Pool + Hazard-Di (`1d6x6`):** Unterstützt Standard-Proben, *Alpha-Biomechanik* und *Beta-Biomechanik*.
+- **Interaktiver Würfeldialog (`DialogV2`):** Schwierigkeit (`Routine MW 5` bis `Legendär MW 40`), Bonus-/Maluswürfel, `Adrenalin-Würfel`, `Kampfnachteile (-2W6)` und Salvenmodus.
+- **Krankheits- & Gift-Widerstandsprobe (`rollConditionResistance`):** Prüft automatisch gegen die `Intensität (MW)` der Krankheit oder des Gifts und gibt bei Fehlschlag die Symptomstadien, Schäden, Mali und Gegenmittel im Chat aus.
 
 ---
 
-## 2. Installationsanleitung für Foundry VTT v14
+## 2. Kompendien & Ordner-Hierarchie (`./system/packs/`)
+
+Alle Kompendien nutzen native Foundry-v14-`Folder`-Dokumente (`folder: "<folder_id>"`):
+
+1. **Waffen, Rüstungen & Ausrüstung (`items.db`):**
+   - `Nahkampfwaffen`
+   - `Fernkampfwaffen`
+   - `Rüstungen & Schutzkleidung`
+   - `Drogen & Pharmazeutika` (`consumable`)
+   - `Alltägliche Ausrüstung & Werkzeuge` (`gear`)
+   - `Cyberware & Implantate` (`cyberware`)
+2. **Fertigkeiten, PSI & Kampfkünste (`skills.db`):**
+   - `Standardfertigkeiten` (`skill`)
+   - `PSI-Kräfte & Disziplinen` (`skill`)
+   - `Charaktermerkmale` (`trait`)
+   - `Krankheiten & Toxine` (`condition`)
+3. **Robotik, Cyberware & Biomechanik (`robotics.db`):**
+   - `Chassis & Rahmen`
+   - `Erweiterungsmodule`
+   - `Sensoren & Prozessoren`
+4. **Spezies, Mutationen & Abnormitäten (`species.db`):**
+   - `Spielbare Spezies` (`species`)
+   - `Mutationen (Sichtbar & Verborgen)` (`mutation`)
+   - `Biologische Abnormitäten` (`mutation`)
+   - `Auffälligkeiten` (`mutation`)
+5. **Kreaturen & NSC (`bestiary.db`):**
+   - `Mutierte Bestien` (`Beutelsegler`, `Grollhorn`, `Nemoratte`, `Oryx`, `Pyräne`, `Steincobra`, `Pandora-Zombie`, `Wilder Cardo-Rudelläufer`)
+   - `Rivalen & Gesetzlose` (`Outraider-Plünderer`, `Söldner-Veteran der Gilde`, `Zentrums-Vollstrecker`, `Sektierer der Neuen Dämmerung`)
+   - `Roboter & Drohnen` (`Wach- & Aufklärungsdrohne MK-II „Späher“`, `Zentrums-Wachroboter „Sentinel V4“`, `Schwerer Kampfandroide „Aegis-Titan“`)
+6. **System-Makros (`macros.db`):** 4 Schnellzugriffs-Makros für die Makroleiste.
+
+---
+
+## 3. Installationsanleitung für Foundry VTT v14
 
 1. Öffnen Sie das Datenverzeichnis Ihrer Foundry-VTT-v14-Installation (`<FoundryUserData>/Data/systems/`).
 2. Erstellen Sie dort einen neuen Ordner namens `noreturn`:
@@ -45,23 +76,4 @@ Basierend auf dem offiziellen *Robotikbogen (1. Edition)*:
    ```bash
    cp -r ./system/* <FoundryUserData>/Data/systems/noreturn/
    ```
-4. Starten Sie Foundry VTT (Version 14) neu. Das System **NoReturn – Endzeit Rollenspiel (1st Edition)** erscheint nun unter *Game Systems* und kann zum Erstellen einer neuen Spielwelt ausgewählt werden.
-
----
-
-## 3. Nutzung der Kompendien (`./system/packs/`)
-
-Das System liefert vier vorkompilierte Kompendien mit:
-1. **NoReturn Fertigkeiten, PSI & Kampfkünste (`skills.db`):** Alle 109 Standardfertigkeiten, Spezialfertigkeiten, PSI-Kräfte, Style-Skills und mehrstufigen Kampfkünste. Per Drag-and-Drop auf einen Charakter- oder Robotikbogen ziehbar (mehrfaches Ziehen erhöht automatisch die Stufe).
-2. **NoReturn Waffen, Rüstungen & Ausrüstung (`items.db`):** 135 Gegenstände (alle Kurzdistanzwaffen, Distanzwaffen, Faustfeuerwaffen, Gewehre, Schwere Waffen, Schutzkleidung/Rüstungen, Pharmazeutika/Drogen, Munition, Sprengstoffe, Waffen-Add-Ons, Konstruktionswerkzeuge und Hort-Ausstattung).
-3. **NoReturn Robotik, Cyberware & Biomechanik (`robotics.db`):** 25 Augmentierungen (Alpha-/Beta-Biomechanik, Robotik-Modelle Casual/Work/High Tech/Android/Military, Zonen-Upgrades, Cybersense und Implantate).
-4. **NoReturn System-Makros (`macros.db`):** 4 Schnellzugriffs-Makros für die Makroleiste (*Freie Würfelprobe*, *Trefferzone 2W6*, *Mexican Standoff Initiative*, *Schadenswiderstand*).
-
----
-
-## 4. Architektur & Zwischenspeicher (`./cache/`)
-
-Die Systemerstellung folgt einer strikten Trennung zwischen Datenextraktion (`./cache/`) und Laufzeit-Code (`./system/`):
-- `./cache/mechanics.md`: Vollständige Referenz der extrahierten Regeln und Formeln aus dem Grundregelwerk.
-- `./cache/data/*.json`: Strukturierte JSON-Datensätze aller Fertigkeiten, Waffen, Rüstungen, Güter, Cyberware/Robotik sowie der JSON-Schemata für Charakter- und Robotikbogen.
-- `./cache/i18n/de.json` & `en.json`: Vollständige Sprachdateien für Deutsch und Englisch.
+4. Starten Sie Foundry VTT (Version 14) neu.

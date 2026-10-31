@@ -1,8 +1,8 @@
 {
   "id": "noreturn",
   "title": "NoReturn – Endzeit Rollenspiel (1st Edition)",
-  "description": "Foundry VTT v14 System für das postapokalyptische Sci-Fi-Rollenspiel NoReturn (1. Edition / Collector's Edition). Enthält Charakterbogen, Robotikbogen, W6 + Hazard-Di Würfelsystem, Trefferzonen-Schadensmodell und Kompendien.",
-  "version": "1.0.0",
+  "description": "Foundry VTT v14 System für das postapokalyptische Sci-Fi-Rollenspiel NoReturn (1. Edition / Collector's Edition). Enthält Charakterbogen, hybriden Robotikbogen, W6 + Hazard-Di Würfelsystem, Trefferzonen-Schadensmodell, Spezies/Mutationen, Krankheiten-Trigger und strukturierte Kompendien.",
+  "version": "1.1.0",
   "compatibility": {
     "minimum": "14",
     "verified": "14",
@@ -59,10 +59,25 @@
       "gear": {
         "htmlFields": ["description"]
       },
+      "consumable": {
+        "htmlFields": ["description"]
+      },
       "cyberware": {
         "htmlFields": ["description"]
       },
       "robotModule": {
+        "htmlFields": ["description"]
+      },
+      "species": {
+        "htmlFields": ["description"]
+      },
+      "mutation": {
+        "htmlFields": ["description"]
+      },
+      "trait": {
+        "htmlFields": ["description"]
+      },
+      "condition": {
         "htmlFields": ["description"]
       }
     }
@@ -70,24 +85,38 @@
   "packs": [
     {
       "name": "skills",
-      "label": "NoReturn Fertigkeiten, PSI & Kampfkünste",
+      "label": "NoReturn Fertigkeiten, PSI, Merkmale & Krankheiten",
       "system": "noreturn",
       "path": "packs/skills.db",
       "type": "Item"
     },
     {
       "name": "items",
-      "label": "NoReturn Waffen, Rüstungen & Ausrüstung",
+      "label": "NoReturn Waffen, Rüstungen, Drogen & Ausrüstung",
       "system": "noreturn",
       "path": "packs/items.db",
       "type": "Item"
     },
     {
       "name": "robotics",
-      "label": "NoReturn Robotik, Cyberware & Biomechanik",
+      "label": "NoReturn Robotik, Chassis & Sensoren",
       "system": "noreturn",
       "path": "packs/robotics.db",
       "type": "Item"
+    },
+    {
+      "name": "species",
+      "label": "NoReturn Spezies, Mutanten & Abnormitäten",
+      "system": "noreturn",
+      "path": "packs/species.db",
+      "type": "Item"
+    },
+    {
+      "name": "bestiary",
+      "label": "Kreaturen & NSC",
+      "system": "noreturn",
+      "path": "packs/bestiary.db",
+      "type": "Actor"
     },
     {
       "name": "macros",

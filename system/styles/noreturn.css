@@ -408,3 +408,69 @@
 .noreturn-chat-card .banner-fumble {
   color: #ff7b72;
 }
+
+.nr-species-banner {
+  margin-top: 6px;
+  padding: 5px 10px;
+  background: rgba(56, 139, 253, 0.12);
+  border-left: 3px solid var(--nr-amber);
+  border-radius: 3px;
+  font-size: 0.78rem;
+  color: var(--nr-text);
+}
+
+.noreturn-chat-card .card-totals-row {
+  display: flex;
+  justify-content: space-around;
+  background: #101215;
+  padding: 6px;
+  border-radius: 4px;
+  margin: 6px 0;
+}
+
+.noreturn-chat-card .stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.noreturn-chat-card .stat-label {
+  font-size: 0.7rem;
+  color: var(--nr-text-muted);
+}
+
+.noreturn-chat-card .stat-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.noreturn-chat-card .card-outcome {
+  text-align: center;
+  padding: 5px;
+  border-radius: 3px;
+  margin-top: 4px;
+}
+
+.noreturn-chat-card .card-outcome.success {
+  background: rgba(46, 160, 67, 0.2);
+  color: #56d364;
+  border: 1px solid #2ea043;
+}
+
+.noreturn-chat-card .card-outcome.failure {
+  background: rgba(184, 41, 47, 0.25);
+  color: #ff7b72;
+  border: 1px solid var(--nr-accent-bright);
+}
+
+.noreturn-chat-card .condition-details {
+  margin-top: 6px;
+  padding: 6px;
+  background: #121519;
+  border-radius: 3px;
+  font-size: 0.78rem;
+}
+
+.noreturn-chat-card .condition-details p {
+  margin: 2px 0;
+}
