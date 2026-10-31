@@ -1,0 +1,66 @@
+<div class="noreturn-chat-card check-card {{#if isFumble}}fumble{{else if isSuccess}}success{{else}}failure{{/if}}">
+  <header class="card-header">
+    <h3><i class="fas fa-dice-d6"></i> {{title}}</h3>
+    {{#if flavorSubtitle}}
+      <div class="card-subtitle">{{flavorSubtitle}}</div>
+    {{/if}}
+  </header>
+
+  <div class="card-meta">
+    <span>{{localize "NORETURN.Dice.Pool"}}: <strong>{{totalPool}}W6</strong> ({{formula}})</span>
+    <span>{{localize "NORETURN.Dice.Target"}}: <strong>{{targetNumber}}</strong></span>
+  </div>
+
+  <div class="dice-breakdown">
+    {{#if normalResults.length}}
+      <div class="dice-row">
+        <span class="dice-label">{{localize "NORETURN.Dice.NormalDice"}}:</span>
+        <div class="dice-chips">
+          {{#each normalResults}}
+            <span class="die-chip normal-die">{{this.result}}</span>
+          {{/each}}
+        </div>
+      </div>
+    {{/if}}
+
+    {{#if hazardResults.length}}
+      <div class="dice-row hazard-row">
+        <span class="dice-label">{{localize "NORETURN.Dice.HazardDice"}}:</span>
+        <div class="dice-chips">
+          {{#each hazardResults}}
+            <span class="die-chip hazard-die {{#if this.exploded}}exploded{{/if}}">{{this.result}}</span>
+          {{/each}}
+        </div>
+      </div>
+    {{/if}}
+  </div>
+
+  <div class="card-outcome">
+    <div class="outcome-numbers">
+      <div class="outcome-box">
+        <span class="lbl">{{localize "NORETURN.Dice.ResultTotal"}}</span>
+        <span class="val total-val">{{total}}</span>
+      </div>
+      <div class="outcome-box">
+        <span class="lbl">{{localize "NORETURN.Dice.Margin"}}</span>
+        <span class="val">{{#if (gte margin 0)}}+{{/if}}{{margin}}</span>
+      </div>
+      {{#if (gt goodHits 0)}}
+        <div class="outcome-box good-hits-box">
+          <span class="lbl">{{localize "NORETURN.Dice.GoodHits"}}</span>
+          <span class="val">+{{goodHits}}W6</span>
+        </div>
+      {{/if}}
+    </div>
+
+    <div class="outcome-banner">
+      {{#if isFumble}}
+        <span class="banner-fumble"><i class="fas fa-skull-crossbones"></i> {{localize "NORETURN.Dice.CriticalFumble"}}</span>
+      {{else if isSuccess}}
+        <span class="banner-success"><i class="fas fa-check-circle"></i> {{localize "NORETURN.Dice.Success"}}</span>
+      {{else}}
+        <span class="banner-failure"><i class="fas fa-times-circle"></i> {{localize "NORETURN.Dice.Failure"}}</span>
+      {{/if}}
+    </div>
+  </div>
+</div>

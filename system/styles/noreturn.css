@@ -1,0 +1,410 @@
+/* ==========================================================================
+   NoReturn RPG System – Foundry VTT v14 Stylesheet
+   Gritty Post-Apocalyptic Sci-Fi Theme (Charakterbogen & Robotikbogen)
+   ========================================================================== */
+
+:root {
+  --nr-bg-dark: #141619;
+  --nr-bg-panel: #1e2227;
+  --nr-bg-row: #252a30;
+  --nr-bg-row-alt: #1b1f24;
+  --nr-border: #3a4149;
+  --nr-accent: #b8292f;
+  --nr-accent-bright: #e03e45;
+  --nr-cyan: #2ea8b8;
+  --nr-amber: #d99b26;
+  --nr-success: #2ea043;
+  --nr-text: #e6edf3;
+  --nr-text-muted: #9ca3af;
+}
+
+.noreturn.sheet {
+  background: var(--nr-bg-dark);
+  color: var(--nr-text);
+  font-family: "Signika", "Segoe UI", Roboto, sans-serif;
+}
+
+.noreturn-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 8px;
+  padding: 10px;
+}
+
+/* Header */
+.noreturn-sheet .sheet-header {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  background: linear-gradient(135deg, #1b1e23 0%, #261719 100%);
+  border: 1px solid var(--nr-border);
+  border-left: 4px solid var(--nr-accent);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.noreturn-sheet .sheet-header.robot-header {
+  background: linear-gradient(135deg, #161d24 0%, #1b2d36 100%);
+  border-left-color: var(--nr-cyan);
+}
+
+.noreturn-sheet .profile-img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border: 2px solid var(--nr-border);
+  border-radius: 4px;
+  background: #0d0f12;
+  cursor: pointer;
+}
+
+.noreturn-sheet .header-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.noreturn-sheet .charname {
+  margin: 0;
+  flex: 1;
+}
+
+.noreturn-sheet .charname input {
+  width: 100%;
+  font-size: 1.35rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  border: 1px solid var(--nr-border);
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.noreturn-sheet .header-quick-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.noreturn-sheet .personal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  gap: 6px;
+}
+
+.noreturn-sheet .personal-grid label,
+.noreturn-sheet .nr-stat-grid label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: var(--nr-text-muted);
+  gap: 2px;
+}
+
+.noreturn-sheet input[type="text"],
+.noreturn-sheet input[type="number"],
+.noreturn-sheet select,
+.noreturn-sheet textarea {
+  background: #101215;
+  color: var(--nr-text);
+  border: 1px solid var(--nr-border);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 0.85rem;
+}
+
+/* Tabs */
+.noreturn-sheet .sheet-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--nr-accent);
+  padding-bottom: 4px;
+}
+
+.noreturn-sheet .sheet-tabs .item {
+  padding: 6px 12px;
+  background: var(--nr-bg-panel);
+  color: var(--nr-text-muted);
+  border: 1px solid var(--nr-border);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.noreturn-sheet .sheet-tabs .item.active {
+  background: var(--nr-accent);
+  color: #fff;
+  border-color: var(--nr-accent-bright);
+}
+
+/* Body & Layout Panels */
+.noreturn-sheet .sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nr-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.nr-card {
+  background: var(--nr-bg-panel);
+  border: 1px solid var(--nr-border);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.nr-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nr-section-title {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #fff;
+  border-bottom: 1px solid var(--nr-border);
+  padding-bottom: 4px;
+}
+
+.nr-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.nr-stat-grid.three-col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.nr-stat-grid .full-span {
+  grid-column: 1 / -1;
+}
+
+/* Tables */
+.nr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+
+.nr-table th {
+  background: #121518;
+  color: var(--nr-text-muted);
+  text-align: left;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--nr-border);
+  font-weight: 600;
+}
+
+.nr-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nr-table tbody tr:nth-child(even) {
+  background: var(--nr-bg-row-alt);
+}
+
+.nr-table .all-over-row {
+  background: rgba(46, 168, 184, 0.15);
+  border-top: 2px solid var(--nr-cyan);
+}
+
+.nr-table .center {
+  text-align: center;
+}
+
+.nr-table .pool-cell {
+  color: var(--nr-amber);
+  text-align: center;
+}
+
+.nr-table .penalty-cell {
+  color: var(--nr-accent-bright);
+  font-weight: 700;
+}
+
+/* Buttons */
+.nr-btn,
+.nr-roll-btn,
+.nr-chip-roll,
+.nr-icon-btn {
+  background: #2b3138;
+  color: #fff;
+  border: 1px solid var(--nr-border);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  transition: background 0.15s ease;
+}
+
+.nr-btn:hover,
+.nr-roll-btn:hover,
+.nr-chip-roll:hover {
+  background: var(--nr-accent);
+  border-color: var(--nr-accent-bright);
+}
+
+.nr-icon-btn.danger:hover {
+  background: #9e1c20;
+}
+
+/* Alerts & Badges */
+.nr-alert {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.nr-alert.danger {
+  background: rgba(184, 41, 47, 0.3);
+  border: 1px solid var(--nr-accent-bright);
+  color: #ff9ea2;
+}
+
+.nr-alert.warning {
+  background: rgba(217, 155, 38, 0.25);
+  border: 1px solid var(--nr-amber);
+  color: #ffd480;
+}
+
+.noreturn-badge.lethal {
+  background: var(--nr-accent);
+  color: #fff;
+  font-size: 0.68rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+  text-transform: uppercase;
+}
+
+/* Chat Cards */
+.noreturn-chat-card {
+  background: #181b20;
+  color: #e6edf3;
+  border: 1px solid #3a4149;
+  border-left: 4px solid var(--nr-amber);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 0.85rem;
+}
+
+.noreturn-chat-card.success {
+  border-left-color: var(--nr-success);
+}
+
+.noreturn-chat-card.failure,
+.noreturn-chat-card.fumble {
+  border-left-color: var(--nr-accent-bright);
+}
+
+.noreturn-chat-card .card-header h3 {
+  margin: 0;
+  font-size: 0.98rem;
+  color: #fff;
+}
+
+.noreturn-chat-card .card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--nr-text-muted);
+  margin: 6px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #2d333b;
+}
+
+.noreturn-chat-card .dice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.noreturn-chat-card .die-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  font-weight: 700;
+  background: #2b3138;
+  border: 1px solid #48525e;
+}
+
+.noreturn-chat-card .die-chip.hazard-die {
+  background: #7a1c20;
+  border-color: #e03e45;
+  color: #fff;
+}
+
+.noreturn-chat-card .die-chip.hazard-die.exploded {
+  background: #c98818;
+  border-color: #ffd480;
+  box-shadow: 0 0 6px rgba(255, 212, 128, 0.7);
+}
+
+.noreturn-chat-card .outcome-numbers {
+  display: flex;
+  justify-content: space-around;
+  background: #101215;
+  padding: 6px;
+  border-radius: 4px;
+  margin-top: 6px;
+}
+
+.noreturn-chat-card .outcome-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.noreturn-chat-card .outcome-box .lbl {
+  font-size: 0.7rem;
+  color: var(--nr-text-muted);
+}
+
+.noreturn-chat-card .outcome-box .val {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.noreturn-chat-card .outcome-banner {
+  text-align: center;
+  margin-top: 6px;
+  font-weight: 700;
+  padding: 4px;
+  border-radius: 3px;
+}
+
+.noreturn-chat-card .banner-success {
+  color: #56d364;
+}
+
+.noreturn-chat-card .banner-failure,
+.noreturn-chat-card .banner-fumble {
+  color: #ff7b72;
+}

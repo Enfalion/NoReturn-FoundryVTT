@@ -1,0 +1,7 @@
+input/
+cache/
+*.pdf
+*.tmp
+*.log
+.DS_Store
+node_modules/

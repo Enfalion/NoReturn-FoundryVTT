@@ -1,0 +1,107 @@
+{
+  "id": "noreturn",
+  "title": "NoReturn – Endzeit Rollenspiel (1st Edition)",
+  "description": "Foundry VTT v14 System für das postapokalyptische Sci-Fi-Rollenspiel NoReturn (1. Edition / Collector's Edition). Enthält Charakterbogen, Robotikbogen, W6 + Hazard-Di Würfelsystem, Trefferzonen-Schadensmodell und Kompendien.",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14",
+    "maximum": "14"
+  },
+  "authors": [
+    {
+      "name": "NoReturn System Builder"
+    }
+  ],
+  "esmodules": [
+    "module/noreturn.mjs"
+  ],
+  "styles": [
+    "styles/noreturn.css"
+  ],
+  "languages": [
+    {
+      "lang": "de",
+      "name": "Deutsch",
+      "path": "lang/de.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "character": {
+        "htmlFields": ["notes"]
+      },
+      "robot": {
+        "htmlFields": ["notes"]
+      },
+      "npc": {
+        "htmlFields": ["notes"]
+      },
+      "creature": {
+        "htmlFields": ["notes"]
+      }
+    },
+    "Item": {
+      "skill": {
+        "htmlFields": ["description"]
+      },
+      "weapon": {
+        "htmlFields": ["description"]
+      },
+      "armor": {
+        "htmlFields": ["description"]
+      },
+      "gear": {
+        "htmlFields": ["description"]
+      },
+      "cyberware": {
+        "htmlFields": ["description"]
+      },
+      "robotModule": {
+        "htmlFields": ["description"]
+      }
+    }
+  },
+  "packs": [
+    {
+      "name": "skills",
+      "label": "NoReturn Fertigkeiten, PSI & Kampfkünste",
+      "system": "noreturn",
+      "path": "packs/skills.db",
+      "type": "Item"
+    },
+    {
+      "name": "items",
+      "label": "NoReturn Waffen, Rüstungen & Ausrüstung",
+      "system": "noreturn",
+      "path": "packs/items.db",
+      "type": "Item"
+    },
+    {
+      "name": "robotics",
+      "label": "NoReturn Robotik, Cyberware & Biomechanik",
+      "system": "noreturn",
+      "path": "packs/robotics.db",
+      "type": "Item"
+    },
+    {
+      "name": "macros",
+      "label": "NoReturn System-Makros",
+      "system": "noreturn",
+      "path": "packs/macros.db",
+      "type": "Macro"
+    }
+  ],
+  "initiative": "(@attributes.primary.schnelligkeit.overall)d6",
+  "grid": {
+    "distance": 1,
+    "units": "m"
+  },
+  "primaryTokenAttribute": "status.organismus",
+  "secondaryTokenAttribute": "status.psyche"
+}

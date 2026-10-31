@@ -1,0 +1,169 @@
+<div class="noreturn-sheet item-sheet-root">
+  <header class="sheet-header">
+    <img class="profile-img" src="{{item.img}}" data-edit="img" title="{{item.name}}" />
+    <div class="header-fields">
+      <h1 class="charname">
+        <input name="name" type="text" value="{{item.name}}" placeholder="{{localize 'NORETURN.Personal.Name'}}" />
+      </h1>
+      <div class="item-subtitle">{{localize (concat "TYPES.Item." item.type)}}</div>
+    </div>
+  </header>
+
+  <section class="sheet-body">
+    <div class="nr-card">
+      {{#if (eq itemType "skill")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Skills.Attribute"}}</span>
+            <select name="system.attribute">
+              <option value="" {{#if (eq system.attribute "")}}selected{{/if}}>–</option>
+              <option value="geschick" {{#if (eq system.attribute "geschick")}}selected{{/if}}>{{localize "NORETURN.Attributes.geschick"}}</option>
+              <option value="staerke" {{#if (eq system.attribute "staerke")}}selected{{/if}}>{{localize "NORETURN.Attributes.staerke"}}</option>
+              <option value="konstitution" {{#if (eq system.attribute "konstitution")}}selected{{/if}}>{{localize "NORETURN.Attributes.konstitution"}}</option>
+              <option value="schnelligkeit" {{#if (eq system.attribute "schnelligkeit")}}selected{{/if}}>{{localize "NORETURN.Attributes.schnelligkeit"}}</option>
+              <option value="wissen" {{#if (eq system.attribute "wissen")}}selected{{/if}}>{{localize "NORETURN.Attributes.wissen"}}</option>
+              <option value="wahrnehmung" {{#if (eq system.attribute "wahrnehmung")}}selected{{/if}}>{{localize "NORETURN.Attributes.wahrnehmung"}}</option>
+              <option value="charisma" {{#if (eq system.attribute "charisma")}}selected{{/if}}>{{localize "NORETURN.Attributes.charisma"}}</option>
+              <option value="logik" {{#if (eq system.attribute "logik")}}selected{{/if}}>{{localize "NORETURN.Attributes.logik"}}</option>
+              <option value="fahrzeuge" {{#if (eq system.attribute "fahrzeuge")}}selected{{/if}}>{{localize "NORETURN.Attributes.fahrzeuge"}}</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.Level"}}</span>
+            <input type="number" name="system.level" value="{{system.level}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.Mod"}}</span>
+            <input type="number" name="system.mod" value="{{system.mod}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.ZoneRef"}}</span>
+            <input type="text" name="system.zoneReference" value="{{system.zoneReference}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.BetaBio"}}</span>
+            <input type="checkbox" name="system.betaBio" {{checked system.betaBio}} />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "weapon")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Combat.Skill"}}</span>
+            <input type="text" name="system.skill" value="{{system.skill}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.AttackBonus"}}</span>
+            <input type="number" name="system.attackBonus" value="{{system.attackBonus}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.Damage"}}</span>
+            <input type="text" name="system.damageFormula" value="{{system.damageFormula}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.Caliber"}}</span>
+            <input type="text" name="system.caliber" value="{{system.caliber}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.Magazine"}}</span>
+            <input type="text" name="system.magazine" value="{{system.magazine}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.RD"}}</span>
+            <input type="number" name="system.recoilDampening" value="{{system.recoilDampening}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.FireModes"}}</span>
+            <input type="text" name="system.fireModes" value="{{system.fireModes}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Inventory.Price"}}</span>
+            <input type="number" name="system.price" value="{{system.price}}" min="0" />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "armor")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Health.Armor"}}</span>
+            <input type="number" name="system.armorValue" value="{{system.armorValue}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Health.MaterialCategory"}}</span>
+            <select name="system.materialCategory">
+              <option value="A" {{#if (eq system.materialCategory "A")}}selected{{/if}}>A</option>
+              <option value="B" {{#if (eq system.materialCategory "B")}}selected{{/if}}>B</option>
+              <option value="C" {{#if (eq system.materialCategory "C")}}selected{{/if}}>C</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Health.Zone"}}</span>
+            <input type="text" name="system.zonesLabel" value="{{system.zonesLabel}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Inventory.Price"}}</span>
+            <input type="number" name="system.price" value="{{system.price}}" min="0" />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "gear")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Inventory.Quantity"}}</span>
+            <input type="number" name="system.quantity" value="{{system.quantity}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Inventory.Weight"}}</span>
+            <input type="number" name="system.weight" value="{{system.weight}}" step="0.05" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Inventory.Price"}}</span>
+            <input type="number" name="system.price" value="{{system.price}}" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Inventory.TechLevel"}}</span>
+            <input type="text" name="system.techLevel" value="{{system.techLevel}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Inventory.Effects"}}</span>
+            <input type="text" name="system.effects" value="{{system.effects}}" />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (or (eq itemType "cyberware") (eq itemType "robotModule"))}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Health.Zone"}}</span>
+            <input type="text" name="system.targetZone" value="{{system.targetZone}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Robotics.Capacity"}}</span>
+            <input type="number" name="system.capacityCost" value="{{system.capacityCost}}" step="0.25" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Status.Organismus"}}</span>
+            <input type="number" name="system.organismusCost" value="{{system.organismusCost}}" step="0.5" min="0" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Inventory.Price"}}</span>
+            <input type="number" name="system.price" value="{{system.price}}" min="0" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Inventory.Effects"}}</span>
+            <input type="text" name="system.effects" value="{{system.effects}}" />
+          </label>
+        </div>
+      {{/if}}
+
+      <hr />
+      <label class="full-span">
+        <span>{{localize "NORETURN.Traits.Notes"}}</span>
+        <textarea class="nr-notes-area" name="system.description" rows="6">{{system.description}}</textarea>
+      </label>
+    </div>
+  </section>
+</div>
