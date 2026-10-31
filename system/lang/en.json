@@ -7,17 +7,22 @@
       "creature": "Creature / Mutated Beast"
     },
     "Item": {
-      "skill": "Skill / PSI",
+      "skill": "Standard Skill",
+      "styleskill": "Style Skill",
+      "psiForce": "PSI Force (Discipline)",
+      "psiApp": "PSI App (Application)",
       "weapon": "Weapon",
       "armor": "Armor / Clothing",
-      "gear": "Gear / Equipment",
+      "gear": "Gear / Tool",
       "consumable": "Drug / Pharmaceutical",
       "cyberware": "Cyberware / Biomechanics",
       "robotModule": "Robotics Module / Implant",
       "species": "Species / Subspecies",
       "mutation": "Mutation / Biological Abnormality",
       "trait": "Character Trait (Justice / Chaos)",
-      "condition": "Disease / Poison / Toxin"
+      "condition": "Condition / Affliction",
+      "disease": "Disease / Infection",
+      "toxin": "Poison / Toxin"
     }
   },
   "NORETURN": {
@@ -28,7 +33,8 @@
       "ItemTitle": "NoReturn Item",
       "Tabs": {
         "Overview": "Overview & Attributes",
-        "Skills": "Skills, PSI & Conditions",
+        "Skills": "Skills & Conditions",
+        "Psi": "PSI & Pyramid",
         "Combat": "Combat & Hit Zones",
         "Inventory": "Drugs, Gear & Goods",
         "Augmentation": "Robotics & Cyberware",
@@ -94,6 +100,8 @@
       "Ruf": "Reputation",
       "Organismus": "Organism",
       "OrganismusVerlust": "Total Organism Loss",
+      "CyberwareCost": "Cyberware Deduction",
+      "OrganismCriticalWarning": "CRITICAL: ORGANISM DROPPED TO 0 OR BELOW (Death / Complete Loss of Humanity)!",
       "Leiden1": "Affliction 1",
       "Leiden2": "Affliction 2",
       "Leiden3": "Affliction 3",
@@ -232,7 +240,8 @@
       "Infected": "INFECTED / SYMPTOM PROGRESSION! (Check Failed)"
     },
     "Skills": {
-      "Header": "Skills & PSI Disciplines",
+      "Header": "Skills & Style Skills",
+      "StandardHeader": "Standard Skills",
       "Name": "Skill",
       "Attribute": "Attribute",
       "Category": "Category",
@@ -256,6 +265,45 @@
         "kampfkunst": "Martial Arts"
       }
     },
+    "StyleSkills": {
+      "Header": "Style Skills",
+      "AddStyleSkill": "Add Style Skill",
+      "PassiveBonus": "Passive Bonus / Effect",
+      "Requirements": "Requirements",
+      "RollStyleSkill": "Roll Style Skill Check"
+    },
+    "PSI": {
+      "PyramidHeader": "PSI Pyramid System & Mishap Tables",
+      "ForcesHeader": "PSI Forces (Disciplines)",
+      "AppsHeader": "Concrete PSI Apps (Applications)",
+      "AddForce": "Add PSI Force",
+      "AddApp": "Add PSI App",
+      "ForceName": "PSI Force",
+      "AppName": "PSI App",
+      "Category": "Category",
+      "HierarchyTier": "Hierarchy Tier",
+      "AppTier": "App Tier",
+      "Tier": "Tier",
+      "Forces": "Forces",
+      "MaxHierarchyTier": "Max Force Tier",
+      "Mastery": "Mastery",
+      "CanOverload": "Overload Capable",
+      "LearnedApps": "Apps",
+      "TargetCorridor": "Target Corridor (MW)",
+      "Cost": "Cost [KS]",
+      "Range": "Range",
+      "Duration": "Duration",
+      "RollFormula": "Roll Formula",
+      "PyramidStatus": "Pyramid",
+      "Locked": "Locked",
+      "RollForce": "General PSI Force Roll",
+      "RollApp": "Activate & Roll PSI App",
+      "MishapTable1": "Mishap T1",
+      "MishapTable2": "Mishap T2",
+      "MishapTable3": "Mishap T3",
+      "OverloadTable": "Overload Table",
+      "PyramidRuleHint": "Pyramid Rule: To learn or activate a Tier 2 or Tier 3 PSI Force or PSI App, you must first know at least 2 Forces or Apps of the lower tier."
+    },
     "Combat": {
       "WeaponsHeader": "Weapons (Melee & Ranged)",
       "ArmorHeader": "Protective Clothing & Armor",
@@ -273,11 +321,15 @@
       "AddArmor": "Add Armor",
       "RollAttack": "Roll Attack",
       "RollDamage": "Roll Damage",
-      "RollInitiative": "Initiative (Mexican Standoff)"
+      "RollInitiative": "Initiative (SPD + Reaction)",
+      "InitiativeDialogTitle": "Initiative Configuration",
+      "MexicanStandoff": "Mexican Standoff (Enable Duel Focus)",
+      "SituationalModifier": "Situational Modifiers (+/- d6)"
     },
     "Inventory": {
       "GearHeader": "Everyday Equipment, Tools & Goods",
       "CyberwareHeader": "Cyberware, Biomechanics & Robotics Modules",
+      "Installed": "Installed",
       "Quantity": "Qty",
       "Weight": "Weight (kg)",
       "Price": "Price (N$)",

@@ -474,3 +474,128 @@
 .noreturn-chat-card .condition-details p {
   margin: 2px 0;
 }
+
+/* Sub-Tabs (Skills vs. Styleskills) */
+.nr-subtabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.nr-subtab-btn {
+  flex: 1;
+  background: var(--nr-bg-panel);
+  color: var(--nr-text-muted);
+  border: 1px solid var(--nr-border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-weight: 600;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nr-subtab-btn.active {
+  background: rgba(46, 168, 184, 0.2);
+  color: #fff;
+  border-color: var(--nr-cyan);
+  box-shadow: inset 0 -2px 0 var(--nr-cyan);
+}
+
+/* Organismus Bar & Cyberware Deduction */
+.nr-organism-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nr-organism-bar-row input {
+  width: 70px;
+}
+
+.nr-organism-deduction {
+  background: rgba(184, 41, 47, 0.25);
+  border: 1px solid var(--nr-accent);
+  color: #ff9ea2;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.nr-organism-current {
+  background: #101215;
+  border: 1px solid var(--nr-border);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.82rem;
+}
+
+.nr-organism-current.critical,
+.nr-badge-stat.danger {
+  background: rgba(184, 41, 47, 0.35);
+  border-color: var(--nr-accent-bright);
+  color: #ff7b72;
+}
+
+/* PSI Pyramid & Badges */
+.nr-psi-pyramid-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  background: #121519;
+  border: 1px solid var(--nr-border);
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 6px;
+}
+
+.nr-psi-pyramid-bar .pyramid-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nr-psi-pyramid-bar .pyramid-stat .lbl {
+  font-size: 0.7rem;
+  color: var(--nr-text-muted);
+}
+
+.nr-psi-pyramid-bar .pyramid-stat .val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--nr-cyan);
+}
+
+.nr-pyramid-hint {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--nr-text-muted);
+}
+
+.noreturn-badge.success {
+  background: rgba(46, 160, 67, 0.25);
+  border: 1px solid var(--nr-success);
+  color: #56d364;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.nr-table tr.pyramid-locked {
+  opacity: 0.68;
+}
+
+.noreturn-chat-card.mishap-card {
+  border-left-color: var(--nr-accent-bright);
+  background: #221316;
+}
+
+.noreturn-chat-card .psi-app-details {
+  margin-top: 6px;
+  padding: 6px;
+  background: #121519;
+  border-radius: 3px;
+  font-size: 0.78rem;
+}
+

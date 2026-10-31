@@ -12,8 +12,8 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     classes: ["noreturn", "sheet", "actor", "character-sheet"],
     tag: "form",
     position: {
-      width: 960,
-      height: 860
+      width: 980,
+      height: 880
     },
     window: {
       resizable: true
@@ -24,8 +24,12 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     },
     actions: {
       switchTab: NoReturnCharacterSheet.#onSwitchTab,
+      switchSkillSubtab: NoReturnCharacterSheet.#onSwitchSkillSubtab,
       rollAttribute: NoReturnCharacterSheet.#onRollAttribute,
       rollSkill: NoReturnCharacterSheet.#onRollSkill,
+      rollPsiForce: NoReturnCharacterSheet.#onRollPsiForce,
+      rollPsiApp: NoReturnCharacterSheet.#onRollPsiApp,
+      rollPsiMishap: NoReturnCharacterSheet.#onRollPsiMishap,
       rollWeapon: NoReturnCharacterSheet.#onRollWeapon,
       rollDamage: NoReturnCharacterSheet.#onRollDamage,
       rollHitZone: NoReturnCharacterSheet.#onRollHitZone,
@@ -38,7 +42,8 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       editItem: NoReturnCharacterSheet.#onEditItem,
       deleteItem: NoReturnCharacterSheet.#onDeleteItem,
       toggleEquipped: NoReturnCharacterSheet.#onToggleEquipped,
-      toggleActive: NoReturnCharacterSheet.#onToggleActive
+      toggleActive: NoReturnCharacterSheet.#onToggleActive,
+      toggleInstalled: NoReturnCharacterSheet.#onToggleInstalled
     }
   };
 
@@ -50,6 +55,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
   };
 
   #activeTab = "overview";
+  #activeSkillSubtab = "standard";
 
   async _prepareContext(options) {
     const context = await super._prepareContext(options);
@@ -57,6 +63,9 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const system = actor.system;
 
     const skills = [];
+    const styleSkills = [];
+    const psiForces = [];
+    const psiApps = [];
     const weapons = [];
     const armors = [];
     const gear = [];
@@ -68,19 +77,49 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const conditions = [];
 
     for (const item of actor.items) {
-      if (item.type === "skill") skills.push(item);
-      else if (item.type === "weapon") weapons.push(item);
-      else if (item.type === "armor") armors.push(item);
-      else if (item.type === "gear") gear.push(item);
-      else if (item.type === "consumable") consumables.push(item);
-      else if (item.type === "cyberware" || item.type === "robotModule") augmentations.push(item);
-      else if (item.type === "species") speciesItems.push(item);
-      else if (item.type === "mutation") mutations.push(item);
-      else if (item.type === "trait") traits.push(item);
-      else if (item.type === "condition") conditions.push(item);
+      if (item.type === "skill") {
+        if (item.system.category === "psi") {
+          psiForces.push(item);
+        } else if (item.system.category === "style" || item.system.category === "kampfkunst") {
+          styleSkills.push(item);
+        } else {
+          skills.push(item);
+        }
+      } else if (item.type === "styleskill") {
+        styleSkills.push(item);
+      } else if (item.type === "psiForce") {
+        psiForces.push(item);
+      } else if (item.type === "psiApp") {
+        psiApps.push(item);
+      } else if (item.type === "weapon") {
+        weapons.push(item);
+      } else if (item.type === "armor") {
+        armors.push(item);
+      } else if (item.type === "gear") {
+        gear.push(item);
+      } else if (item.type === "consumable") {
+        consumables.push(item);
+      } else if (item.type === "cyberware" || item.type === "robotModule") {
+        augmentations.push(item);
+      } else if (item.type === "species") {
+        speciesItems.push(item);
+      } else if (item.type === "mutation") {
+        mutations.push(item);
+      } else if (item.type === "trait") {
+        traits.push(item);
+      } else if (item.type === "condition" || item.type === "disease" || item.type === "toxin") {
+        conditions.push(item);
+      }
     }
 
     skills.sort((a, b) => a.name.localeCompare(b.name));
+    styleSkills.sort((a, b) => a.name.localeCompare(b.name));
+    psiForces.sort((a, b) => a.name.localeCompare(b.name));
+    psiApps.sort((a, b) => {
+      const fCmp = (a.system.psiForceLabel || "").localeCompare(b.system.psiForceLabel || "");
+      if (fCmp !== 0) return fCmp;
+      return (Number(a.system.tier) || 1) - (Number(b.system.tier) || 1);
+    });
 
     const hitZones = HIT_ZONES.map((z) => {
       const zData = system.health.zones[z.code] || {};
@@ -124,13 +163,18 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       actor,
       system,
       activeTab: this.#activeTab,
+      activeSkillSubtab: this.#activeSkillSubtab,
       speciesOptions: Object.keys(PLAYABLE_SPECIES_PRESETS),
       activeSpeciesItem: speciesItems[0] || null,
       speciesSummary: system.speciesSummary || PLAYABLE_SPECIES_PRESETS[system.personal.spezies] || null,
+      psiSummary: system.psiSummary || { t1Forces: 0, t2Forces: 0, t3Forces: 0, forceHierarchyValid: true },
       primaryAttributes,
       secondaryAttributes,
       hitZones,
       skills,
+      styleSkills,
+      psiForces,
+      psiApps,
       weapons,
       armors,
       gear,
@@ -142,20 +186,21 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       conditions,
       enrichedNotes,
       isUnconscious: Boolean(system.isUnconscious),
-      isImmobilized: Boolean(system.isImmobilized)
+      isImmobilized: Boolean(system.isImmobilized),
+      isOrganismCritical: Boolean(system.isOrganismCritical)
     };
   }
 
   /**
    * Handle dropping an Item onto the Character Sheet.
-   * Dynamically applies Species base stats/limits or Mutation organism/psyche costs.
+   * Supports Skills, StyleSkills, PSI-Kräfte & PSI-Apps (with Pyramid validation), Species, and Mutations.
    */
   async _onDropItem(event, data) {
     if (!this.isEditable) return false;
     const item = await Item.implementation.fromDropData(data);
     if (!item) return false;
 
-    // 1. Skill: increment level if already present
+    // 1. Standard Skill: increment level if already present
     if (item.type === "skill") {
       const existing = this.document.items.find(
         (i) =>
@@ -168,7 +213,126 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       }
     }
 
-    // 2. Species: replace existing species item and apply base stats
+    // 2. StyleSkill: increment level if multi-tier or notify if already learned
+    if (item.type === "styleskill") {
+      const existingStyle = this.document.items.find(
+        (i) =>
+          i.type === "styleskill" &&
+          ((item.system.styleSkillId && i.system.styleSkillId === item.system.styleSkillId) ||
+            i.name === item.name)
+      );
+      if (existingStyle) {
+        const curLvl = Number(existingStyle.system.level) || 1;
+        const maxLvl = Number(existingStyle.system.maxLevel) || 1;
+        if (curLvl < maxLvl) {
+          await existingStyle.update({ "system.level": curLvl + 1 });
+        }
+        return existingStyle;
+      }
+    }
+
+    // 3. PSI-Kraft (psiForce): validate hierarchy pyramid on new Tier 2 / Tier 3 forces, or increment level
+    if (item.type === "psiForce") {
+      const existingForce = this.document.items.find(
+        (i) =>
+          i.type === "psiForce" &&
+          ((item.system.forceId && i.system.forceId === item.system.forceId) || i.name === item.name)
+      );
+      if (existingForce) {
+        await existingForce.update({ "system.level": (Number(existingForce.system.level) || 1) + 1 });
+        return existingForce;
+      }
+      const newTier = Number(item.system.hierarchyTier) || 1;
+      if (item.system.psiCategory === "A" && newTier >= 2) {
+        const currentForces = this.document.items.filter(
+          (i) => i.type === "psiForce" && i.system.psiCategory === "A"
+        );
+        const t1 = currentForces.filter((f) => Number(f.system.hierarchyTier) === 1).length;
+        const t2 = currentForces.filter((f) => Number(f.system.hierarchyTier) === 2).length;
+        const t3 = currentForces.filter((f) => Number(f.system.hierarchyTier) === 3).length;
+        if (newTier === 2 && t2 + 1 > t1) {
+          ui.notifications?.warn(
+            `PSI-Kräfte-Pyramide (GRW S. 189): Um ${t2 + 1} PSI-Kraft/Kräfte der Stufe 2 zu erlernen, werden mindestens ${
+              t2 + 1
+            } PSI-Kräfte der Stufe 1 benötigt (aktuell: ${t1}).`
+          );
+          return false;
+        }
+        if (newTier === 3 && (t3 + 1 > t2 || t3 + 1 > t1)) {
+          ui.notifications?.warn(
+            `PSI-Kräfte-Pyramide (GRW S. 189): Um ${t3 + 1} PSI-Kraft/Kräfte der Stufe 3 zu erlernen, werden mindestens je ${
+              t3 + 1
+            } PSI-Kräfte der Stufen 1 und 2 benötigt (Stufe 1: ${t1}, Stufe 2: ${t2}).`
+          );
+          return false;
+        }
+      }
+    }
+
+    // 4. PSI-App (psiApp): validate Pyramid dependencies (Stufe 2/3 require prerequisite lower-stage Apps of same force)
+    if (item.type === "psiApp") {
+      const existingApp = this.document.items.find(
+        (i) =>
+          i.type === "psiApp" &&
+          ((item.system.appId && i.system.appId === item.system.appId) || i.name === item.name)
+      );
+      if (existingApp) return existingApp;
+
+      const forceKey = (item.system.psiForce || "").toLowerCase().replace(/^psi_/, "");
+      const appTier = Number(item.system.tier || item.system.level || 1);
+      const hasForce = this.document.items.some((i) => {
+        if (i.type === "psiForce") {
+          return (i.system.forceId || "").toLowerCase().replace(/^psi_/, "") === forceKey;
+        }
+        if (i.type === "skill" && i.system.category === "psi") {
+          return (i.system.skillId || "").toLowerCase().replace(/^psi_/, "") === forceKey;
+        }
+        return false;
+      });
+
+      if (!hasForce && forceKey !== "kategorie_b") {
+        ui.notifications?.warn(
+          `PSI-Pyramide: Die zugehörige PSI-Kraft „${
+            item.system.psiForceLabel || item.system.psiForce
+          }“ muss zuerst erlernt werden!`
+        );
+        return false;
+      }
+
+      if (appTier >= 2) {
+        const sameForceApps = this.document.items.filter(
+          (i) =>
+            i.type === "psiApp" &&
+            (i.system.psiForce || "").toLowerCase().replace(/^psi_/, "") === forceKey
+        );
+        const t1Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 1).length;
+        const t2Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 2).length;
+        const t3Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 3).length;
+
+        if (appTier === 2 && t2Count + 1 > t1Count) {
+          ui.notifications?.warn(
+            `PSI-Pyramide (${item.system.psiForceLabel}): Für ${
+              t2Count + 1
+            } App(s) der Stufe 2 müssen mindestens ${
+              t2Count + 1
+            } App(s) der Stufe 1 derselben Kraft gelernt sein (aktuell: ${t1Count}).`
+          );
+          return false;
+        }
+        if (appTier === 3 && (t3Count + 1 > t2Count || t3Count + 1 > t1Count)) {
+          ui.notifications?.warn(
+            `PSI-Pyramide (${item.system.psiForceLabel}): Für ${
+              t3Count + 1
+            } App(s) der Stufe 3 müssen mindestens je ${
+              t3Count + 1
+            } App(s) der Stufen 1 und 2 derselben Kraft gelernt sein (Stufe 1: ${t1Count}, Stufe 2: ${t2Count}).`
+          );
+          return false;
+        }
+      }
+    }
+
+    // 5. Species: replace existing species item and apply base stats
     if (item.type === "species") {
       const existingSpeciesIds = this.document.items
         .filter((i) => i.type === "species")
@@ -181,7 +345,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       await this.document.update({
         "system.personal.spezies": item.name,
         "system.status.psyche.value": bs.psyche ?? 80,
-        "system.status.organismus.value": bs.organismus ?? 100,
+        "system.status.organismus.max": bs.organismus ?? 100,
         "system.status.infektionsresistenz": bs.infektionsresistenz || "2d6",
         "system.attributes.special.adrenalin.stufe": bs.adrenalin ?? 2,
         "system.attributes.special.adrenalin.pool": bs.adrenalin ?? 2
@@ -189,7 +353,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       return created;
     }
 
-    // 3. Mutation / Abnormality: increment level if multi-level or apply Organismus/Psyche cost
+    // 6. Mutation / Abnormality: increment level if multi-level or apply Organismus/Psyche cost
     if (item.type === "mutation") {
       const existingMut = this.document.items.find(
         (i) =>
@@ -203,10 +367,10 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       const orgCost = Number(item.system.organismusCost) || 0;
       const psyCost = Number(item.system.psycheCost) || 0;
       if (orgCost !== 0 || psyCost !== 0) {
-        const curOrg = Number(this.document.system.status.organismus.value) || 100;
+        const curDmg = Number(this.document.system.status.organismus.damage) || 0;
         const curPsy = Number(this.document.system.status.psyche.value) || 80;
         await this.document.update({
-          "system.status.organismus.value": Math.min(100, Math.max(0, curOrg - orgCost)),
+          "system.status.organismus.damage": Math.max(0, curDmg + orgCost),
           "system.status.psyche.value": Math.min(100, Math.max(0, curPsy - psyCost))
         });
       }
@@ -222,6 +386,15 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const tab = target.dataset.tab;
     if (tab) {
       this.#activeTab = tab;
+      this.render();
+    }
+  }
+
+  static #onSwitchSkillSubtab(event, target) {
+    event.preventDefault();
+    const subtab = target.dataset.subtab;
+    if (subtab) {
+      this.#activeSkillSubtab = subtab;
       this.render();
     }
   }
@@ -260,7 +433,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
     await actor.update({
       "system.status.psyche.value": preset.baseStats.psyche,
-      "system.status.organismus.value": preset.baseStats.organismus,
+      "system.status.organismus.max": preset.baseStats.organismus,
       "system.status.infektionsresistenz": preset.baseStats.infektionsresistenz,
       "system.attributes.special.adrenalin.stufe": preset.baseStats.adrenalin,
       "system.attributes.special.adrenalin.pool": preset.baseStats.adrenalin
@@ -303,7 +476,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     await NoReturnRoll.promptAndRoll({
       actor: this.document,
       title: skill.name,
-      flavorSubtitle: attrKey ? game.i18n.localize(`NORETURN.Attributes.${attrKey}`) : "Spezial / PSI",
+      flavorSubtitle: attrKey ? game.i18n.localize(`NORETURN.Attributes.${attrKey}`) : "Styleskill / Spezial",
       attributeDice: attrDice,
       skillDice,
       bonusDice,
@@ -311,6 +484,40 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       allSkillHazard: Boolean(skill.system.betaBio),
       skipDialog: event.shiftKey
     });
+  }
+
+  static async #onRollPsiForce(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const force = this.document.items.get(itemId);
+    if (!force) return;
+
+    const skillDice = Number(force.system.level) || 1;
+    const bonusDice = Number(force.system.mod) || 0;
+
+    await NoReturnRoll.promptAndRoll({
+      actor: this.document,
+      title: force.name,
+      flavorSubtitle: `PSI-Kraft (Hierarchiestufe ${force.system.hierarchyTier || 1})`,
+      attributeDice: 0,
+      skillDice,
+      bonusDice,
+      skipDialog: event.shiftKey
+    });
+  }
+
+  static async #onRollPsiApp(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const appItem = this.document.items.get(itemId);
+    if (!appItem) return;
+    await NoReturnRoll.rollPsiApp(this.document, appItem, { skipDialog: event.shiftKey });
+  }
+
+  static async #onRollPsiMishap(event, target) {
+    event.preventDefault();
+    const tableKey = target.dataset.table || "1";
+    await NoReturnRoll.rollPsiMishapTable(tableKey, this.document, { postSeparateMessage: true });
   }
 
   static async #onRollWeapon(event, target) {
@@ -372,22 +579,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   static async #onRollInitiative(event) {
     event.preventDefault();
-    const sk = Number(this.document.system.attributes.primary.schnelligkeit.overall) || 1;
-    const reaktionItem = this.document.items.find(
-      (i) => i.type === "skill" && (i.system.skillId === "reaktion" || i.name.toLowerCase() === "reaktion")
-    );
-    const reaktionLevel = Number(reaktionItem?.system?.level || 0);
-    const reaktionMod = Number(reaktionItem?.system?.effectiveMod ?? reaktionItem?.system?.mod) || 0;
-
-    await NoReturnRoll.promptAndRoll({
-      actor: this.document,
-      title: game.i18n.localize("NORETURN.Combat.RollInitiative"),
-      attributeDice: sk,
-      skillDice: reaktionLevel,
-      bonusDice: reaktionMod,
-      targetNumber: 10,
-      skipDialog: event.shiftKey
-    });
+    await NoReturnRoll.rollInitiative(this.document, { skipDialog: event.shiftKey });
   }
 
   static async #onRollInfection(event) {
@@ -446,6 +638,15 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const item = this.document.items.get(itemId);
     if (item && "active" in item.system) {
       await item.update({ "system.active": !item.system.active });
+    }
+  }
+
+  static async #onToggleInstalled(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const item = this.document.items.get(itemId);
+    if (item && "installed" in item.system) {
+      await item.update({ "system.installed": !item.system.installed });
     }
   }
 }

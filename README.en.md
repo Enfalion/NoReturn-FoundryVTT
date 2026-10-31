@@ -1,78 +1,36 @@
-# NoReturn – Foundry VTT v14 System (English Documentation)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.0 (English)
 
-This project implements the complete ruleset of **NoReturn (1st Edition / Collector's Edition)** as a native game system for **Foundry Virtual Tabletop v14**. It leverages the modern Foundry v14 architecture (`foundry.abstract.TypeDataModel` and `ApplicationV2` with `HandlebarsApplicationMixin`).
-
----
-
-## 1. System Overview & Features
-
-### 1.1 Standard Character Sheet (`character`, `npc`, `creature`)
-Modeled after the official *Character Sheet 1.2 (DE)*:
-- **Primary Attributes:** `Dexterity (GE)`, `Strength (ST)`, `Constitution (KO)`, `Speed (SK)`, `Knowledge (WI)`, and `Perception (WA)` with modifiers, overall totals, and toggleable *Alpha Biomechanics* (converts all attribute dice into exploding *Hazard-Dice*).
-- **Secondary & Special Attributes:** `Charisma (CH)`, `Logic (LO)`, `Vehicles (FA)`, `Pain Tolerance (TO)`, and `Adrenaline` (`Level` and active `Pool`).
-- **Item-Driven Species, Mutations, Traits & Pharmaceuticals:**
-  - **Active Species Dropdown & `species` Items:** Choose the active species (`Mensch`, `Adivasi`, `Evo`, `Mutant`, `Zeneritone`, `Prodigy`, `Blendling`) directly on the sheet or drag-and-drop from `species.db`. Dynamically calculates attribute limits, base stats (`Psyche`, `Organism`, `Adrenaline`, `Infection Resistance`), and skill bonuses.
-  - **Mutations & Abnormalities (`mutation`):** Visible and hidden mutations, biological abnormalities, and peculiarities dynamically modify attributes, natural armor, hit points, regeneration, and skills.
-  - **Character Traits (`trait`):** Positive Justice traits, negative Chaos traits, aptitudes, and talents with automatic passive skill and attribute modifiers.
-  - **Drugs & Pharmaceuticals (`consumable`):** Toggleable active state for stimulants and medical compounds with dosage, duration, addiction rating, and automatic stat boosts/drawbacks.
-  - **Diseases & Toxins (`condition`):** Incubation time, test interval, intensity, symptom stages, and an interactive **Resistance Check Trigger** (`NoReturnRoll.rollConditionResistance`) directly from the sheet into chat.
-
-### 1.2 Hybrid Robotics Sheet (`robot`)
-The Robotics Sheet uses a **Hybrid Actor Architecture** that combines all standard player character features with the official *Robotics Sheet (1st Edition)*:
-- **Full Character Attributes & Skills:** Includes all primary, secondary, and derived attributes plus the complete skill, weapon, armor, and gear tabs of the standard character sheet (all attributes and skills can be rolled directly from the robotics view).
-- **Dedicated Robotics & Chassis Dashboard:**
-  - **Chassis Status**, **Power Supply / Reactor**, **Battery / Power Reserve**, **Module Sockets** (`Used / Max / Free`), **Energy Drain** (`Base + Modules`), and **Structural Hitpoints**.
-- **11-Zone Robotics Tuning:** Per-zone configuration (`Biological/Normal`, `Casual`, `Work`, `High Tech`, `Android`, `Military`), level upgrades, `All-Over Attributes` (`round(Sum / 11)`), and `Cybersense Perception` (`round(Sum / 5)`).
-
-### 1.3 Dice & Combat Engine (`./system/module/dice/roll.mjs`)
-- **d6 Pool + Hazard-Die (`1d6x6`):** Supports standard checks, *Alpha Biomechanics*, and *Beta Biomechanics*.
-- **Interactive Roll Dialog (`DialogV2`):** Difficulty (`Routine MW 5` to `Legendary MW 40`), bonus/penalty dice, `Adrenaline dice`, `Combat Disadvantages (-2d6)`, and Burst/Auto mode.
-- **Disease & Toxin Resistance Check (`rollConditionResistance`):** Automatically evaluates resistance rolls against the condition's `Intensity (MW)` and outputs symptom stages, damage, penalties, and antidotes on failure.
+Official **Foundry Virtual Tabletop (v14)** system implementation for **NoReturn – Post-Apocalyptic Sci-Fi RPG (1st Edition)** by **Enfalion**.
 
 ---
 
-## 2. Compendium Packs & Folder Hierarchy (`./system/packs/`)
+## Installation via Manifest URL
 
-All compendium packs are organized with Foundry v14 `Folder` documents (`folder: "<folder_id>"`):
+In Foundry VTT v14, navigate to **Game Systems → Install System** and paste the following **Manifest URL**:
 
-1. **Weapons, Armor & Gear (`items.db`):**
-   - `Nahkampfwaffen` (Melee Weapons)
-   - `Fernkampfwaffen` (Ranged Weapons)
-   - `Rüstungen & Schutzkleidung` (Armor)
-   - `Drogen & Pharmazeutika` (Drugs / Consumables)
-   - `Alltägliche Ausrüstung & Werkzeuge` (Gear)
-   - `Cyberware & Implantate` (Cyberware)
-2. **Skills, PSI & Martial Arts (`skills.db`):**
-   - `Standardfertigkeiten` (Standard Skills)
-   - `PSI-Kräfte & Disziplinen` (PSI Powers)
-   - `Charaktermerkmale` (Character Traits)
-   - `Krankheiten & Toxine` (Diseases & Toxins)
-3. **Robotics, Cyberware & Biomechanics (`robotics.db`):**
-   - `Chassis & Rahmen` (Chassis & Frames)
-   - `Erweiterungsmodule` (Expansion Modules)
-   - `Sensoren & Prozessoren` (Sensors & Processors)
-4. **Species, Mutations & Abnormalities (`species.db`):**
-   - `Spielbare Spezies` (Playable Species)
-   - `Mutationen (Sichtbar & Verborgen)` (Visible & Hidden Mutations)
-   - `Biologische Abnormitäten` (Biological Abnormalities)
-   - `Auffälligkeiten` (Peculiarities)
-5. **Creatures & NPCs (`bestiary.db`):**
-   - `Mutierte Bestien` (Mutated Beasts)
-   - `Rivalen & Gesetzlose` (Rivals & Outlaws)
-   - `Roboter & Drohnen` (Robots & Drones)
-6. **System Macros (`macros.db`):** 4 quick-access hotbar macros.
+```text
+https://raw.githubusercontent.com/Enfalion/NoReturn-FoundryVTT/main/system/system.json
+```
+
+Direct Release Download:
+`https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest/download/noreturn.zip`
 
 ---
 
-## 3. Foundry VTT v14 Installation Guide
+## Key Features in v1.1.0
 
-1. Open the user data directory of your Foundry VTT v14 installation (`<FoundryUserData>/Data/systems/`).
-2. Create a new directory named `noreturn`:
-   ```bash
-   mkdir -p <FoundryUserData>/Data/systems/noreturn
-   ```
-3. Copy all contents of the `./system/` folder into that directory:
-   ```bash
-   cp -r ./system/* <FoundryUserData>/Data/systems/noreturn/
-   ```
-4. Restart Foundry VTT (Version 14).
+1. **Initiative Overhaul & Mexican Standoff Dialog:**
+   - Binds **Speed + Reaction** (`Schnelligkeit + Reaktion`) into all initiative rolls both from actor sheets and the Foundry Combat Tracker (`NoReturnCombat`).
+   - Pure sum evaluation without target numbers (MW) or degrees of success.
+   - Pre-roll Initiative Configuration Dialog featuring a **"Mexican Standoff"** checkbox (default: `false`) and situational modifier input (`+/- d6`).
+2. **Cyberware & Dynamic Organism Deduction:**
+   - Dynamically computes `system.status.organismus.current = system.status.organismus.max - sum(organismCost of all installed cyberware)`.
+   - Displays total cyberware organism deduction next to the Organism bar and triggers a critical alert banner when `organismus.current <= 0`.
+3. **Style Skills (`styleskill`):**
+   - Dedicated sub-tab under *Skills* for all 21 core rulebook Style Skills with drag-and-drop support and automatic skill modifier aggregation.
+4. **PSI System (`psiForce`, `psiApp`, `psi.db`, `psi-tables.db`):**
+   - Dedicated main tab **PSI & Pyramid** separating overarching PSI Forces (`psiForce`) and 130 concrete PSI Apps (`psiApp`).
+   - Enforces the **PSI Pyramid System** across Tiers 1–3 and automatically triggers rolls on **PSI Mishap Tables 1–3** or the **PSI Overload Table** (`psi-tables.db`) in Chat upon failure/fumble.
+5. **Hybrid Robotics Sheet (`robot`), Species (`species.db`), Diseases/Toxins (`disease`/`toxin`) & Bestiary (`bestiary.db`):**
+   - Full hybrid sheet for robots, androids, and cyborgs with 11 hit zones, chassis status, battery, module sockets, and 5-sense Cybersense matrix.
+   - 8 compendium packs organized into thematic folders matching the core rulebook.

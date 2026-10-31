@@ -47,6 +47,128 @@
         </div>
       {{/if}}
 
+      {{#if (eq itemType "styleskill")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.Skills.Attribute"}}</span>
+            <select name="system.attribute">
+              <option value="charisma" {{#if (eq system.attribute "charisma")}}selected{{/if}}>{{localize "NORETURN.Attributes.charisma"}}</option>
+              <option value="geschick" {{#if (eq system.attribute "geschick")}}selected{{/if}}>{{localize "NORETURN.Attributes.geschick"}}</option>
+              <option value="staerke" {{#if (eq system.attribute "staerke")}}selected{{/if}}>{{localize "NORETURN.Attributes.staerke"}}</option>
+              <option value="konstitution" {{#if (eq system.attribute "konstitution")}}selected{{/if}}>{{localize "NORETURN.Attributes.konstitution"}}</option>
+              <option value="schnelligkeit" {{#if (eq system.attribute "schnelligkeit")}}selected{{/if}}>{{localize "NORETURN.Attributes.schnelligkeit"}}</option>
+              <option value="wissen" {{#if (eq system.attribute "wissen")}}selected{{/if}}>{{localize "NORETURN.Attributes.wissen"}}</option>
+              <option value="wahrnehmung" {{#if (eq system.attribute "wahrnehmung")}}selected{{/if}}>{{localize "NORETURN.Attributes.wahrnehmung"}}</option>
+              <option value="logik" {{#if (eq system.attribute "logik")}}selected{{/if}}>{{localize "NORETURN.Attributes.logik"}}</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.Level"}}</span>
+            <input type="number" name="system.level" value="{{system.level}}" min="0" max="{{system.maxLevel}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.Mod"}}</span>
+            <input type="number" name="system.mod" value="{{system.mod}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.StyleSkills.Requirements"}}</span>
+            <input type="text" name="system.requirements" value="{{system.requirements}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.StyleSkills.PassiveBonus"}}</span>
+            <input type="text" name="system.passiveBonus" value="{{system.passiveBonus}}" />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Species.SkillModifiers"}}</span>
+            <input type="text" name="system.skillModifiers" value="{{system.skillModifiers}}" />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "psiForce")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.PSI.Category"}}</span>
+            <select name="system.category">
+              <option value="A" {{#if (eq system.category "A")}}selected{{/if}}>Kategorie A (Pyramide)</option>
+              <option value="B" {{#if (eq system.category "B")}}selected{{/if}}>Kategorie B (HMO)</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.HierarchyTier"}}</span>
+            <select name="system.hierarchyTier" data-dtype="Number">
+              <option value="1" {{#if (eq system.hierarchyTier 1)}}selected{{/if}}>Stufe 1</option>
+              <option value="2" {{#if (eq system.hierarchyTier 2)}}selected{{/if}}>Stufe 2</option>
+              <option value="3" {{#if (eq system.hierarchyTier 3)}}selected{{/if}}>Stufe 3</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.Level"}}</span>
+            <input type="number" name="system.level" value="{{system.level}}" min="0" max="3" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Skills.Mod"}}</span>
+            <input type="number" name="system.mod" value="{{system.mod}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.Mastery"}}</span>
+            <input type="checkbox" name="system.mastery" {{checked system.mastery}} />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.CanOverload"}}</span>
+            <input type="checkbox" name="system.canOverload" {{checked system.canOverload}} />
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if (eq itemType "psiApp")}}
+        <div class="nr-stat-grid">
+          <label>
+            <span>{{localize "NORETURN.PSI.ForceName"}}</span>
+            <input type="text" name="system.psiForce" value="{{system.psiForce}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.AppTier"}}</span>
+            <select name="system.tier" data-dtype="Number">
+              <option value="1" {{#if (eq system.tier 1)}}selected{{/if}}>Stufe 1 (8–12 / 11–15)</option>
+              <option value="2" {{#if (eq system.tier 2)}}selected{{/if}}>Stufe 2 (15–19)</option>
+              <option value="3" {{#if (eq system.tier 3)}}selected{{/if}}>Stufe 3 (19–22 / 23–25)</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.TargetCorridor"}} (Min – Max)</span>
+            <div class="flexrow">
+              <input type="number" name="system.targetMin" value="{{system.targetMin}}" min="1" />
+              <input type="number" name="system.targetMax" value="{{system.targetMax}}" min="1" />
+            </div>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.Cost"}} [KS]</span>
+            <input type="text" name="system.cost" value="{{system.cost}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.Range"}}</span>
+            <input type="text" name="system.range" value="{{system.range}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.Duration"}}</span>
+            <input type="text" name="system.duration" value="{{system.duration}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.RollFormula"}}</span>
+            <input type="text" name="system.rollFormula" value="{{system.rollFormula}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Consumables.Active"}}</span>
+            <input type="checkbox" name="system.active" {{checked system.active}} />
+          </label>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Inventory.Effects"}}</span>
+            <input type="text" name="system.effects" value="{{system.effects}}" />
+          </label>
+        </div>
+      {{/if}}
+
       {{#if (eq itemType "weapon")}}
         <div class="nr-stat-grid">
           <label>
@@ -178,6 +300,10 @@
       {{#if (or (eq itemType "cyberware") (eq itemType "robotModule"))}}
         <div class="nr-stat-grid">
           <label>
+            <span>{{localize "NORETURN.Inventory.Installed"}}</span>
+            <input type="checkbox" name="system.installed" {{checked system.installed}} />
+          </label>
+          <label>
             <span>{{localize "NORETURN.Health.Zone"}}</span>
             <input type="text" name="system.targetZone" value="{{system.targetZone}}" />
           </label>
@@ -186,8 +312,8 @@
             <input type="number" name="system.capacityCost" value="{{system.capacityCost}}" step="0.25" min="0" />
           </label>
           <label>
-            <span>{{localize "NORETURN.Status.Organismus"}}</span>
-            <input type="number" name="system.organismusCost" value="{{system.organismusCost}}" step="0.5" min="0" />
+            <span>{{localize "NORETURN.Status.Organismus"}} ({{localize "NORETURN.Status.CyberwareCost"}})</span>
+            <input type="number" name="system.organismCost" value="{{system.organismCost}}" step="0.5" min="0" />
           </label>
           <label>
             <span>{{localize "NORETURN.Robotics.EnergyDrain"}}</span>
@@ -309,7 +435,7 @@
         </div>
       {{/if}}
 
-      {{#if (eq itemType "condition")}}
+      {{#if (or (eq itemType "condition") (eq itemType "disease") (eq itemType "toxin"))}}
         <div class="nr-stat-grid">
           <label>
             <span>{{localize "NORETURN.Conditions.Incubation"}}</span>

@@ -1,7 +1,7 @@
 {
   "id": "noreturn",
   "title": "NoReturn – Endzeit Rollenspiel (1st Edition)",
-  "description": "Foundry VTT v14 System für das postapokalyptische Sci-Fi-Rollenspiel NoReturn (1. Edition / Collector's Edition). Enthält Charakterbogen, hybriden Robotikbogen, W6 + Hazard-Di Würfelsystem, Trefferzonen-Schadensmodell, Spezies/Mutationen, Krankheiten-Trigger und strukturierte Kompendien.",
+  "description": "Vollständiges Spielsystem für das postapokalyptische Sci-Fi-Rollenspiel NoReturn (Collector's Edition / 1. Edition) für Foundry VTT v14.",
   "version": "1.1.0",
   "compatibility": {
     "minimum": "14",
@@ -10,7 +10,7 @@
   },
   "authors": [
     {
-      "name": "NoReturn System Builder"
+      "name": "Enfalion"
     }
   ],
   "esmodules": [
@@ -50,6 +50,15 @@
       "skill": {
         "htmlFields": ["description"]
       },
+      "styleskill": {
+        "htmlFields": ["description"]
+      },
+      "psiForce": {
+        "htmlFields": ["description"]
+      },
+      "psiApp": {
+        "htmlFields": ["description"]
+      },
       "weapon": {
         "htmlFields": ["description"]
       },
@@ -79,58 +88,97 @@
       },
       "condition": {
         "htmlFields": ["description"]
+      },
+      "disease": {
+        "htmlFields": ["description"]
+      },
+      "toxin": {
+        "htmlFields": ["description"]
       }
     }
   },
   "packs": [
     {
       "name": "skills",
-      "label": "NoReturn Fertigkeiten, PSI, Merkmale & Krankheiten",
+      "label": "Fertigkeiten, Styleskills & Merkmale",
       "system": "noreturn",
       "path": "packs/skills.db",
-      "type": "Item"
+      "type": "Item",
+      "private": false,
+      "flags": {}
+    },
+    {
+      "name": "psi",
+      "label": "PSI-Kräfte & PSI-Apps",
+      "system": "noreturn",
+      "path": "packs/psi.db",
+      "type": "Item",
+      "private": false,
+      "flags": {}
+    },
+    {
+      "name": "psi-tables",
+      "label": "PSI-Fehlschlagstabellen",
+      "system": "noreturn",
+      "path": "packs/psi-tables.db",
+      "type": "RollTable",
+      "private": false,
+      "flags": {}
     },
     {
       "name": "items",
-      "label": "NoReturn Waffen, Rüstungen, Drogen & Ausrüstung",
+      "label": "Waffen, Rüstungen & Ausrüstung",
       "system": "noreturn",
       "path": "packs/items.db",
-      "type": "Item"
+      "type": "Item",
+      "private": false,
+      "flags": {}
     },
     {
       "name": "robotics",
-      "label": "NoReturn Robotik, Chassis & Sensoren",
+      "label": "Robotik, Cyberware & Biomechanik",
       "system": "noreturn",
       "path": "packs/robotics.db",
-      "type": "Item"
+      "type": "Item",
+      "private": false,
+      "flags": {}
     },
     {
       "name": "species",
-      "label": "NoReturn Spezies, Mutanten & Abnormitäten",
+      "label": "Spezies, Mutationen & Abnormitäten",
       "system": "noreturn",
       "path": "packs/species.db",
-      "type": "Item"
+      "type": "Item",
+      "private": false,
+      "flags": {}
     },
     {
       "name": "bestiary",
       "label": "Kreaturen & NSC",
       "system": "noreturn",
       "path": "packs/bestiary.db",
-      "type": "Actor"
+      "type": "Actor",
+      "private": false,
+      "flags": {}
     },
     {
       "name": "macros",
       "label": "NoReturn System-Makros",
       "system": "noreturn",
       "path": "packs/macros.db",
-      "type": "Macro"
+      "type": "Macro",
+      "private": false,
+      "flags": {}
     }
   ],
-  "initiative": "(@attributes.primary.schnelligkeit.overall)d6",
   "grid": {
-    "distance": 1,
+    "distance": 1.5,
     "units": "m"
   },
   "primaryTokenAttribute": "status.organismus",
-  "secondaryTokenAttribute": "status.psyche"
+  "secondaryTokenAttribute": "status.psyche",
+  "initiative": "1d6x6",
+  "url": "https://github.com/Enfalion/NoReturn-FoundryVTT",
+  "manifest": "https://raw.githubusercontent.com/Enfalion/NoReturn-FoundryVTT/main/system/system.json",
+  "download": "https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest/download/noreturn.zip"
 }

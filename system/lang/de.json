@@ -7,17 +7,22 @@
       "creature": "Kreatur / Mutierte Bestie"
     },
     "Item": {
-      "skill": "Fertigkeit / PSI",
+      "skill": "Standardfertigkeit",
+      "styleskill": "Styleskill",
+      "psiForce": "PSI-Kraft (Disziplin)",
+      "psiApp": "PSI-App (Anwendung)",
       "weapon": "Waffe",
       "armor": "Rüstung / Bekleidung",
-      "gear": "Ausrüstung / Gut",
+      "gear": "Ausrüstung / Werkzeug",
       "consumable": "Droge / Pharmazeutikum",
       "cyberware": "Cyberware / Biomechanik",
       "robotModule": "Robotik-Modul / Einbau",
       "species": "Spezies / Subspezies",
       "mutation": "Mutation / Biologische Abnormität",
       "trait": "Charaktermerkmal (Justice / Chaos)",
-      "condition": "Krankheit / Gift / Toxin"
+      "condition": "Zustand / Leiden",
+      "disease": "Krankheit / Infektion",
+      "toxin": "Gift / Toxin"
     }
   },
   "NORETURN": {
@@ -28,7 +33,8 @@
       "ItemTitle": "NoReturn Gegenstand",
       "Tabs": {
         "Overview": "Übersicht & Attribute",
-        "Skills": "Fertigkeiten, PSI & Krankheiten",
+        "Skills": "Fertigkeiten & Krankheiten",
+        "Psi": "PSI & Pyramide",
         "Combat": "Kampf & Trefferzonen",
         "Inventory": "Drogen, Ausrüstung & Güter",
         "Augmentation": "Robotik & Cyberware",
@@ -94,6 +100,8 @@
       "Ruf": "Ruf",
       "Organismus": "Organismus",
       "OrganismusVerlust": "Summe Organismusverlust",
+      "CyberwareCost": "Cyberware-Abzug",
+      "OrganismCriticalWarning": "KRITISCH: ORGANISMUS AUF 0 ODER DARUNTER GEFALLEN (Tod / Voll-Verlust der Menschlichkeit)!",
       "Leiden1": "Leiden 1",
       "Leiden2": "Leiden 2",
       "Leiden3": "Leiden 3",
@@ -232,7 +240,8 @@
       "Infected": "INFIZIERT / SYMPTOMSCHUB! (Probe nicht bestanden)"
     },
     "Skills": {
-      "Header": "Fertigkeiten & PSI-Disziplinen",
+      "Header": "Fertigkeiten & Styleskills",
+      "StandardHeader": "Standardfertigkeiten",
       "Name": "Fertigkeit",
       "Attribute": "Attribut",
       "Category": "Kategorie",
@@ -256,6 +265,45 @@
         "kampfkunst": "Kampfkünste"
       }
     },
+    "StyleSkills": {
+      "Header": "Styleskills",
+      "AddStyleSkill": "Styleskill hinzufügen",
+      "PassiveBonus": "Passiver Bonus / Effekt",
+      "Requirements": "Voraussetzungen",
+      "RollStyleSkill": "Styleskill-Probe würfeln"
+    },
+    "PSI": {
+      "PyramidHeader": "PSI-Pyramidensystem & Fehlschlagtabellen",
+      "ForcesHeader": "Übergeordnete PSI-Kräfte (Disziplinen)",
+      "AppsHeader": "Konkrete PSI-Apps (Anwendungen)",
+      "AddForce": "PSI-Kraft hinzufügen",
+      "AddApp": "PSI-App hinzufügen",
+      "ForceName": "PSI-Kraft",
+      "AppName": "PSI-App",
+      "Category": "Kategorie",
+      "HierarchyTier": "Hierarchiestufe",
+      "AppTier": "App-Stufe",
+      "Tier": "Stufe",
+      "Forces": "Kräfte",
+      "MaxHierarchyTier": "Max. Kraftstufe",
+      "Mastery": "Meisterschaft",
+      "CanOverload": "Overload möglich",
+      "LearnedApps": "Apps",
+      "TargetCorridor": "Zielkorridor (MW)",
+      "Cost": "Kosten [KS]",
+      "Range": "Reichweite",
+      "Duration": "Dauer",
+      "RollFormula": "Probeformel",
+      "PyramidStatus": "Pyramide",
+      "Locked": "Gesperrt",
+      "RollForce": "Allgemeine PSI-Kraftprobe",
+      "RollApp": "PSI-App aktivieren & würfeln",
+      "MishapTable1": "Fehlschlag S1",
+      "MishapTable2": "Fehlschlag S2",
+      "MishapTable3": "Fehlschlag S3",
+      "OverloadTable": "Overload-Tabelle",
+      "PyramidRuleHint": "Pyramidenregel: Um eine PSI-Kraft oder PSI-App der Stufe 2 bzw. 3 zu erlernen/aktivieren, müssen jeweils mindestens 2 Kräfte bzw. Apps der darunterliegenden Stufe beherrscht werden."
+    },
     "Combat": {
       "WeaponsHeader": "Waffen (Nah- & Fernkampf)",
       "ArmorHeader": "Schutzkleidung & Rüstungen",
@@ -273,11 +321,15 @@
       "AddArmor": "Rüstung hinzufügen",
       "RollAttack": "Angriff würfeln",
       "RollDamage": "Schaden würfeln",
-      "RollInitiative": "Initiative (Mexican Standoff)"
+      "RollInitiative": "Initiative (SK + Reaktion)",
+      "InitiativeDialogTitle": "Initiative-Konfiguration",
+      "MexicanStandoff": "Mexican Standoff (Duell-Fokus aktivieren)",
+      "SituationalModifier": "Situative Modifikatoren (+/- W6)"
     },
     "Inventory": {
       "GearHeader": "Alltägliche Ausrüstung, Werkzeuge & Güter",
       "CyberwareHeader": "Cyberware, Biomechanik & Robotik-Module",
+      "Installed": "Installiert",
       "Quantity": "Anz.",
       "Weight": "Gewicht (kg)",
       "Price": "Preis (N$)",

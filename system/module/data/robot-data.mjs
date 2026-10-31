@@ -383,17 +383,19 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
     for (const item of items) {
       if (item.type === "skill" && (item.system.skillId === "stemmen" || item.name.toLowerCase() === "stemmen")) {
         stemmenLevel = Math.max(stemmenLevel, Number(item.system.level || 0));
-      } else if (item.type === "robotModule" || item.type === "cyberware") {
+      } else if ((item.type === "robotModule" || item.type === "cyberware") && item.system.installed !== false) {
         const zCode = String(item.system.targetZone || "").trim();
         const capCost = Number(item.system.capacityCost || 0);
-        const orgCost = Number(item.system.organismusCost || 0);
+        const orgCost = Math.max(
+          Number(item.system.organismCost || 0),
+          Number(item.system.organismusCost || 0)
+        );
         const eDrain = Number(item.system.energyDrain ?? (capCost > 0 ? capCost * 0.5 : 0.25));
         moduleEnergyDrain += eDrain;
         if (zCode && this.zones[zCode]) {
           moduleCapByZone[zCode] = (moduleCapByZone[zCode] || 0) + capCost;
-        } else {
-          moduleOrgLoss += orgCost;
         }
+        moduleOrgLoss += orgCost;
       } else if (item.type === "armor" && item.system.equipped) {
         const rw = Number(item.system.armorValue || 0);
         const coveredZones = Array.isArray(item.system.zones) ? item.system.zones : [];
@@ -412,6 +414,10 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
       } else if (item.type === "trait") {
         addAttrMods(item.system.attributeModifiers, 1);
         addSkillMods(item.system.skillModifiers, 1);
+      } else if (item.type === "styleskill" && item.system.active !== false) {
+        const lvl = Math.max(1, Number(item.system.level) || 1);
+        addAttrMods(item.system.attributeModifiers, lvl);
+        addSkillMods(item.system.skillModifiers, lvl);
       } else if (item.type === "consumable" && item.system.active) {
         addAttrMods(item.system.attributeModifiers, 1);
         addSkillMods(item.system.skillModifiers, 1);
@@ -571,11 +577,30 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
     this.allOver.summeOrganismusverlust = Number(
       (sumOrganismusLoss + cybersenseOrgLoss + moduleOrgLoss).toFixed(2)
     );
-    this.allOver.restOrganismus = Math.max(
-      0,
-      Number((100 - this.allOver.summeOrganismusverlust).toFixed(2))
-    );
-    this.status.organismus.value = this.allOver.restOrganismus;
+    const orgMax = Number(this.status?.organismus?.max) || 100;
+    const restOrg = Number((orgMax - this.allOver.summeOrganismusverlust).toFixed(2));
+    this.allOver.restOrganismus = restOrg;
+    this.status.organismus.cyberwareCost = this.allOver.summeOrganismusverlust;
+    this.status.organismus.current = restOrg;
+    this.status.organismus.value = restOrg;
+    this.organismus = {
+      max: orgMax,
+      current: restOrg,
+      value: restOrg,
+      cyberwareCost: this.allOver.summeOrganismusverlust
+    };
+    this.isOrganismCritical = restOrg <= 0;
+
+    const psiForces = items.filter((i) => i.type === "psiForce" && i.system.psiCategory === "A");
+    const t1Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 1).length;
+    const t2Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 2).length;
+    const t3Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 3).length;
+    this.psiSummary = {
+      t1Forces,
+      t2Forces,
+      t3Forces,
+      forceHierarchyValid: t2Forces <= t1Forces && t3Forces <= t2Forces
+    };
 
     // Hybrid Primary & Secondary Attributes (combining All-Over / Base + Mod + Item Modifiers)
     const physicalKeys = ["geschick", "staerke", "konstitution", "schnelligkeit"];

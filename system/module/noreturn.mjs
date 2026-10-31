@@ -1,11 +1,14 @@
 /**
  * NoReturn RPG System for Foundry VTT v14.
- * Entry point registering DataModels, ApplicationV2 Sheets, Roll Engine, and Chat Hooks.
+ * Entry point registering DataModels, ApplicationV2 Sheets, Roll Engine, Combat Initiative, and Chat Hooks.
  */
 import { NoReturnCharacterData, PLAYABLE_SPECIES_PRESETS } from "./data/character-data.mjs";
 import { NoReturnRobotData } from "./data/robot-data.mjs";
 import {
   NoReturnSkillData,
+  NoReturnStyleSkillData,
+  NoReturnPsiForceData,
+  NoReturnPsiAppData,
   NoReturnWeaponData,
   NoReturnArmorData,
   NoReturnGearData,
@@ -23,7 +26,27 @@ import { NoReturnItemSheet } from "./sheets/item-sheet.mjs";
 import { NoReturnRoll } from "./dice/roll.mjs";
 
 Hooks.once("init", () => {
-  console.log("NoReturn | Initializing NoReturn RPG System (Foundry VTT v14)");
+  console.log("NoReturn | Initializing NoReturn RPG System v1.1.0 (Foundry VTT v14)");
+
+  // Custom Combat Document Class: binds Reaktion + Schnelligkeit into Tracker Initiative rolls
+  // and opens the Initiative Configuration Dialog (Mexican Standoff checkbox default false + modifier)
+  if (typeof Combat !== "undefined") {
+    class NoReturnCombat extends Combat {
+      async rollInitiative(ids, options = {}) {
+        const combatantIds = typeof ids === "string" ? [ids] : Array.from(ids);
+        for (const cId of combatantIds) {
+          const combatant = this.combatants.get(cId);
+          if (!combatant) continue;
+          await NoReturnRoll.rollInitiative(combatant.actor, {
+            combatant,
+            skipDialog: Boolean(options?.skipDialog)
+          });
+        }
+        return this;
+      }
+    }
+    CONFIG.Combat.documentClass = NoReturnCombat;
+  }
 
   // Expose API on game.noreturn
   game.noreturn = {
@@ -44,6 +67,9 @@ Hooks.once("init", () => {
   // Register Item TypeDataModels
   CONFIG.Item.dataModels = {
     skill: NoReturnSkillData,
+    styleskill: NoReturnStyleSkillData,
+    psiForce: NoReturnPsiForceData,
+    psiApp: NoReturnPsiAppData,
     weapon: NoReturnWeaponData,
     armor: NoReturnArmorData,
     gear: NoReturnGearData,
@@ -53,12 +79,14 @@ Hooks.once("init", () => {
     species: NoReturnSpeciesData,
     mutation: NoReturnMutationData,
     trait: NoReturnTraitData,
-    condition: NoReturnConditionData
+    condition: NoReturnConditionData,
+    disease: NoReturnConditionData,
+    toxin: NoReturnConditionData
   };
 
-  // Configure Combat Initiative (Mexican Standoff = Schnelligkeit + Reaktion in W6)
+  // Configure Combat Initiative (Schnelligkeit + Reaktion in W6, pure sum without thresholds)
   CONFIG.Combat.initiative = {
-    formula: "(@attributes.primary.schnelligkeit.overall)d6 + 1d6x6",
+    formula: "(@attributes.primary.schnelligkeit.overall)d6x6",
     decimals: 0
   };
 
@@ -80,6 +108,9 @@ Hooks.once("init", () => {
   DocumentSheetConfig.registerSheet(Item, "noreturn", NoReturnItemSheet, {
     types: [
       "skill",
+      "styleskill",
+      "psiForce",
+      "psiApp",
       "weapon",
       "armor",
       "gear",
@@ -89,7 +120,9 @@ Hooks.once("init", () => {
       "species",
       "mutation",
       "trait",
-      "condition"
+      "condition",
+      "disease",
+      "toxin"
     ],
     makeDefault: true,
     label: "NORETURN.Sheet.ItemTitle"

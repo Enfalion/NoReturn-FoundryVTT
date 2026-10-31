@@ -1,7 +1,8 @@
 /**
  * DataModel for Standard NoReturn Characters, NPCs, and Creatures.
  * Based on 1st_Edition_NoReturn-Charakterbogen_1.2(DE)_edit.pdf and Corebook rules.
- * Dynamically calculates modifiers from embedded species, mutation, trait, and consumable items.
+ * Dynamically calculates modifiers from embedded species, mutation, trait, styleskill,
+ * cyberware, and consumable items.
  */
 import { parseSkillModifiers } from "./item-data.mjs";
 
@@ -39,7 +40,7 @@ export const PLAYABLE_SPECIES_PRESETS = {
     name: "Adivasi",
     subspecies: "Homo Sapiens Adivasi (Indigo)",
     costGp: 40,
-    legality: "Illegal in Zentrumsgebieten (geduldet imReservat)",
+    legality: "Illegal in Zentrumsgebieten (geduldet im Reservat)",
     psiAllowed: true,
     freePsiCount: 0,
     baseStats: { psyche: 100, organismus: 100, adrenalin: 2, infektionsresistenz: "2d6+3" },
@@ -127,7 +128,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     const primaryAttrField = () =>
       new fields.SchemaField({
         base: new fields.NumberField({ required: true, integer: true, min: 1, initial: 1 }),
-        mod: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+        mod: new fields.NumberField({ required: true, integer: true, min: -20, initial: 0 }),
         overall: new fields.NumberField({ required: true, integer: true, min: 0, initial: 1 }),
         alphaBio: new fields.BooleanField({ required: true, initial: false })
       });
@@ -190,8 +191,10 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
         bekanntheit: new fields.NumberField({ required: true, integer: true, min: 1, max: 100, initial: 100 }),
         ruf: new fields.NumberField({ required: true, integer: true, initial: 0 }),
         organismus: new fields.SchemaField({
-          max: new fields.NumberField({ required: true, min: 0, max: 100, initial: 100 }),
-          value: new fields.NumberField({ required: true, min: 0, max: 100, initial: 100 }),
+          max: new fields.NumberField({ required: true, min: 0, max: 200, initial: 100 }),
+          value: new fields.NumberField({ required: true, min: -100, max: 200, initial: 100 }),
+          current: new fields.NumberField({ required: true, min: -100, max: 200, initial: 100 }),
+          damage: new fields.NumberField({ required: true, min: 0, max: 200, initial: 0 }),
           leiden1: new fields.StringField({ required: true, initial: "" }),
           leiden2: new fields.StringField({ required: true, initial: "" }),
           leiden3: new fields.StringField({ required: true, initial: "" })
@@ -247,7 +250,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
   prepareDerivedData() {
     const items = this.parent?.items ?? [];
 
-    // 1. Collect dynamic modifiers from Species, Mutations, Traits, and Active Consumables
+    // 1. Collect dynamic modifiers from Species, Mutations, Traits, StyleSkills, Cyberware, and Active Consumables
     const itemAttrMods = {
       geschick: 0,
       staerke: 0,
@@ -268,6 +271,9 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     let mutationRegenSpeed = 0;
     let mutationRegenPool = 0;
     let activeSpeciesItem = null;
+    let cyberwareOrganismCost = 0;
+    let hasParcourStyle = false;
+    let akrobatikLevel = 0;
 
     const addAttrMods = (modsObj, multiplier = 1) => {
       if (!modsObj) return;
@@ -312,10 +318,36 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       } else if (item.type === "trait") {
         addAttrMods(item.system.attributeModifiers, 1);
         addSkillMods(item.system.skillModifiers, 1);
+      } else if (item.type === "styleskill" && item.system.active !== false) {
+        const lvl = Math.max(1, Number(item.system.level) || 1);
+        addAttrMods(item.system.attributeModifiers, lvl);
+        addSkillMods(item.system.skillModifiers, lvl);
+        if (
+          item.system.styleSkillId === "style_parcour" ||
+          item.name.toLowerCase().includes("parcour")
+        ) {
+          hasParcourStyle = true;
+        }
       } else if (item.type === "consumable" && item.system.active) {
         addAttrMods(item.system.attributeModifiers, 1);
         addSkillMods(item.system.skillModifiers, 1);
+      } else if ((item.type === "cyberware" || item.type === "robotModule") && item.system.installed !== false) {
+        const orgCost = Math.max(
+          Number(item.system.organismCost) || 0,
+          Number(item.system.organismusCost) || 0
+        );
+        cyberwareOrganismCost += orgCost;
+      } else if (item.type === "skill") {
+        if (item.system.skillId === "akrobatik" || item.name.toLowerCase() === "akrobatik") {
+          akrobatikLevel = Math.max(akrobatikLevel, Number(item.system.level) || 0);
+        }
       }
+    }
+
+    // Apply Style-Skill: Parcour (adds Akrobatik level to Klettern & Springen)
+    if (hasParcourStyle && akrobatikLevel > 0) {
+      skillBonuses["klettern"] = (skillBonuses["klettern"] || 0) + akrobatikLevel;
+      skillBonuses["springen"] = (skillBonuses["springen"] || 0) + akrobatikLevel;
     }
 
     // If no embedded species item exists, fall back to PLAYABLE_SPECIES_PRESETS based on personal.spezies
@@ -333,14 +365,31 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     this.skillBonuses = skillBonuses;
     this.itemAttrMods = itemAttrMods;
 
-    // 2. Primary Attributes (base + manual mod + item modifier)
+    // 2. Dynamic Organismus calculation (Punkt 3):
+    // system.organismus.current = system.organismus.max - (sum of system.organismCost of installed cyberware) - manual damage
+    const orgMax = Number(this.status.organismus.max) || 100;
+    const manualOrgDamage = Math.max(0, Number(this.status.organismus.damage) || 0);
+    const orgCurrent = orgMax - cyberwareOrganismCost - manualOrgDamage;
+    this.status.organismus.cyberwareCost = cyberwareOrganismCost;
+    this.status.organismus.current = orgCurrent;
+    this.status.organismus.value = orgCurrent;
+    this.organismus = {
+      max: orgMax,
+      current: orgCurrent,
+      value: orgCurrent,
+      cyberwareCost: cyberwareOrganismCost,
+      damage: manualOrgDamage
+    };
+    this.isOrganismCritical = orgCurrent <= 0;
+
+    // 3. Primary Attributes (base + manual mod + item modifier)
     for (const [key, attr] of Object.entries(this.attributes.primary)) {
       const dynMod = itemAttrMods[key] || 0;
       attr.itemMod = dynMod;
       attr.overall = Math.max(0, (attr.base || 0) + (attr.mod || 0) + dynMod);
     }
 
-    // 3. Secondary Attributes (base + manual mod + item modifier)
+    // 4. Secondary Attributes (base + manual mod + item modifier)
     for (const [key, attr] of Object.entries(this.attributes.secondary)) {
       const dynMod = itemAttrMods[key] || 0;
       attr.itemMod = dynMod;
@@ -366,7 +415,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     const schnelligkeit = this.attributes.primary.schnelligkeit.overall;
     const staerke = this.attributes.primary.staerke.overall;
 
-    // 4. Aggregate equipped armor & stemmen skill from parent Actor's items
+    // 5. Aggregate equipped armor & stemmen skill from parent Actor's items
     let stemmenLevel = 0;
     let maxArmorComfort = 0;
     const zoneBonusArmor = {};
@@ -395,14 +444,14 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       }
     }
 
-    // 5. Carry Capacity (Tragkraft) = (Stärke + Stemmen + Bonus) * 10 kg
+    // 6. Carry Capacity (Tragkraft) = (Stärke + Stemmen + Bonus) * 10 kg
     const stemmenBonus = skillBonuses["stemmen"] || 0;
     this.status.tragkraft = (staerke + stemmenLevel + stemmenBonus) * 10;
 
-    // 6. Armor Comfort Penalty
+    // 7. Armor Comfort Penalty
     this.health.comfortPenalty = Math.max(0, maxArmorComfort - konstitution);
 
-    // 7. Hit Zones & Wound Penalties
+    // 8. Hit Zones & Wound Penalties
     const tierMax = Math.max(Number(this.health.maxHpTier) || 30, mutationMaxHpOverride);
     const stageSize = Math.max(1, tierMax / 10);
     let totalWoundPenalty = 0;
@@ -431,5 +480,18 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
 
     this.isUnconscious = this.health.gesamteMali >= konstitution && konstitution > 0;
     this.isImmobilized = this.health.gesamteMali >= schnelligkeit && schnelligkeit > 0;
+
+    // 9. PSI Hierarchy & Pyramid Summary (Punkt 5)
+    const psiForces = items.filter((i) => i.type === "psiForce" && i.system.psiCategory === "A");
+    const t1Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 1).length;
+    const t2Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 2).length;
+    const t3Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 3).length;
+    const forceHierarchyValid = t2Forces <= t1Forces && t3Forces <= t2Forces;
+    this.psiSummary = {
+      t1Forces,
+      t2Forces,
+      t3Forces,
+      forceHierarchyValid
+    };
   }
 }

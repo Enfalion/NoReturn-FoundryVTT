@@ -1,6 +1,7 @@
 /**
  * Item TypeDataModel subclasses for NoReturn (Foundry VTT v14).
- * Covers: skill, weapon, armor, gear, consumable, cyberware, robotModule, species, mutation, trait, condition.
+ * Covers: skill, styleskill, psiForce, psiApp, weapon, armor, gear, consumable,
+ * cyberware, robotModule, species, mutation, trait, condition, disease, toxin.
  */
 
 function createAttributeModifierSchema(fields) {
@@ -71,7 +72,7 @@ export class NoReturnSkillData extends foundry.abstract.TypeDataModel {
         else if (sec) attrVal = Number(sec.total ?? sec.base ?? 0);
       }
 
-      // Check actor's aggregated skill bonuses from species, mutations, traits, and active consumables
+      // Check actor's aggregated skill bonuses from species, mutations, traits, styleskills, and active consumables
       const skillBonuses = actor.system?.skillBonuses || {};
       const idKey = (this.skillId || "").toLowerCase();
       const nameKey = (this.parent?.name || "").toLowerCase();
@@ -86,6 +87,166 @@ export class NoReturnSkillData extends foundry.abstract.TypeDataModel {
     this.itemBonusMod = itemBonusMod;
     this.effectiveMod = (Number(this.mod) || 0) + itemBonusMod;
     this.pool = Math.max(0, attrVal + (Number(this.level) || 0) + this.effectiveMod);
+  }
+}
+
+export class NoReturnStyleSkillData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      styleSkillId: new fields.StringField({ required: true, initial: "" }),
+      styleCategory: new fields.StringField({
+        required: true,
+        choices: ["styleskill", "kampfkunst"],
+        initial: "styleskill"
+      }),
+      attribute: new fields.StringField({ required: true, initial: "geschick" }),
+      level: new fields.NumberField({ required: true, integer: true, min: 1, initial: 1 }),
+      maxLevel: new fields.NumberField({ required: true, integer: true, min: 1, initial: 1 }),
+      mod: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      costGp: new fields.NumberField({ required: true, min: 0, initial: 5 }),
+      costEpFormula: new fields.StringField({ required: true, initial: "10" }),
+      prerequisites: new fields.StringField({ required: true, initial: "" }),
+      passiveBonus: new fields.StringField({ required: true, initial: "" }),
+      skillModifiers: new fields.StringField({ required: true, initial: "" }),
+      attributeModifiers: createAttributeModifierSchema(fields),
+      active: new fields.BooleanField({ required: true, initial: true }),
+      description: new fields.HTMLField({ required: true, initial: "" })
+    };
+  }
+
+  prepareDerivedData() {
+    const actor = this.parent?.parent;
+    let attrVal = 0;
+    if (actor && this.attribute) {
+      const prim = actor.system?.attributes?.primary?.[this.attribute];
+      const sec = actor.system?.attributes?.secondary?.[this.attribute];
+      if (prim) attrVal = Number(prim.overall ?? prim.base ?? 0);
+      else if (sec) attrVal = Number(sec.total ?? sec.base ?? 0);
+    }
+    this.attributeValue = attrVal;
+    this.pool = Math.max(0, attrVal + (Number(this.level) || 0) + (Number(this.mod) || 0));
+  }
+}
+
+export class NoReturnPsiForceData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      forceId: new fields.StringField({ required: true, initial: "telekinese" }),
+      psiCategory: new fields.StringField({ required: true, choices: ["A", "B"], initial: "A" }),
+      hierarchyTier: new fields.NumberField({ required: true, integer: true, min: 1, max: 3, initial: 1 }),
+      level: new fields.NumberField({ required: true, integer: true, min: 1, initial: 1 }),
+      mod: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      costGp: new fields.NumberField({ required: true, min: 0, initial: 10 }),
+      costEpFormula: new fields.StringField({ required: true, initial: "nextLevel * 4" }),
+      showEffect: new fields.StringField({ required: true, initial: "" }),
+      elementalEffect: new fields.StringField({ required: true, initial: "" }),
+      active: new fields.BooleanField({ required: true, initial: true }),
+      description: new fields.HTMLField({ required: true, initial: "" })
+    };
+  }
+
+  prepareDerivedData() {
+    this.pool = Math.max(1, (Number(this.level) || 1) + (Number(this.mod) || 0));
+  }
+}
+
+export class NoReturnPsiAppData extends foundry.abstract.TypeDataModel {
+  static defineSchema() {
+    const fields = foundry.data.fields;
+    return {
+      appId: new fields.StringField({ required: true, initial: "" }),
+      psiForce: new fields.StringField({ required: true, initial: "telekinese" }),
+      psiForceLabel: new fields.StringField({ required: true, initial: "Telekinese" }),
+      tier: new fields.NumberField({ required: true, integer: true, min: 1, max: 3, initial: 1 }),
+      level: new fields.NumberField({ required: true, integer: true, min: 1, max: 3, initial: 1 }),
+      targetRange: new fields.StringField({ required: true, initial: "8-12" }),
+      targetMin: new fields.NumberField({ required: true, integer: true, min: 1, initial: 8 }),
+      targetMax: new fields.NumberField({ required: true, integer: true, min: 1, initial: 12 }),
+      noobValue: new fields.NumberField({ required: true, integer: true, min: 0, initial: 14 }),
+      masteryLevel: new fields.NumberField({ required: true, integer: true, min: 0, initial: 6 }),
+      upkeepPenalty: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
+      cost: new fields.StringField({ required: true, initial: "1 Aktion (2 Aktionen mit [KS])" }),
+      exhaustionCost: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
+      range: new fields.StringField({ required: true, initial: "Sichtfeld" }),
+      duration: new fields.StringField({ required: true, initial: "Sofort" }),
+      rollFormula: new fields.StringField({ required: true, initial: "@psiForce" }),
+      defensiveMode: new fields.StringField({
+        required: true,
+        choices: ["", "block", "dodge"],
+        initial: ""
+      }),
+      costGp: new fields.NumberField({ required: true, min: 0, initial: 3 }),
+      costEp: new fields.NumberField({ required: true, min: 0, initial: 5 }),
+      description: new fields.HTMLField({ required: true, initial: "" })
+    };
+  }
+
+  prepareDerivedData() {
+    const resolvedTier = Math.clamp(Number(this.tier || this.level || 1), 1, 3);
+    this.tier = resolvedTier;
+    this.level = resolvedTier;
+
+    // Parse targetRange if targetMin/targetMax not explicitly aligned
+    if (this.targetRange && this.targetRange.includes("-")) {
+      const [minStr, maxStr] = this.targetRange.split("-");
+      const minVal = Number(minStr.trim());
+      const maxVal = Number(maxStr.trim());
+      if (!Number.isNaN(minVal) && !Number.isNaN(maxVal)) {
+        this.targetMin = minVal;
+        this.targetMax = maxVal;
+      }
+    }
+
+    const actor = this.parent?.parent;
+    this.forceLevel = 0;
+    this.forcePool = 0;
+    this.isMastered = false;
+    this.pyramidValid = true;
+    this.pyramidReason = "";
+
+    if (actor) {
+      const forceKey = (this.psiForce || "").toLowerCase().replace(/^psi_/, "");
+      // Find matching psiForce or legacy psi skill on actor
+      const forceItem = actor.items?.find((i) => {
+        if (i.type === "psiForce") {
+          return (i.system.forceId || "").toLowerCase().replace(/^psi_/, "") === forceKey;
+        }
+        if (i.type === "skill" && i.system.category === "psi") {
+          return (i.system.skillId || "").toLowerCase().replace(/^psi_/, "") === forceKey;
+        }
+        return false;
+      });
+
+      if (forceItem) {
+        this.forceLevel = Number(forceItem.system.level) || 0;
+        this.forcePool = Math.max(1, this.forceLevel + (Number(forceItem.system.mod) || 0));
+      }
+
+      this.isMastered = this.masteryLevel > 0 && this.forceLevel >= this.masteryLevel;
+
+      // Validate PSI Pyramid for this force on the actor
+      const sameForceApps = (actor.items ?? []).filter(
+        (i) =>
+          i.type === "psiApp" &&
+          (i.system.psiForce || "").toLowerCase().replace(/^psi_/, "") === forceKey
+      );
+      const t1Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 1).length;
+      const t2Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 2).length;
+      const t3Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 3).length;
+
+      if (this.forceLevel <= 0 && forceKey !== "kategorie_b") {
+        this.pyramidValid = false;
+        this.pyramidReason = `PSI-Kraft „${this.psiForceLabel || this.psiForce}“ nicht erlernt.`;
+      } else if (resolvedTier === 2 && t1Count < t2Count) {
+        this.pyramidValid = false;
+        this.pyramidReason = `PSI-Pyramide: Für ${t2Count} App(s) der Stufe 2 werden mindestens ${t2Count} App(s) der Stufe 1 in ${this.psiForceLabel} benötigt (aktuell: ${t1Count}).`;
+      } else if (resolvedTier === 3 && (t2Count < t3Count || t1Count < t2Count)) {
+        this.pyramidValid = false;
+        this.pyramidReason = `PSI-Pyramide: Für ${t3Count} App(s) der Stufe 3 werden mindestens je ${t3Count} App(s) der Stufen 1 und 2 in ${this.psiForceLabel} benötigt (Stufe 1: ${t1Count}, Stufe 2: ${t2Count}).`;
+      }
+    }
   }
 }
 
@@ -187,15 +348,24 @@ export class NoReturnCyberwareData extends foundry.abstract.TypeDataModel {
       targetZone: new fields.StringField({ required: true, initial: "12" }),
       zone: new fields.StringField({ required: true, initial: "Kopf (12)" }),
       capacityCost: new fields.NumberField({ required: true, min: 0, initial: 0.5 }),
+      organismCost: new fields.NumberField({ required: true, min: 0, initial: 2 }),
       organismusCost: new fields.NumberField({ required: true, min: 0, initial: 2 }),
       psycheCost: new fields.NumberField({ required: true, min: 0, initial: 1 }),
       energyDrain: new fields.NumberField({ required: true, min: 0, initial: 0 }),
+      installed: new fields.BooleanField({ required: true, initial: true }),
       price: new fields.NumberField({ required: true, min: 0, initial: 2500 }),
       techLevel: new fields.StringField({ required: true, initial: "IV" }),
       design: new fields.StringField({ required: true, initial: "" }),
       effects: new fields.StringField({ required: true, initial: "" }),
       description: new fields.HTMLField({ required: true, initial: "" })
     };
+  }
+
+  prepareDerivedData() {
+    // Keep organismCost and organismusCost synchronized
+    const cost = Math.max(Number(this.organismCost) || 0, Number(this.organismusCost) || 0);
+    this.organismCost = cost;
+    this.organismusCost = cost;
   }
 }
 
@@ -209,9 +379,11 @@ export class NoReturnRobotModuleData extends foundry.abstract.TypeDataModel {
       zone: new fields.StringField({ required: true, initial: "r. Arm (5)" }),
       capacity: new fields.NumberField({ required: true, min: 0, initial: 0 }),
       capacityCost: new fields.NumberField({ required: true, min: 0, initial: 1 }),
+      organismCost: new fields.NumberField({ required: true, min: 0, initial: 0 }),
       organismusCost: new fields.NumberField({ required: true, min: 0, initial: 0 }),
       psycheCost: new fields.NumberField({ required: true, min: 0, initial: 0 }),
       energyDrain: new fields.NumberField({ required: true, min: 0, initial: 0.5 }),
+      installed: new fields.BooleanField({ required: true, initial: true }),
       price: new fields.NumberField({ required: true, min: 0, initial: 2500 }),
       techLevel: new fields.StringField({ required: true, initial: "III" }),
       design: new fields.StringField({ required: true, initial: "" }),
@@ -227,6 +399,12 @@ export class NoReturnRobotModuleData extends foundry.abstract.TypeDataModel {
       effects: new fields.StringField({ required: true, initial: "" }),
       description: new fields.HTMLField({ required: true, initial: "" })
     };
+  }
+
+  prepareDerivedData() {
+    const cost = Math.max(Number(this.organismCost) || 0, Number(this.organismusCost) || 0);
+    this.organismCost = cost;
+    this.organismusCost = cost;
   }
 }
 
