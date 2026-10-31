@@ -89,18 +89,22 @@
         <div class="nr-stat-grid">
           <label>
             <span>{{localize "NORETURN.PSI.Category"}}</span>
-            <select name="system.category">
-              <option value="A" {{#if (eq system.category "A")}}selected{{/if}}>Kategorie A (Pyramide)</option>
-              <option value="B" {{#if (eq system.category "B")}}selected{{/if}}>Kategorie B (HMO)</option>
+            <select name="system.psiCategory">
+              <option value="A" {{#if (eq system.psiCategory "A")}}selected{{/if}}>{{localize "NORETURN.PSI.CategoryA"}}</option>
+              <option value="B" {{#if (eq system.psiCategory "B")}}selected{{/if}}>{{localize "NORETURN.PSI.CategoryB"}}</option>
             </select>
           </label>
           <label>
             <span>{{localize "NORETURN.PSI.HierarchyTier"}}</span>
             <select name="system.hierarchyTier" data-dtype="Number">
-              <option value="1" {{#if (eq system.hierarchyTier 1)}}selected{{/if}}>Stufe 1</option>
-              <option value="2" {{#if (eq system.hierarchyTier 2)}}selected{{/if}}>Stufe 2</option>
-              <option value="3" {{#if (eq system.hierarchyTier 3)}}selected{{/if}}>Stufe 3</option>
+              <option value="1" {{#if (eq system.hierarchyTier 1)}}selected{{/if}}>Hierarchiestufe 1 (Cryo/Elektro/Pyro/Tele)</option>
+              <option value="2" {{#if (eq system.hierarchyTier 2)}}selected{{/if}}>Hierarchiestufe 2 (Anima/Momen/Photo/Psycho)</option>
+              <option value="3" {{#if (eq system.hierarchyTier 3)}}selected{{/if}}>Hierarchiestufe 3 (Bio/Crono/Morpho/Techno)</option>
             </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.ManualHierarchyOverride"}}</span>
+            <input type="checkbox" name="system.manualHierarchyOverride" {{checked system.manualHierarchyOverride}} />
           </label>
           <label>
             <span>{{localize "NORETURN.Skills.Level"}}</span>
@@ -124,15 +128,34 @@
       {{#if (eq itemType "psiApp")}}
         <div class="nr-stat-grid">
           <label>
+            <span>{{localize "NORETURN.PSI.Category"}}</span>
+            <select name="system.psiCategory">
+              <option value="A" {{#if (eq system.psiCategory "A")}}selected{{/if}}>{{localize "NORETURN.PSI.CategoryA"}}</option>
+              <option value="B" {{#if (eq system.psiCategory "B")}}selected{{/if}}>{{localize "NORETURN.PSI.CategoryB"}}</option>
+            </select>
+          </label>
+          <label>
             <span>{{localize "NORETURN.PSI.ForceName"}}</span>
             <input type="text" name="system.psiForce" value="{{system.psiForce}}" />
           </label>
           <label>
+            <span>{{localize "NORETURN.PSI.HierarchyTier"}}</span>
+            <select name="system.forceHierarchyTier" data-dtype="Number">
+              <option value="1" {{#if (eq system.forceHierarchyTier 1)}}selected{{/if}}>Hierarchiestufe 1</option>
+              <option value="2" {{#if (eq system.forceHierarchyTier 2)}}selected{{/if}}>Hierarchiestufe 2</option>
+              <option value="3" {{#if (eq system.forceHierarchyTier 3)}}selected{{/if}}>Hierarchiestufe 3</option>
+            </select>
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.ManualHierarchyOverride"}}</span>
+            <input type="checkbox" name="system.manualHierarchyOverride" {{checked system.manualHierarchyOverride}} />
+          </label>
+          <label>
             <span>{{localize "NORETURN.PSI.AppTier"}}</span>
             <select name="system.tier" data-dtype="Number">
-              <option value="1" {{#if (eq system.tier 1)}}selected{{/if}}>Stufe 1 (8–12 / 11–15)</option>
+              <option value="1" {{#if (eq system.tier 1)}}selected{{/if}}>Stufe 1 (8–12 / Kat. B: 11–15)</option>
               <option value="2" {{#if (eq system.tier 2)}}selected{{/if}}>Stufe 2 (15–19)</option>
-              <option value="3" {{#if (eq system.tier 3)}}selected{{/if}}>Stufe 3 (19–22 / 23–25)</option>
+              <option value="3" {{#if (eq system.tier 3)}}selected{{/if}}>Stufe 3 (19–22 / Kat. B: 23–25)</option>
             </select>
           </label>
           <label>
@@ -145,6 +168,14 @@
           <label>
             <span>{{localize "NORETURN.PSI.Cost"}} [KS]</span>
             <input type="text" name="system.cost" value="{{system.cost}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.PSI.DefensiveMode"}}</span>
+            <select name="system.defensiveMode">
+              <option value="" {{#if (eq system.defensiveMode "")}}selected{{/if}}>–</option>
+              <option value="block" {{#if (eq system.defensiveMode "block")}}selected{{/if}}>Blocken</option>
+              <option value="dodge" {{#if (eq system.defensiveMode "dodge")}}selected{{/if}}>Ausweichen</option>
+            </select>
           </label>
           <label>
             <span>{{localize "NORETURN.PSI.Range"}}</span>

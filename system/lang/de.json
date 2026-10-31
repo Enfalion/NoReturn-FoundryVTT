@@ -281,7 +281,14 @@
       "ForceName": "PSI-Kraft",
       "AppName": "PSI-App",
       "Category": "Kategorie",
+      "CategoryA": "Kategorie A",
+      "CategoryB": "Kategorie B",
       "HierarchyTier": "Hierarchiestufe",
+      "ManualHierarchyOverride": "Manuelle Hierarchiestufe (SL-Override)",
+      "DefensiveMode": "Defensiv-Modus",
+      "DynamicPoolHeader": "Dynamischer PSI-Würfelpool (GRW)",
+      "DynamicPoolDesc": "Aus dem Maximalpool kann im Würfeldialog jede beliebige Anzahl an W6 gewählt werden, um exakt den Zielkorridor zu treffen (keine Explosion bei 6)",
+      "HierarchyOverviewHeader": "Hierarchiestufen der PSI-Kräfte",
       "AppTier": "App-Stufe",
       "Tier": "Stufe",
       "Forces": "Kräfte",
@@ -303,6 +310,10 @@
       "MishapTable3": "Fehlschlag S3",
       "OverloadTable": "Overload-Tabelle",
       "PyramidRuleHint": "Pyramidenregel: Um eine PSI-Kraft oder PSI-App der Stufe 2 bzw. 3 zu erlernen/aktivieren, müssen jeweils mindestens 2 Kräfte bzw. Apps der darunterliegenden Stufe beherrscht werden."
+    },
+    "Settings": {
+      "PsiHierarchyOverridesName": "PSI-Hierarchiestufen manuell überschreiben (SL)",
+      "PsiHierarchyOverridesHint": "Optionale Komma-getrennte Liste oder JSON (z. B. Pyrokinese:2,Biokinese:1), um die Standard-Hierarchiestufen (Stufe 1: Cryo/Elektro/Pyro/Tele; Stufe 2: Anima/Momen/Photo/Psycho; Stufe 3: Bio/Crono/Morpho/Techno) anzupassen."
     },
     "Combat": {
       "WeaponsHeader": "Waffen (Nah- & Fernkampf)",

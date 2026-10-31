@@ -4,7 +4,7 @@
  * Dynamically calculates modifiers from embedded species, mutation, trait, styleskill,
  * cyberware, and consumable items.
  */
-import { parseSkillModifiers } from "./item-data.mjs";
+import { parseSkillModifiers, resolvePsiHierarchyTier } from "./item-data.mjs";
 
 export const HIT_ZONES = [
   { code: "12", labelKey: "NORETURN.Health.Zones.12", lethal: true },
@@ -147,7 +147,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
         max: new fields.NumberField({ required: true, integer: true, min: 10, initial: 30 }),
         armor: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
         equippedArmor: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
-        materialCategory: new fields.StringField({ required: true, initial: "A" }),
+        materialCategory: new fields.StringField({ required: false, blank: true, initial: "A" }),
         penalty: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
         lethal: new fields.BooleanField({ required: true, initial: z.lethal })
       });
@@ -155,15 +155,15 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
 
     return {
       personal: new fields.SchemaField({
-        spezies: new fields.StringField({ required: true, initial: "Mensch" }),
-        geschlecht: new fields.StringField({ required: true, initial: "" }),
+        spezies: new fields.StringField({ required: false, blank: true, initial: "Mensch" }),
+        geschlecht: new fields.StringField({ required: false, blank: true, initial: "" }),
         alter: new fields.NumberField({ required: true, integer: true, min: 0, initial: 25 }),
-        groesse: new fields.StringField({ required: true, initial: "1,78 m" }),
-        gewicht: new fields.StringField({ required: true, initial: "75 kg" }),
-        haarfarbe: new fields.StringField({ required: true, initial: "" }),
-        augenfarbe: new fields.StringField({ required: true, initial: "" }),
-        hautfarbe: new fields.StringField({ required: true, initial: "" }),
-        berufung: new fields.StringField({ required: true, initial: "" })
+        groesse: new fields.StringField({ required: false, blank: true, initial: "1,78 m" }),
+        gewicht: new fields.StringField({ required: false, blank: true, initial: "75 kg" }),
+        haarfarbe: new fields.StringField({ required: false, blank: true, initial: "" }),
+        augenfarbe: new fields.StringField({ required: false, blank: true, initial: "" }),
+        hautfarbe: new fields.StringField({ required: false, blank: true, initial: "" }),
+        berufung: new fields.StringField({ required: false, blank: true, initial: "" })
       }),
       attributes: new fields.SchemaField({
         primary: new fields.SchemaField({
@@ -195,15 +195,15 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
           value: new fields.NumberField({ required: true, min: -100, max: 200, initial: 100 }),
           current: new fields.NumberField({ required: true, min: -100, max: 200, initial: 100 }),
           damage: new fields.NumberField({ required: true, min: 0, max: 200, initial: 0 }),
-          leiden1: new fields.StringField({ required: true, initial: "" }),
-          leiden2: new fields.StringField({ required: true, initial: "" }),
-          leiden3: new fields.StringField({ required: true, initial: "" })
+          leiden1: new fields.StringField({ required: false, blank: true, initial: "" }),
+          leiden2: new fields.StringField({ required: false, blank: true, initial: "" }),
+          leiden3: new fields.StringField({ required: false, blank: true, initial: "" })
         }),
         psyche: new fields.SchemaField({
           max: new fields.NumberField({ required: true, integer: true, min: 0, max: 100, initial: 100 }),
           value: new fields.NumberField({ required: true, integer: true, min: 0, max: 100, initial: 80 })
         }),
-        infektionsresistenz: new fields.StringField({ required: true, initial: "2d6" }),
+        infektionsresistenz: new fields.StringField({ required: false, blank: true, initial: "2d6" }),
         regeneration: new fields.SchemaField({
           geschwindigkeit: new fields.NumberField({ required: true, integer: true, min: 0, initial: 1 }),
           pool: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 })
@@ -236,14 +236,14 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
         zones: new fields.SchemaField(zoneSchemas)
       }),
       traits: new fields.SchemaField({
-        charaktermerkmale: new fields.StringField({ required: true, initial: "" }),
-        mutationen: new fields.StringField({ required: true, initial: "" }),
-        begabungen: new fields.StringField({ required: true, initial: "" }),
-        talente: new fields.StringField({ required: true, initial: "" }),
-        styleSkills: new fields.StringField({ required: true, initial: "" }),
-        kampfsportarten: new fields.StringField({ required: true, initial: "" })
+        charaktermerkmale: new fields.StringField({ required: false, blank: true, initial: "" }),
+        mutationen: new fields.StringField({ required: false, blank: true, initial: "" }),
+        begabungen: new fields.StringField({ required: false, blank: true, initial: "" }),
+        talente: new fields.StringField({ required: false, blank: true, initial: "" }),
+        styleSkills: new fields.StringField({ required: false, blank: true, initial: "" }),
+        kampfsportarten: new fields.StringField({ required: false, blank: true, initial: "" })
       }),
-      notes: new fields.HTMLField({ required: true, initial: "" })
+      notes: new fields.HTMLField({ required: false, blank: true, initial: "" })
     };
   }
 
@@ -481,11 +481,17 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     this.isUnconscious = this.health.gesamteMali >= konstitution && konstitution > 0;
     this.isImmobilized = this.health.gesamteMali >= schnelligkeit && schnelligkeit > 0;
 
-    // 9. PSI Hierarchy & Pyramid Summary (Punkt 5)
+    // 9. PSI Hierarchy & Pyramid Summary (Punkt 4.3)
     const psiForces = items.filter((i) => i.type === "psiForce" && i.system.psiCategory === "A");
-    const t1Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 1).length;
-    const t2Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 2).length;
-    const t3Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 3).length;
+    const getForceTier = (f) =>
+      resolvePsiHierarchyTier(
+        f.system.psiForce || f.name,
+        f.system.hierarchyTier,
+        Boolean(f.system.manualHierarchyOverride)
+      );
+    const t1Forces = psiForces.filter((f) => getForceTier(f) === 1).length;
+    const t2Forces = psiForces.filter((f) => getForceTier(f) === 2).length;
+    const t3Forces = psiForces.filter((f) => getForceTier(f) === 3).length;
     const forceHierarchyValid = t2Forces <= t1Forces && t3Forces <= t2Forces;
     this.psiSummary = {
       t1Forces,

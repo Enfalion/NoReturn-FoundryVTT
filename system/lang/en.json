@@ -281,7 +281,14 @@
       "ForceName": "PSI Force",
       "AppName": "PSI App",
       "Category": "Category",
+      "CategoryA": "Kategorie A",
+      "CategoryB": "Kategorie B",
       "HierarchyTier": "Hierarchy Tier",
+      "ManualHierarchyOverride": "Manual Hierarchy Tier (GM Override)",
+      "DefensiveMode": "Defensive Mode",
+      "DynamicPoolHeader": "Dynamic PSI Dice Pool (Core Rules)",
+      "DynamicPoolDesc": "From your maximum pool you can freely select how many d6 to roll in the dialog to hit the exact target corridor (no explosion on 6)",
+      "HierarchyOverviewHeader": "PSI Force Hierarchy Tiers",
       "AppTier": "App Tier",
       "Tier": "Tier",
       "Forces": "Forces",
@@ -303,6 +310,10 @@
       "MishapTable3": "Mishap T3",
       "OverloadTable": "Overload Table",
       "PyramidRuleHint": "Pyramid Rule: To learn or activate a Tier 2 or Tier 3 PSI Force or PSI App, you must first know at least 2 Forces or Apps of the lower tier."
+    },
+    "Settings": {
+      "PsiHierarchyOverridesName": "Override PSI Hierarchy Tiers (GM)",
+      "PsiHierarchyOverridesHint": "Optional comma-separated list or JSON (e.g. Pyrokinese:2,Biokinese:1) to override the default PSI Force hierarchy tiers."
     },
     "Combat": {
       "WeaponsHeader": "Weapons (Melee & Ranged)",

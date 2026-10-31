@@ -4,7 +4,7 @@
  * 11-zone Robotics tuning, Chassis status, Power Supply/Battery, Module Sockets,
  * Energy Drain, and Structural Hitpoints (1st_Edition_NoReturn-Robotikbogen.pdf & Corebook pp. 182-187).
  */
-import { parseSkillModifiers } from "./item-data.mjs";
+import { parseSkillModifiers, resolvePsiHierarchyTier } from "./item-data.mjs";
 import { PLAYABLE_SPECIES_PRESETS } from "./character-data.mjs";
 
 export const ROBOT_ZONE_ORDER = [
@@ -137,11 +137,12 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
       zoneSchemas[z.code] = new fields.SchemaField({
         isRobotic: new fields.BooleanField({ required: true, initial: true }),
         model: new fields.StringField({
-          required: true,
+          required: false,
+          blank: true,
           choices: ["bio", "casual", "work", "hightech", "android", "military"],
           initial: "casual"
         }),
-        design: new fields.StringField({ required: true, initial: "Casual - Steel" }),
+        design: new fields.StringField({ required: false, blank: true, initial: "Casual - Steel" }),
         upgrades: new fields.SchemaField({
           geschick: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
           staerke: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
@@ -161,7 +162,7 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
           kapazitaetFrei: new fields.NumberField({ required: true, initial: 10 }),
           organismus: new fields.NumberField({ required: true, min: 0, initial: 8 }),
           panzerung: new fields.NumberField({ required: true, integer: true, min: 0, initial: 20 }),
-          materialCategory: new fields.StringField({ required: true, initial: "B" })
+          materialCategory: new fields.StringField({ required: false, blank: true, initial: "B" })
         }),
         health: new fields.SchemaField({
           damage: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
@@ -176,7 +177,7 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
         max: new fields.NumberField({ required: true, integer: true, min: 10, initial: 50 }),
         armor: new fields.NumberField({ required: true, integer: true, min: 0, initial: 20 }),
         equippedArmor: new fields.NumberField({ required: true, integer: true, min: 0, initial: 20 }),
-        materialCategory: new fields.StringField({ required: true, initial: "B" }),
+        materialCategory: new fields.StringField({ required: false, blank: true, initial: "B" }),
         penalty: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
         lethal: new fields.BooleanField({ required: true, initial: z.lethal })
       });
@@ -184,20 +185,20 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
 
     return {
       personal: new fields.SchemaField({
-        spezies: new fields.StringField({ required: true, initial: "Mensch" }),
-        geschlecht: new fields.StringField({ required: true, initial: "" }),
+        spezies: new fields.StringField({ required: false, blank: true, initial: "Mensch" }),
+        geschlecht: new fields.StringField({ required: false, blank: true, initial: "" }),
         alter: new fields.NumberField({ required: true, integer: true, min: 0, initial: 25 }),
-        groesse: new fields.StringField({ required: true, initial: "1,85 m" }),
-        gewicht: new fields.StringField({ required: true, initial: "120 kg" }),
-        haarfarbe: new fields.StringField({ required: true, initial: "" }),
-        augenfarbe: new fields.StringField({ required: true, initial: "" }),
-        hautfarbe: new fields.StringField({ required: true, initial: "" }),
-        berufung: new fields.StringField({ required: true, initial: "Cyborg / Operator" }),
-        modell: new fields.StringField({ required: true, initial: "Heart Industries Chassis" }),
-        seriennummer: new fields.StringField({ required: true, initial: "HI-5499-NR" }),
-        besitzer: new fields.StringField({ required: true, initial: "" }),
-        hersteller: new fields.StringField({ required: true, initial: "Heart Industries" }),
-        techLevel: new fields.StringField({ required: true, initial: "IV" })
+        groesse: new fields.StringField({ required: false, blank: true, initial: "1,85 m" }),
+        gewicht: new fields.StringField({ required: false, blank: true, initial: "120 kg" }),
+        haarfarbe: new fields.StringField({ required: false, blank: true, initial: "" }),
+        augenfarbe: new fields.StringField({ required: false, blank: true, initial: "" }),
+        hautfarbe: new fields.StringField({ required: false, blank: true, initial: "" }),
+        berufung: new fields.StringField({ required: false, blank: true, initial: "Cyborg / Operator" }),
+        modell: new fields.StringField({ required: false, blank: true, initial: "Heart Industries Chassis" }),
+        seriennummer: new fields.StringField({ required: false, blank: true, initial: "HI-5499-NR" }),
+        besitzer: new fields.StringField({ required: false, blank: true, initial: "" }),
+        hersteller: new fields.StringField({ required: false, blank: true, initial: "Heart Industries" }),
+        techLevel: new fields.StringField({ required: false, blank: true, initial: "IV" })
       }),
       attributes: new fields.SchemaField({
         primary: new fields.SchemaField({
@@ -222,8 +223,8 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
         })
       }),
       chassis: new fields.SchemaField({
-        status: new fields.StringField({ required: true, initial: "Online / Optimal" }),
-        powerSupply: new fields.StringField({ required: true, initial: "ZEUS-Kern / Bio-Reaktor" }),
+        status: new fields.StringField({ required: false, blank: true, initial: "Online / Optimal" }),
+        powerSupply: new fields.StringField({ required: false, blank: true, initial: "ZEUS-Kern / Bio-Reaktor" }),
         battery: new fields.SchemaField({
           value: new fields.NumberField({ required: true, min: 0, max: 1000, initial: 100 }),
           max: new fields.NumberField({ required: true, min: 1, max: 1000, initial: 100 })
@@ -276,15 +277,15 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
         organismus: new fields.SchemaField({
           max: new fields.NumberField({ required: true, min: 0, initial: 100 }),
           value: new fields.NumberField({ required: true, min: 0, initial: 12 }),
-          leiden1: new fields.StringField({ required: true, initial: "" }),
-          leiden2: new fields.StringField({ required: true, initial: "" }),
-          leiden3: new fields.StringField({ required: true, initial: "" })
+          leiden1: new fields.StringField({ required: false, blank: true, initial: "" }),
+          leiden2: new fields.StringField({ required: false, blank: true, initial: "" }),
+          leiden3: new fields.StringField({ required: false, blank: true, initial: "" })
         }),
         psyche: new fields.SchemaField({
           max: new fields.NumberField({ required: true, min: 0, initial: 100 }),
           value: new fields.NumberField({ required: true, min: 0, initial: 80 })
         }),
-        infektionsresistenz: new fields.StringField({ required: true, initial: "2d6" }),
+        infektionsresistenz: new fields.StringField({ required: false, blank: true, initial: "2d6" }),
         regeneration: new fields.SchemaField({
           geschwindigkeit: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
           pool: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 })
@@ -317,14 +318,14 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
         zones: new fields.SchemaField(healthZoneSchemas)
       }),
       traits: new fields.SchemaField({
-        charaktermerkmale: new fields.StringField({ required: true, initial: "" }),
-        mutationen: new fields.StringField({ required: true, initial: "" }),
-        begabungen: new fields.StringField({ required: true, initial: "" }),
-        talente: new fields.StringField({ required: true, initial: "" }),
-        styleSkills: new fields.StringField({ required: true, initial: "" }),
-        kampfsportarten: new fields.StringField({ required: true, initial: "" })
+        charaktermerkmale: new fields.StringField({ required: false, blank: true, initial: "" }),
+        mutationen: new fields.StringField({ required: false, blank: true, initial: "" }),
+        begabungen: new fields.StringField({ required: false, blank: true, initial: "" }),
+        talente: new fields.StringField({ required: false, blank: true, initial: "" }),
+        styleSkills: new fields.StringField({ required: false, blank: true, initial: "" }),
+        kampfsportarten: new fields.StringField({ required: false, blank: true, initial: "" })
       }),
-      notes: new fields.HTMLField({ required: true, initial: "" })
+      notes: new fields.HTMLField({ required: false, blank: true, initial: "" })
     };
   }
 
@@ -592,9 +593,15 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
     this.isOrganismCritical = restOrg <= 0;
 
     const psiForces = items.filter((i) => i.type === "psiForce" && i.system.psiCategory === "A");
-    const t1Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 1).length;
-    const t2Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 2).length;
-    const t3Forces = psiForces.filter((f) => Number(f.system.hierarchyTier) === 3).length;
+    const getForceTier = (f) =>
+      resolvePsiHierarchyTier(
+        f.system.psiForce || f.name,
+        f.system.hierarchyTier,
+        Boolean(f.system.manualHierarchyOverride)
+      );
+    const t1Forces = psiForces.filter((f) => getForceTier(f) === 1).length;
+    const t2Forces = psiForces.filter((f) => getForceTier(f) === 2).length;
+    const t3Forces = psiForces.filter((f) => getForceTier(f) === 3).length;
     this.psiSummary = {
       t1Forces,
       t2Forces,

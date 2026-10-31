@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.0 (English)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.1 (English)
 
 Official **Foundry Virtual Tabletop (v14)** system implementation for **NoReturn – Post-Apocalyptic Sci-Fi RPG (1st Edition)** by **Enfalion**.
 
@@ -17,7 +17,7 @@ Direct Release Download:
 
 ---
 
-## Key Features in v1.1.0
+## Key Features in v1.1.1
 
 1. **Initiative Overhaul & Mexican Standoff Dialog:**
    - Binds **Speed + Reaction** (`Schnelligkeit + Reaktion`) into all initiative rolls both from actor sheets and the Foundry Combat Tracker (`NoReturnCombat`).

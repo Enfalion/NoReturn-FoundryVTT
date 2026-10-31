@@ -536,6 +536,10 @@
           <p class="nr-pyramid-hint">
             <i class="fas fa-circle-info"></i> {{localize "NORETURN.PSI.PyramidRuleHint"}}
           </p>
+          <div class="nr-psi-rules-box" style="margin-top:6px;padding:8px 10px;background:rgba(15,25,30,0.65);border-left:3px solid #d4882a;border-radius:4px;font-size:0.86em;">
+            <div><strong>{{localize "NORETURN.PSI.DynamicPoolHeader"}}:</strong> {{localize "NORETURN.PSI.DynamicPoolDesc"}} (Basis: Logik <strong>{{system.attributes.secondary.logik.total}}W6</strong> + Kraft-Stufe − Mali <strong>{{system.health.gesamteMali}}W6</strong>; im Würfeldialog frei wählbar bis 2× Basis-Pool bei Überanstrengung).</div>
+            <div style="margin-top:3px;"><strong>{{localize "NORETURN.PSI.HierarchyOverviewHeader"}}:</strong> <strong>Stufe 1:</strong> Cryokinese, Elektrokinese, Pyrokinese, Telekinese | <strong>Stufe 2:</strong> Animakinese, Momenkinese, Photokinese, Psychokinese | <strong>Stufe 3:</strong> Biokinese, Cronokinese, Morphokinese, Technokinese.</div>
+          </div>
         </div>
 
         <!-- PSI-Kräfte (Übergeordnete Disziplinen) -->
@@ -565,11 +569,11 @@
               {{#each psiForces}}
                 <tr data-item-id="{{this.id}}">
                   <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
-                  <td class="center">Kat. {{this.system.category}}</td>
+                  <td class="center">Kategorie {{this.system.psiCategory}}</td>
                   <td class="center">{{localize "NORETURN.PSI.Tier"}} {{this.system.hierarchyTier}}</td>
                   <td class="center">{{this.system.level}}</td>
                   <td class="center">{{this.system.effectiveMod}}</td>
-                  <td class="pool-cell"><strong>{{this.system.pool}}W6</strong></td>
+                  <td class="pool-cell"><strong>1–{{this.system.pool}}W6</strong></td>
                   <td class="center">
                     {{#if this.system.mastery}}
                       <span class="noreturn-badge success"><i class="fas fa-crown"></i> {{localize "NORETURN.PSI.Mastery"}}</span>
@@ -608,6 +612,7 @@
                 <th>{{localize "NORETURN.Consumables.Active"}}</th>
                 <th>{{localize "NORETURN.PSI.AppName"}}</th>
                 <th>{{localize "NORETURN.PSI.ForceName"}}</th>
+                <th>{{localize "NORETURN.PSI.HierarchyTier"}}</th>
                 <th>{{localize "NORETURN.PSI.AppTier"}}</th>
                 <th>{{localize "NORETURN.PSI.TargetCorridor"}}</th>
                 <th>{{localize "NORETURN.PSI.Cost"}}</th>
@@ -624,7 +629,8 @@
                     <input type="checkbox" data-action="toggleActive" {{checked this.system.active}} />
                   </td>
                   <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
-                  <td>{{this.system.psiForce}}</td>
+                  <td>{{this.system.psiForce}} (Kat. {{this.system.psiCategory}})</td>
+                  <td class="center">{{localize "NORETURN.PSI.Tier"}} {{this.system.forceHierarchyTier}}</td>
                   <td class="center">{{localize "NORETURN.PSI.Tier"}} {{this.system.tier}}</td>
                   <td class="center"><strong>{{this.system.targetRange}}</strong></td>
                   <td class="center">{{this.system.cost}}</td>
@@ -632,8 +638,8 @@
                   <td class="center">{{this.system.duration}}</td>
                   <td class="center">
                     {{#if this.system.pyramidValid}}
-                      <span class="noreturn-badge success" title="Pyramiden-Voraussetzungen erfüllt ({{this.system.pool}}W6)">
-                        <i class="fas fa-check"></i> {{this.system.pool}}W6
+                      <span class="noreturn-badge success" title="Dynamischer Pool: 1–{{this.system.pool}}W6 (Überanstrengung bis {{this.system.maxOverloadPool}}W6)">
+                        <i class="fas fa-check"></i> 1–{{this.system.pool}}W6
                       </span>
                     {{else}}
                       <span class="noreturn-badge lethal" title="{{this.system.pyramidReason}}">

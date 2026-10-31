@@ -7,8 +7,6 @@ const { ActorSheetV2 } = foundry.applications.sheets;
 
 /**
  * Hybrid ApplicationV2 Sheet for NoReturn Robotics / Cyborg / Drone Actors.
- * Combines full Character Sheet capabilities (Attributes, Skills, StyleSkills, PSI, Conditions, Traits, Inventory)
- * with dedicated Robotics Chassis, Power Supply/Battery, Module Sockets, Energy Drain, and 11-Zone Tuning.
  */
 export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2) {
   static DEFAULT_OPTIONS = {
@@ -149,17 +147,33 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
 
     skills.sort((a, b) => a.name.localeCompare(b.name));
     styleSkills.sort((a, b) => a.name.localeCompare(b.name));
-    psiForces.sort((a, b) => a.name.localeCompare(b.name));
+    psiForces.sort((a, b) => {
+      const hDiff = (Number(a.system.hierarchyTier) || 1) - (Number(b.system.hierarchyTier) || 1);
+      if (hDiff !== 0) return hDiff;
+      return a.name.localeCompare(b.name);
+    });
     psiApps.sort((a, b) => {
-      const fCmp = (a.system.psiForceLabel || "").localeCompare(b.system.psiForceLabel || "");
+      const fhDiff =
+        (Number(a.system.forceHierarchyTier) || 1) - (Number(b.system.forceHierarchyTier) || 1);
+      if (fhDiff !== 0) return fhDiff;
+      const fCmp = (a.system.psiForceLabel || a.system.psiForce || "").localeCompare(
+        b.system.psiForceLabel || b.system.psiForce || ""
+      );
       if (fCmp !== 0) return fCmp;
-      return (Number(a.system.tier) || 1) - (Number(b.system.tier) || 1);
+      const tDiff = (Number(a.system.tier) || 1) - (Number(b.system.tier) || 1);
+      if (tDiff !== 0) return tDiff;
+      return a.name.localeCompare(b.name);
     });
 
     const enrichedNotes = await foundry.applications.ux.TextEditor.implementation.enrichHTML(
       system.notes || "",
       { async: true, relativeTo: actor }
     );
+
+    const t1Forces = psiForces.filter((f) => (Number(f.system.hierarchyTier) || 1) === 1).length;
+    const t2Forces = psiForces.filter((f) => (Number(f.system.hierarchyTier) || 1) === 2).length;
+    const t3Forces = psiForces.filter((f) => (Number(f.system.hierarchyTier) || 1) === 3).length;
+    const maxHierarchyTier = t1Forces >= 2 && t2Forces >= 2 ? 3 : t1Forces >= 2 ? 2 : 1;
 
     return {
       ...context,
@@ -170,7 +184,11 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       speciesOptions: Object.keys(PLAYABLE_SPECIES_PRESETS),
       activeSpeciesItem: speciesItems[0] || null,
       speciesSummary: system.speciesSummary || PLAYABLE_SPECIES_PRESETS[system.personal?.spezies] || null,
-      psiSummary: system.psiSummary || { t1Forces: 0, t2Forces: 0, t3Forces: 0, forceHierarchyValid: true },
+      psiSummary: {
+        maxHierarchyTier,
+        forcesByTier: { 1: t1Forces, 2: t2Forces, 3: t3Forces },
+        ...(system.psiSummary || {})
+      },
       primaryAttributes,
       secondaryAttributes,
       robotZones,
@@ -221,7 +239,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       );
       if (existingStyle) {
         const curLvl = Number(existingStyle.system.level) || 1;
-        const maxLvl = Number(existingStyle.system.maxLevel) || 1;
+        const maxLvl = Number(existingStyle.system.maxLevel) || 3;
         if (curLvl < maxLvl) await existingStyle.update({ "system.level": curLvl + 1 });
         return existingStyle;
       }
@@ -247,51 +265,12 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       );
       if (existingApp) return existingApp;
 
-      const forceKey = (item.system.psiForce || "").toLowerCase().replace(/^psi_/, "");
-      const appTier = Number(item.system.tier || item.system.level || 1);
-      const hasForce = this.document.items.some((i) => {
-        if (i.type === "psiForce") return (i.system.forceId || "").toLowerCase().replace(/^psi_/, "") === forceKey;
-        if (i.type === "skill" && i.system.category === "psi") {
-          return (i.system.skillId || "").toLowerCase().replace(/^psi_/, "") === forceKey;
-        }
-        return false;
-      });
-      if (!hasForce && forceKey !== "kategorie_b") {
-        ui.notifications?.warn(
-          `PSI-Pyramide: Die zugehörige PSI-Kraft „${
-            item.system.psiForceLabel || item.system.psiForce
-          }“ muss zuerst erlernt werden!`
-        );
-        return false;
+      const rawObj = item.toObject();
+      rawObj.system = rawObj.system || {};
+      if (rawObj.system.defensiveMode === undefined || rawObj.system.defensiveMode === null) {
+        rawObj.system.defensiveMode = "";
       }
-      if (appTier >= 2) {
-        const sameForceApps = this.document.items.filter(
-          (i) =>
-            i.type === "psiApp" &&
-            (i.system.psiForce || "").toLowerCase().replace(/^psi_/, "") === forceKey
-        );
-        const t1Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 1).length;
-        const t2Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 2).length;
-        const t3Count = sameForceApps.filter((a) => (Number(a.system.tier || a.system.level) || 1) === 3).length;
-        if (appTier === 2 && t2Count + 1 > t1Count) {
-          ui.notifications?.warn(
-            `PSI-Pyramide (${item.system.psiForceLabel}): Für ${
-              t2Count + 1
-            } App(s) der Stufe 2 müssen mindestens ${t2Count + 1} App(s) der Stufe 1 gelernt sein!`
-          );
-          return false;
-        }
-        if (appTier === 3 && (t3Count + 1 > t2Count || t3Count + 1 > t1Count)) {
-          ui.notifications?.warn(
-            `PSI-Pyramide (${item.system.psiForceLabel}): Für ${
-              t3Count + 1
-            } App(s) der Stufe 3 müssen mindestens je ${
-              t3Count + 1
-            } App(s) der Stufen 1 und 2 gelernt sein!`
-          );
-          return false;
-        }
-      }
+      return this.document.createEmbeddedDocuments("Item", [rawObj]);
     }
 
     if (item.type === "species") {
@@ -386,12 +365,11 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const alphaBio = Boolean(prim?.alphaBio);
     const label = game.i18n.localize(`NORETURN.Attributes.${attrKey}`);
 
-    await NoReturnRoll.promptAndRoll({
-      actor,
-      title: label,
+    await NoReturnRoll.rollAttributeCheck(actor, {
+      attrKey,
+      label,
       attributeDice: pool,
-      skillDice: 0,
-      allAttributeHazard: alphaBio,
+      alphaBio,
       skipDialog: event.shiftKey
     });
   }
@@ -402,11 +380,10 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const val = Number(this.document.system.allOver?.[stat] ?? 1);
     const label = game.i18n.localize(`NORETURN.Attributes.${stat}`);
 
-    await NoReturnRoll.promptAndRoll({
-      actor: this.document,
-      title: `All over ${label}`,
+    await NoReturnRoll.rollAttributeCheck(this.document, {
+      attrKey: stat,
+      label: `All over ${label}`,
       attributeDice: val,
-      skillDice: 0,
       skipDialog: event.shiftKey
     });
   }
@@ -419,11 +396,10 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const zoneName = game.i18n.localize(`NORETURN.Health.Zones.${zoneCode}`);
     const statName = game.i18n.localize(`NORETURN.Attributes.${stat}`);
 
-    await NoReturnRoll.promptAndRoll({
-      actor: this.document,
-      title: `${statName} – ${zoneName}`,
+    await NoReturnRoll.rollAttributeCheck(this.document, {
+      attrKey: stat,
+      label: `${statName} – ${zoneName}`,
       attributeDice: val,
-      skillDice: 0,
       skipDialog: event.shiftKey
     });
   }
@@ -437,20 +413,19 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
 
     if (senseKey === "allOver") {
       val = Number(actor.system.wahrnehmung?.allOverWahrnehmung ?? 2);
-      label = game.i18n.localize("NORETURN.Robot.AllOverWahrnehmung");
+      label = game.i18n.localize("NORETURN.Senses.AllOverWahrnehmung");
     } else if (senseKey === "tastsinn") {
       val = Number(actor.system.wahrnehmung?.tastsinnAllOver ?? 2);
-      label = game.i18n.localize("NORETURN.Robot.Senses.tastsinn");
+      label = game.i18n.localize("NORETURN.Senses.TastsinnAllOver");
     } else {
       val = Number(actor.system.wahrnehmung?.[senseKey]?.total ?? 2);
-      label = game.i18n.localize(`NORETURN.Robot.Senses.${senseKey}`);
+      label = game.i18n.localize(`NORETURN.Senses.${senseKey.charAt(0).toUpperCase() + senseKey.slice(1)}`);
     }
 
-    await NoReturnRoll.promptAndRoll({
-      actor,
-      title: label,
+    await NoReturnRoll.rollAttributeCheck(actor, {
+      attrKey: "wahrnehmung",
+      label,
       attributeDice: val,
-      skillDice: 0,
       skipDialog: event.shiftKey
     });
   }
@@ -461,22 +436,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const skill = this.document.items.get(itemId);
     if (!skill) return;
 
-    const attrKey = skill.system.attribute;
-    const prim = this.document.system.attributes.primary?.[attrKey];
-    const sec = this.document.system.attributes.secondary?.[attrKey];
-    const attrDice = prim ? prim.overall : sec ? sec.total : 0;
-    const skillDice = Number(skill.system.level) || 0;
-    const bonusDice = Number(skill.system.effectiveMod ?? skill.system.mod) || 0;
-
-    await NoReturnRoll.promptAndRoll({
-      actor: this.document,
-      title: skill.name,
-      flavorSubtitle: attrKey ? game.i18n.localize(`NORETURN.Attributes.${attrKey}`) : "Styleskill / Spezial",
-      attributeDice: attrDice,
-      skillDice,
-      bonusDice,
-      allAttributeHazard: Boolean(prim?.alphaBio),
-      allSkillHazard: Boolean(skill.system.betaBio),
+    await NoReturnRoll.rollSkillCheck(this.document, skill, {
       skipDialog: event.shiftKey
     });
   }
@@ -487,16 +447,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const force = this.document.items.get(itemId);
     if (!force) return;
 
-    const skillDice = Number(force.system.level) || 1;
-    const bonusDice = Number(force.system.mod) || 0;
-
-    await NoReturnRoll.promptAndRoll({
-      actor: this.document,
-      title: force.name,
-      flavorSubtitle: `PSI-Kraft (Hierarchiestufe ${force.system.hierarchyTier || 1})`,
-      attributeDice: 0,
-      skillDice,
-      bonusDice,
+    await NoReturnRoll.rollPsiForce(this.document, force, {
       skipDialog: event.shiftKey
     });
   }
@@ -511,7 +462,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
 
   static async #onRollPsiMishap(event, target) {
     event.preventDefault();
-    const tableKey = target.dataset.table || "1";
+    const tableKey = target.dataset.tier || target.dataset.table || "1";
     await NoReturnRoll.rollPsiMishapTable(tableKey, this.document, { postSeparateMessage: true });
   }
 
@@ -521,36 +472,9 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const weapon = this.document.items.get(itemId);
     if (!weapon) return;
 
-    const skillKey = weapon.system.skill || "schiessen";
-    const skillItem = this.document.items.find(
-      (i) =>
-        i.type === "skill" &&
-        (i.system.skillId === skillKey || i.name.toLowerCase() === skillKey.toLowerCase())
-    );
-
-    const attrDice = Number(this.document.system.attributes.primary.geschick.overall) || 1;
-    const skillDice = Number(skillItem?.system?.level || 0);
-    const bonusDice =
-      (Number(weapon.system.attackBonus) || 0) +
-      (Number(skillItem?.system?.effectiveMod ?? skillItem?.system?.mod) || 0);
-
-    const checkResult = await NoReturnRoll.promptAndRoll({
-      actor: this.document,
-      title: `${weapon.name} (${game.i18n.localize("NORETURN.Combat.RollAttack")})`,
-      flavorSubtitle: `${weapon.system.fireModes} | RD ${weapon.system.recoilDampening}`,
-      attributeDice: attrDice,
-      skillDice,
-      bonusDice,
-      allAttributeHazard: Boolean(this.document.system.attributes.primary.geschick.alphaBio),
-      allSkillHazard: Boolean(skillItem?.system?.betaBio),
+    await NoReturnRoll.rollWeaponAttack(this.document, weapon, {
       skipDialog: event.shiftKey
     });
-
-    if (checkResult && checkResult.isSuccess) {
-      await NoReturnRoll.rollWeaponDamage(this.document, weapon, {
-        goodHits: checkResult.goodHits
-      });
-    }
   }
 
   static async #onRollDamage(event, target) {
@@ -594,7 +518,9 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const itemId = target.closest("[data-item-id]")?.dataset.itemId;
     const condition = this.document.items.get(itemId);
     if (!condition) return;
-    await NoReturnRoll.rollConditionResistance(this.document, condition);
+    await NoReturnRoll.rollConditionResistance(this.document, condition, {
+      skipDialog: event.shiftKey
+    });
   }
 
   static async #onCreateItem(event, target) {
