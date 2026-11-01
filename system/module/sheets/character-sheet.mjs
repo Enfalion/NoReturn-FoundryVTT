@@ -1,4 +1,5 @@
 import { HIT_ZONES, PLAYABLE_SPECIES_PRESETS } from "../data/character-data.mjs";
+import { AMMO_TYPE_DEFINITIONS, isAmmoCompatibleWithWeapon } from "../data/item-data.mjs";
 import { NoReturnRoll } from "../dice/roll.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
@@ -38,6 +39,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       rollInfection: NoReturnCharacterSheet.#onRollInfection,
       rollCondition: NoReturnCharacterSheet.#onRollCondition,
       applySpeciesPreset: NoReturnCharacterSheet.#onApplySpeciesPreset,
+      reloadWeapon: NoReturnCharacterSheet.#onReloadWeapon,
       createItem: NoReturnCharacterSheet.#onCreateItem,
       editItem: NoReturnCharacterSheet.#onEditItem,
       deleteItem: NoReturnCharacterSheet.#onDeleteItem,
@@ -174,12 +176,26 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const t3Forces = psiForces.filter((f) => (Number(f.system.hierarchyTier) || 1) === 3).length;
     const maxHierarchyTier = t1Forces >= 2 && t2Forces >= 2 ? 3 : t1Forces >= 2 ? 2 : 1;
 
+    const isPsiAllowed = Boolean(system.isPsiAllowed !== false);
+    if (!isPsiAllowed && this.#activeTab === "psi") {
+      this.#activeTab = "overview";
+    }
+
+    const ammoGearItems = gear.filter((g) => g.system?.isAmmo);
+    for (const w of weapons) {
+      w.compatibleAmmoItems = ammoGearItems.filter((g) =>
+        isAmmoCompatibleWithWeapon(g, w.system?.caliber)
+      );
+    }
+
     return {
       ...context,
       actor,
       system,
       activeTab: this.#activeTab,
       activeSkillSubtab: this.#activeSkillSubtab,
+      isPsiAllowed,
+      ammoTypes: Object.values(AMMO_TYPE_DEFINITIONS),
       speciesOptions: Object.keys(PLAYABLE_SPECIES_PRESETS),
       activeSpeciesItem: speciesItems[0] || null,
       speciesSummary: system.speciesSummary || PLAYABLE_SPECIES_PRESETS[system.personal.spezies] || null,
@@ -209,6 +225,58 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       isImmobilized: Boolean(system.isImmobilized),
       isOrganismCritical: Boolean(system.isOrganismCritical)
     };
+  }
+
+  _onRender(context, options) {
+    super._onRender?.(context, options);
+    const root = this.element;
+    if (!root) return;
+
+    const speciesSelect = root.querySelector('select[name="system.personal.spezies"]');
+    if (speciesSelect) {
+      speciesSelect.addEventListener("change", async (ev) => {
+        ev.stopPropagation();
+        await this._applySpeciesSelection(ev.currentTarget.value);
+      });
+    }
+
+    const ammoSelects = root.querySelectorAll(".nr-weapon-ammo-select");
+    ammoSelects.forEach((sel) => {
+      sel.addEventListener("change", async (ev) => {
+        ev.stopPropagation();
+        const weaponId = sel.dataset.weaponId || sel.closest("[data-item-id]")?.dataset.itemId;
+        const weapon = this.document.items.get(weaponId);
+        if (!weapon) return;
+        const val = sel.value || "TYPE:FMJ";
+        if (val.startsWith("TYPE:")) {
+          const code = val.replace("TYPE:", "");
+          const def = AMMO_TYPE_DEFINITIONS[code] || AMMO_TYPE_DEFINITIONS.FMJ;
+          await weapon.update({
+            "system.loadedAmmoId": "",
+            "system.loadedAmmoType": def.code,
+            "system.loadedAmmoName": def.label
+          });
+        } else {
+          const ammoItem = this.document.items.get(val);
+          if (ammoItem) {
+            const code = (ammoItem.system?.ammoType || "FMJ").toUpperCase();
+            const magCap = Number(weapon.system?.magazineCapacity) || 0;
+            const curAmmo = Number(weapon.system?.ammoCurrent) || 0;
+            const availQty = Math.max(0, Number(ammoItem.system?.quantity) || 0);
+            const loadCount = curAmmo === 0 && magCap > 0 ? Math.min(magCap, availQty) : curAmmo;
+            if (curAmmo === 0 && loadCount > 0) {
+              await ammoItem.update({ "system.quantity": Math.max(0, availQty - loadCount) });
+            }
+            await weapon.update({
+              "system.loadedAmmoId": ammoItem.id,
+              "system.loadedAmmoType": code,
+              "system.loadedAmmoName": ammoItem.name,
+              "system.ammoCurrent": loadCount
+            });
+          }
+        }
+      });
+    });
   }
 
   /**
@@ -348,10 +416,8 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     }
   }
 
-  static async #onApplySpeciesPreset(event) {
-    event.preventDefault();
+  async _applySpeciesSelection(speciesKey) {
     const actor = this.document;
-    const speciesKey = actor.system.personal.spezies || "Mensch";
     const preset = PLAYABLE_SPECIES_PRESETS[speciesKey];
     if (!preset) return;
 
@@ -380,13 +446,75 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       }
     ]);
 
-    await actor.update({
+    const updateData = {
+      "system.personal.spezies": preset.name,
       "system.status.psyche.value": preset.baseStats.psyche,
       "system.status.organismus.max": preset.baseStats.organismus,
       "system.status.infektionsresistenz": preset.baseStats.infektionsresistenz,
       "system.attributes.special.adrenalin.stufe": preset.baseStats.adrenalin,
       "system.attributes.special.adrenalin.pool": preset.baseStats.adrenalin
-    });
+    };
+
+    const primMax = Number(preset.attributeLimits?.primaryMax) || 4;
+    const secMax = Number(preset.attributeLimits?.secondaryMax) || 4;
+    for (const [k, attr] of Object.entries(actor.system.attributes.primary || {})) {
+      const limit = preset.name === "Evo" && k !== "konstitution" ? 4 : primMax;
+      if ((Number(attr.base) || 1) > limit) {
+        updateData[`system.attributes.primary.${k}.base`] = limit;
+      }
+    }
+    for (const [k, attr] of Object.entries(actor.system.attributes.secondary || {})) {
+      if ((Number(attr.base) || 0) > secMax) {
+        updateData[`system.attributes.secondary.${k}.base`] = secMax;
+      }
+    }
+
+    if (!preset.psiAllowed && this.#activeTab === "psi") {
+      this.#activeTab = "overview";
+    }
+
+    await actor.update(updateData);
+  }
+
+  static async #onApplySpeciesPreset(event) {
+    event.preventDefault();
+    const speciesKey = this.document.system.personal.spezies || "Mensch";
+    await this._applySpeciesSelection(speciesKey);
+  }
+
+  static async #onReloadWeapon(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const weapon = this.document.items.get(itemId);
+    if (!weapon) return;
+    const magCap = Number(weapon.system?.magazineCapacity) || 0;
+    if (magCap <= 0) return;
+
+    const curAmmo = Number(weapon.system?.ammoCurrent) || 0;
+    const needed = Math.max(0, magCap - curAmmo);
+    if (needed === 0) {
+      ui.notifications?.info(`${weapon.name}: Magazin ist bereits voll (${magCap}/${magCap}).`);
+      return;
+    }
+
+    const loadedId = weapon.system?.loadedAmmoId;
+    const ammoItem = loadedId ? this.document.items.get(loadedId) : null;
+    if (ammoItem) {
+      const avail = Math.max(0, Number(ammoItem.system?.quantity) || 0);
+      if (avail <= 0) {
+        ui.notifications?.warn(`${ammoItem.name}: Keine Patronen mehr im Inventar!`);
+        return;
+      }
+      const toLoad = Math.min(needed, avail);
+      await ammoItem.update({ "system.quantity": avail - toLoad });
+      await weapon.update({ "system.ammoCurrent": curAmmo + toLoad });
+      ui.notifications?.info(
+        `${weapon.name}: +${toLoad} Schuss (${ammoItem.name}) nachgeladen (${curAmmo + toLoad}/${magCap}).`
+      );
+    } else {
+      await weapon.update({ "system.ammoCurrent": magCap });
+      ui.notifications?.info(`${weapon.name}: Magazin geladen (${magCap}/${magCap}).`);
+    }
   }
 
   static async #onRollAttribute(event, target) {
@@ -471,7 +599,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
   static async #onRollSoak(event, target) {
     event.preventDefault();
     const zoneCode = target.dataset.zone || "7";
-    await NoReturnRoll.rollSoak(this.document, zoneCode);
+    await NoReturnRoll.rollSoak(this.document, zoneCode, { skipDialog: event.shiftKey });
   }
 
   static async #onRollInitiative(event) {
@@ -481,14 +609,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
   static async #onRollInfection(event) {
     event.preventDefault();
-    const rawFormula = this.document.system.status.infektionsresistenz || "2d6";
-    const formula = rawFormula.replace(/(\d+)W(\d+)/gi, "$1d$2").replace(/p\./gi, "");
-    const roll = new Roll(formula);
-    await roll.evaluate();
-    await roll.toMessage({
-      speaker: ChatMessage.getSpeaker({ actor: this.document }),
-      flavor: `${game.i18n.localize("NORETURN.Status.Infektionsresistenz")} (${rawFormula})`
-    });
+    await NoReturnRoll.rollInfectionResistance(this.document);
   }
 
   static async #onRollCondition(event, target) {

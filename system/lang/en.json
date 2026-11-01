@@ -34,7 +34,7 @@
       "Tabs": {
         "Overview": "Overview & Attributes",
         "Skills": "Skills & Conditions",
-        "Psi": "PSI & Pyramid",
+        "Psi": "PSI",
         "Combat": "Combat & Hit Zones",
         "Inventory": "Drugs, Gear & Goods",
         "Augmentation": "Robotics & Cyberware",
@@ -309,7 +309,10 @@
       "MishapTable2": "Mishap T2",
       "MishapTable3": "Mishap T3",
       "OverloadTable": "Overload Table",
-      "PyramidRuleHint": "Pyramid Rule: To learn or activate a Tier 2 or Tier 3 PSI Force or PSI App, you must first know at least 2 Forces or Apps of the lower tier."
+      "PyramidRuleHint": "Pyramid Rule: To learn or activate a Tier 2 or Tier 3 PSI Force or PSI App, you must first know at least 2 Forces or Apps of the lower tier.",
+      "PyramidViolationHeader": "Pyramid Violation (PSI Forces)",
+      "PyramidViolationShort": "Pyramid Error",
+      "CorridorAdjust": "Target Corridor Adjustment"
     },
     "Settings": {
       "PsiHierarchyOverridesName": "Override PSI Hierarchy Tiers (GM)",
@@ -324,6 +327,10 @@
       "Damage": "Damage",
       "Caliber": "Caliber",
       "Magazine": "Magazine",
+      "MagazineCapacity": "Magazine Capacity",
+      "AmmoCurrent": "Current Rounds",
+      "AmmoLoaded": "Loaded Ammo",
+      "Reload": "Reload",
       "RD": "RD",
       "FireModes": "Fire Modes",
       "Range": "Category / Range",
@@ -393,7 +400,8 @@
       "GoodHits": "Good Hits (Bonus Damage)",
       "HazardExplosions": "Hazard-Die Explosions (6s)",
       "NormalDice": "Regular d6",
-      "HazardDice": "Hazard-Die (1d6x6)"
+      "HazardDice": "Hazard-Die (1d6x6)",
+      "ShowRolledDice": "Show Rolled Dice"
     }
   }
 }

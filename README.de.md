@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.1 (Deutsch)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.2 (Deutsch)
 
 Offizielle Systemimplementierung des postapokalyptischen Sci-Fi-Rollenspiels **NoReturn (1. Edition)** für **Foundry Virtual Tabletop v14** von **Enfalion**.
 
@@ -17,7 +17,20 @@ Direkter Release-Download:
 
 ---
 
-## Systemumfang & Neuerungen in v1.1.1
+## Systemumfang & Neuerungen in v1.1.2
+
+1. **PSI-Feinschliff, Pyramiden-Validierung & Live-Pool-Rechner:**
+   - Umbenennung des Hauptreiters in **„PSI“**; PSI-Apps besitzen ausschließlich eine **App-Stufe** (keine eigene Hierarchiestufe).
+   - Dynamische Sperr-Meldungen bei PSI-Apps verknüpfen exakt den Namen und die Hierarchiestufe der benötigten PSI-Kraft.
+   - Automatische Pyramiden-Validierung für übergeordnete PSI-Kräfte inkl. Warnhinweis bei Regelverstößen.
+   - Überarbeiteter PSI-App-Würfeldialog mit großem Live-Würfelpool-Rechner und reaktiven Zähler-Inputs (`Dynamischer Pool`, `Vorab gesammelte Kraftstufe`, `Zielkorridor-Änderung / Anpassung`, `Überanstrengungskosten`).
+2. **Aufklappbare Würfel-Spoiler & Hazard-Die-Hervorhebung:**
+   - Alle Würfelproben im System verfügen über den einklappbaren Spoiler **„Gewürfelte Würfel anzeigen“** mit leuchtender Hervorhebung des **Hazard-Die** (`1d6x6`).
+3. **Schusswaffen, Magazin-Kapazität, Kaliber-Ladesystem & Panzerungsdurchschlag:**
+   - Numerische Magazinkapazität (`magazineCapacity`), Munitions-Dropdown nach Kaliber (`FMJ`, `AP`, `HS`, `AF`), dynamische Schadensberechnung (`+10 TP` bei `HS`/`AF`) und Rüstungsdurchschlags-Prüfung gegen `MK: A / B / C` beim Schadenswiderstand.
+4. **Dritter Unterreiter „Krankheiten, Gifte & Infektions-Trigger“ & Dynamische Spezies-Automatik:**
+   - Eigener 3. Sub-Tab unter *Fertigkeiten & Krankheiten* (keine doppelte Anzeige mehr).
+   - Sofortige Übernahme aller Spezies-Modifikatoren, Attributs-Maximalwerte und Basiswerte bei Spezies-Wechsel sowie automatisches Ausblenden des PSI-Reiters bei Spezies ohne PSI-Fähigkeit (z. B. *Evo*, *Mutant*).
 
 1. **Initiative-Überarbeitung & Mexican-Standoff-Dialog:**
    - Automatische Einbindung von **Schnelligkeit + Reaktion** (inkl. Hazard-Di) sowohl im Charakter-/Robotikbogen als auch im Foundry Combat Tracker (`NoReturnCombat`).

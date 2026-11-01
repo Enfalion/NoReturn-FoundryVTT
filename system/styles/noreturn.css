@@ -347,24 +347,59 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
   border-radius: 4px;
   font-weight: 700;
   background: #2b3138;
   border: 1px solid #48525e;
+  color: #e6edf3;
 }
 
 .noreturn-chat-card .die-chip.hazard-die {
-  background: #7a1c20;
-  border-color: #e03e45;
+  background: linear-gradient(135deg, #9e1c20 0%, #d9480f 100%);
+  border: 2px solid #ffb703;
   color: #fff;
+  box-shadow: 0 0 6px rgba(255, 183, 3, 0.55);
 }
 
 .noreturn-chat-card .die-chip.hazard-die.exploded {
-  background: #c98818;
-  border-color: #ffd480;
-  box-shadow: 0 0 6px rgba(255, 212, 128, 0.7);
+  background: linear-gradient(135deg, #d97706 0%, #dc2626 100%);
+  border: 2px solid #fde047;
+  color: #fff;
+  box-shadow: 0 0 9px rgba(253, 224, 71, 0.85);
+}
+
+/* Collapsible Dice Spoiler in Chat Cards */
+.noreturn-chat-card details.nr-dice-spoiler {
+  margin: 6px 0;
+  background: #121519;
+  border: 1px solid #2d333b;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.noreturn-chat-card details.nr-dice-spoiler > summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--nr-amber);
+  user-select: none;
+  outline: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.noreturn-chat-card details.nr-dice-spoiler > summary:hover {
+  color: #ffd480;
+}
+
+.noreturn-chat-card details.nr-dice-spoiler[open] > summary {
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #252a30;
 }
 
 .noreturn-chat-card .outcome-numbers {

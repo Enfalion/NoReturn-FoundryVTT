@@ -290,12 +290,20 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       }
     };
 
+    let hasPsionicAbnormality = false;
+    const selectedSpeciesKey = this.personal?.spezies || "Mensch";
+    const selectedPreset = PLAYABLE_SPECIES_PRESETS[selectedSpeciesKey] || null;
+
     for (const item of items) {
       if (item.type === "species") {
         activeSpeciesItem = item;
-        addAttrMods(item.system.attributeModifiers, 1);
-        addSkillMods(item.system.skillModifiers, 1);
       } else if (item.type === "mutation" && item.system.active !== false) {
+        if (
+          item.system.mutationId === "abn_psionische_abartigkeit" ||
+          item.name.toLowerCase().includes("psionische abartigkeit")
+        ) {
+          hasPsionicAbnormality = true;
+        }
         const lvl = Math.max(1, Number(item.system.level) || 1);
         addAttrMods(item.system.attributeModifiers, lvl);
         addSkillMods(item.system.skillModifiers, lvl);
@@ -350,17 +358,29 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       skillBonuses["springen"] = (skillBonuses["springen"] || 0) + akrobatikLevel;
     }
 
-    // If no embedded species item exists, fall back to PLAYABLE_SPECIES_PRESETS based on personal.spezies
-    if (!activeSpeciesItem && this.personal?.spezies) {
-      const preset = PLAYABLE_SPECIES_PRESETS[this.personal.spezies];
-      if (preset) {
-        addAttrMods(preset.attributeModifiers, 1);
-        addSkillMods(preset.skillModifiers, 1);
-        this.speciesSummary = preset;
-      }
+    // Dynamically apply species modifiers & limits based on selected species (or matching embedded species item)
+    if (activeSpeciesItem && (!selectedPreset || activeSpeciesItem.name === selectedSpeciesKey)) {
+      addAttrMods(activeSpeciesItem.system.attributeModifiers, 1);
+      addSkillMods(activeSpeciesItem.system.skillModifiers, 1);
+      this.speciesSummary = activeSpeciesItem.system;
+    } else if (selectedPreset) {
+      addAttrMods(selectedPreset.attributeModifiers, 1);
+      addSkillMods(selectedPreset.skillModifiers, 1);
+      this.speciesSummary = selectedPreset;
     } else if (activeSpeciesItem) {
+      addAttrMods(activeSpeciesItem.system.attributeModifiers, 1);
+      addSkillMods(activeSpeciesItem.system.skillModifiers, 1);
       this.speciesSummary = activeSpeciesItem.system;
     }
+
+    const speciesPsiAllowed =
+      this.speciesSummary?.psiAllowed !== undefined
+        ? Boolean(this.speciesSummary.psiAllowed)
+        : true;
+    this.isPsiAllowed = speciesPsiAllowed && !hasPsionicAbnormality;
+
+    const primaryMaxDefault = Number(this.speciesSummary?.attributeLimits?.primaryMax) || 4;
+    const secondaryMaxDefault = Number(this.speciesSummary?.attributeLimits?.secondaryMax) || 4;
 
     this.skillBonuses = skillBonuses;
     this.itemAttrMods = itemAttrMods;
@@ -382,17 +402,23 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     };
     this.isOrganismCritical = orgCurrent <= 0;
 
-    // 3. Primary Attributes (base + manual mod + item modifier)
+    // 3. Primary Attributes (base + manual mod + item modifier) + species limits
     for (const [key, attr] of Object.entries(this.attributes.primary)) {
       const dynMod = itemAttrMods[key] || 0;
       attr.itemMod = dynMod;
+      if (selectedSpeciesKey === "Evo" && key !== "konstitution") {
+        attr.maxLimit = 4;
+      } else {
+        attr.maxLimit = primaryMaxDefault;
+      }
       attr.overall = Math.max(0, (attr.base || 0) + (attr.mod || 0) + dynMod);
     }
 
-    // 4. Secondary Attributes (base + manual mod + item modifier)
+    // 4. Secondary Attributes (base + manual mod + item modifier) + species limits
     for (const [key, attr] of Object.entries(this.attributes.secondary)) {
       const dynMod = itemAttrMods[key] || 0;
       attr.itemMod = dynMod;
+      attr.maxLimit = secondaryMaxDefault;
       attr.total = Math.max(0, (attr.base || 0) + (attr.mod || 0) + dynMod);
     }
 
@@ -481,23 +507,41 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     this.isUnconscious = this.health.gesamteMali >= konstitution && konstitution > 0;
     this.isImmobilized = this.health.gesamteMali >= schnelligkeit && schnelligkeit > 0;
 
-    // 9. PSI Hierarchy & Pyramid Summary (Punkt 4.3)
-    const psiForces = items.filter((i) => i.type === "psiForce" && i.system.psiCategory === "A");
+    // 9. PSI Hierarchy & Pyramid Summary (Punkt 3)
+    const psiForces = items.filter(
+      (i) => i.type === "psiForce" && (i.system.psiCategory || i.system.category || "A") === "A"
+    );
     const getForceTier = (f) =>
-      resolvePsiHierarchyTier(
-        f.system.psiForce || f.name,
-        f.system.hierarchyTier,
-        Boolean(f.system.manualHierarchyOverride)
-      );
+      resolvePsiHierarchyTier(f.system.forceId || f.name, {
+        manualOverride: Boolean(f.system.manualHierarchyOverride),
+        itemTier: f.system.hierarchyTier
+      });
     const t1Forces = psiForces.filter((f) => getForceTier(f) === 1).length;
     const t2Forces = psiForces.filter((f) => getForceTier(f) === 2).length;
     const t3Forces = psiForces.filter((f) => getForceTier(f) === 3).length;
-    const forceHierarchyValid = t2Forces <= t1Forces && t3Forces <= t2Forces;
+    const forceHierarchyValid = t2Forces <= t1Forces && t3Forces <= t2Forces && t3Forces <= t1Forces;
+    const forceHierarchyWarnings = [];
+    if (t2Forces > t1Forces) {
+      forceHierarchyWarnings.push(
+        t1Forces === 0
+          ? `Pyramiden-Verstoß: ${t2Forces} PSI-Kraft/Kräfte der Hierarchiestufe 2 erlernt, ohne dass eine PSI-Kraft der Hierarchiestufe 1 vorhanden ist!`
+          : `Pyramiden-Verstoß: Für ${t2Forces} PSI-Kräfte der Hierarchiestufe 2 werden mindestens ${t2Forces} Kräfte der Hierarchiestufe 1 benötigt (aktuell: ${t1Forces}).`
+      );
+    }
+    if (t3Forces > t2Forces || t3Forces > t1Forces) {
+      forceHierarchyWarnings.push(
+        t2Forces === 0
+          ? `Pyramiden-Verstoß: ${t3Forces} PSI-Kraft/Kräfte der Hierarchiestufe 3 erlernt, ohne dass eine PSI-Kraft der Hierarchiestufe 2 vorhanden ist!`
+          : `Pyramiden-Verstoß: Für ${t3Forces} PSI-Kräfte der Hierarchiestufe 3 werden mindestens je ${t3Forces} Kräfte der Hierarchiestufe 1 (${t1Forces}) und Hierarchiestufe 2 (${t2Forces}) benötigt.`
+      );
+    }
     this.psiSummary = {
       t1Forces,
       t2Forces,
       t3Forces,
-      forceHierarchyValid
+      forceHierarchyValid,
+      forceHierarchyWarnings,
+      forceHierarchyWarningText: forceHierarchyWarnings.join(" ")
     };
   }
 }

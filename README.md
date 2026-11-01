@@ -1,7 +1,7 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.1
+# NoReturn – Foundry VTT System (v14) — Version 1.1.2
 
 [![Foundry VTT v14](https://img.shields.io/badge/Foundry_VTT-v14-orange)](https://foundryvtt.com/)
-[![Version](https://img.shields.io/badge/Version-1.1.1-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.2-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
 [![Author](https://img.shields.io/badge/Autor-Enfalion-success)](https://github.com/Enfalion/NoReturn-FoundryVTT)
 
 Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für **NoReturn – Das Endzeit-Rollenspiel (1. Edition)**.
@@ -23,7 +23,26 @@ Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für 
 
 ---
 
-## Highlights & Neue Features in Version 1.1.1
+## Highlights & Neue Features in Version 1.1.2
+
+### 1. PSI-Tab, App-Stufen, Dynamische Sperr-Meldungen & Pyramiden-Validierung
+- **Hauptreiter „PSI“ & Bereinigte PSI-Apps:** Der PSI-Reiter heißt nun schlicht **„PSI“**. PSI-Apps (`psiApp`) besitzen ausschließlich eine **App-Stufe** (`tier`), keine eigene Hierarchiestufe.
+- **Dynamische Sperr-Meldungen:** Nicht freigeschaltete PSI-Apps zeigen im „Gesperrt“-Badge und Hinweis exakt den Namen und die Hierarchiestufe der fehlenden übergeordneten PSI-Kraft an (z. B. `PSI-Kraft 'Biokinese' (Hierarchiestufe 3) noch nicht erlernt.`).
+- **Automatische Pyramiden-Validierung bei PSI-Kräften:** Im Bereich *Übergeordnete PSI-Kräfte (Disziplinen)* prüft das System live die GRW-Pyramidenregel (`Stufe-1-Kräfte >= Stufe-2-Kräfte >= Stufe-3-Kräfte`) und gibt bei Verstößen eine deutliche Warnmeldung aus.
+- **Live-Pool-Rechner im PSI-App-Würfeldialog:** Groß hervorgehobene Live-Anzeige des End-Würfelpools mit reaktiven Zählerfeldern (`Dynamischer Pool`, `Vorab gesammelte Kraftstufe`, `Zielkorridor-Änderung / Anpassung`, `Überanstrengungskosten`).
+
+### 2. Aufklappbare Würfel-Spoiler & Hazard-Die-Hervorhebung (Alle Proben)
+- **Einklappbarer Spoiler („Gewürfelte Würfel anzeigen“):** Alle Chat-Ausgaben im gesamten System (Attributs-, Fertigkeits-, Initiative-, Waffen-, Schadens-, Soak-, Trefferzonen-, Widerstands- und PSI-Proben) besitzen einen aufklappbaren `<details>`-Spoiler für die Einzelwürfel.
+- **Markante Hazard-Die-Kennzeichnung:** Innerhalb der Einzelwürfel-Ansicht wird der **Hazard-Die** (`1d6x6`) durch eine leuchtende Warnfarbe, eigenen Rahmen und ein `⚡`-Symbol klar von regulären Würfeln abgehoben.
+
+### 3. Schusswaffen, Magazin-Kapazität, Kaliber-Ladesystem & Rüstungsdurchschlag
+- **Magazin-Kapazität & Nachladen:** Alle Schusswaffen führen ihre exakte Schusskapazität (`magazineCapacity`) und aktuelle Ladung (`ammoCurrent`) inklusive Schnell-Nachlade-Button.
+- **Dynamisches Kaliber-Ladesystem:** Auswahl-Dropdown für kompatible Munition aus dem Inventar (oder Standard-Munitionstyp `FMJ`, `AP`, `HS`, `AF`) mit automatischer Schadensanpassung (`+10 TP` bei `HS` und `AF`).
+- **Rüstungsdurchschlags-Prüfung im Schadenswiderstand (Soak):** Automatische Prüfung von `FMJ`, `AP` (ignoriert `MK:A`), `HS` (`+10 TP` vs. `MK:A`, `0` Schaden ab `MK:B+`) und `AF` (`+10 TP`, ignoriert `MK:A & B`) gegen die Materialkategorie (`MK: A / B / C`) der getroffenen Zone.
+
+### 4. Bereinigter Reiter „Fertigkeiten & Krankheiten“ & Dynamische Spezies-Automatik
+- **3 Unterreiter unter „Fertigkeiten & Krankheiten“:** Saubere Trennung in **Standardfertigkeiten**, **Styleskills** und den eigenen 3. Unterreiter **Krankheiten, Gifte & Infektions-Trigger** (keine doppelte Darstellung mehr).
+- **Dynamische Spezies-Werte & Ausblenden des PSI-Tabs:** Ein Wechsel der Spezies im Charakterbogen übernimmt sofort alle Attributs-Modifikatoren, Attributs-Maximalwerte und Basiswerte (Psyche, Organismus, Adrenalin, Infektionsresistenz) und blendet den **PSI**-Reiter automatisch aus, wenn die gewählte Spezies (z. B. *Evo* oder *Mutant*) nicht PSI-fähig ist.
 
 ### 1. Überarbeitete Initiative, Maßgeschneiderte Würfeldialoge & Saubere Abbruch-Logik
 - **6 Spezifische Würfel-Interfaces nach GRW:** Maßgeschneiderte Dialogfenster für **Attributsprobe**, **Fertigkeitsprobe**, **Initiative** (Mexican Standoff + Situationsmodifikator, keine Schwellenwerte), **Waffen-/Angriffsprobe** (Reichweite, Zielzone, Deckung, Feuermodus), **Widerstandsprobe (Krankheit/Gift)** (Giftstufe, Schadensintervall, Zähigkeits-Modifikator) und **PSI-Probe** (dynamischer Würfelpool, Überanstrengungskosten, Zielkorridor).

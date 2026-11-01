@@ -11,29 +11,38 @@
     <span>{{localize "NORETURN.Dice.Target"}}: <strong>{{targetNumber}}</strong></span>
   </div>
 
-  <div class="dice-breakdown">
-    {{#if normalResults.length}}
-      <div class="dice-row">
-        <span class="dice-label">{{localize "NORETURN.Dice.NormalDice"}}:</span>
-        <div class="dice-chips">
-          {{#each normalResults}}
-            <span class="die-chip normal-die">{{this.result}}</span>
-          {{/each}}
+  <details class="nr-dice-spoiler">
+    <summary>
+      <i class="fas fa-dice"></i> {{localize "NORETURN.Dice.ShowRolledDice"}} ({{formula}})
+    </summary>
+    <div class="dice-breakdown">
+      {{#if normalResults.length}}
+        <div class="dice-row">
+          <span class="dice-label">{{localize "NORETURN.Dice.NormalDice"}}:</span>
+          <div class="dice-chips">
+            {{#each normalResults}}
+              <span class="die-chip normal-die" title="{{localize 'NORETURN.Dice.NormalDice'}}">{{this.result}}</span>
+            {{/each}}
+          </div>
         </div>
-      </div>
-    {{/if}}
+      {{/if}}
 
-    {{#if hazardResults.length}}
-      <div class="dice-row hazard-row">
-        <span class="dice-label">{{localize "NORETURN.Dice.HazardDice"}}:</span>
-        <div class="dice-chips">
-          {{#each hazardResults}}
-            <span class="die-chip hazard-die {{#if this.exploded}}exploded{{/if}}">{{this.result}}</span>
-          {{/each}}
+      {{#if hazardResults.length}}
+        <div class="dice-row hazard-row">
+          <span class="dice-label hazard-label">
+            <i class="fas fa-radiation"></i> {{localize "NORETURN.Dice.HazardDice"}}:
+          </span>
+          <div class="dice-chips">
+            {{#each hazardResults}}
+              <span class="die-chip hazard-die {{#if this.exploded}}exploded{{/if}}" title="{{localize 'NORETURN.Dice.HazardDice'}}">
+                <i class="fas fa-bolt hazard-chip-icon"></i> {{this.result}}
+              </span>
+            {{/each}}
+          </div>
         </div>
-      </div>
-    {{/if}}
-  </div>
+      {{/if}}
+    </div>
+  </details>
 
   <div class="card-outcome">
     <div class="outcome-numbers">

@@ -34,7 +34,7 @@
       "Tabs": {
         "Overview": "Übersicht & Attribute",
         "Skills": "Fertigkeiten & Krankheiten",
-        "Psi": "PSI & Pyramide",
+        "Psi": "PSI",
         "Combat": "Kampf & Trefferzonen",
         "Inventory": "Drogen, Ausrüstung & Güter",
         "Augmentation": "Robotik & Cyberware",
@@ -309,7 +309,10 @@
       "MishapTable2": "Fehlschlag S2",
       "MishapTable3": "Fehlschlag S3",
       "OverloadTable": "Overload-Tabelle",
-      "PyramidRuleHint": "Pyramidenregel: Um eine PSI-Kraft oder PSI-App der Stufe 2 bzw. 3 zu erlernen/aktivieren, müssen jeweils mindestens 2 Kräfte bzw. Apps der darunterliegenden Stufe beherrscht werden."
+      "PyramidRuleHint": "Pyramidenregel: Um eine PSI-Kraft oder PSI-App der Stufe 2 bzw. 3 zu erlernen/aktivieren, müssen jeweils mindestens 2 Kräfte bzw. Apps der darunterliegenden Stufe beherrscht werden.",
+      "PyramidViolationHeader": "Pyramiden-Verstoß (Übergeordnete PSI-Kräfte)",
+      "PyramidViolationShort": "Pyramiden-Verstoß",
+      "CorridorAdjust": "Zielkorridor-Änderung / Anpassung"
     },
     "Settings": {
       "PsiHierarchyOverridesName": "PSI-Hierarchiestufen manuell überschreiben (SL)",
@@ -324,6 +327,10 @@
       "Damage": "Schaden",
       "Caliber": "Kaliber",
       "Magazine": "Magazin",
+      "MagazineCapacity": "Magazin-Kapazität",
+      "AmmoCurrent": "Aktuelle Schuss",
+      "AmmoLoaded": "Geladene Munition",
+      "Reload": "Nachladen",
       "RD": "RD",
       "FireModes": "Feuermodi",
       "Range": "Kategorie / Reichweite",
@@ -393,7 +400,8 @@
       "GoodHits": "Gute Treffer (Bonusschaden)",
       "HazardExplosions": "Hazard-Di Explosionen (6er)",
       "NormalDice": "Reguläre W6",
-      "HazardDice": "Hazard-Di (1d6x6)"
+      "HazardDice": "Hazard-Di (1d6x6)",
+      "ShowRolledDice": "Gewürfelte Würfel anzeigen"
     }
   }
 }

@@ -139,18 +139,6 @@
             <input type="text" name="system.psiForce" value="{{system.psiForce}}" />
           </label>
           <label>
-            <span>{{localize "NORETURN.PSI.HierarchyTier"}}</span>
-            <select name="system.forceHierarchyTier" data-dtype="Number">
-              <option value="1" {{#if (eq system.forceHierarchyTier 1)}}selected{{/if}}>Hierarchiestufe 1</option>
-              <option value="2" {{#if (eq system.forceHierarchyTier 2)}}selected{{/if}}>Hierarchiestufe 2</option>
-              <option value="3" {{#if (eq system.forceHierarchyTier 3)}}selected{{/if}}>Hierarchiestufe 3</option>
-            </select>
-          </label>
-          <label>
-            <span>{{localize "NORETURN.PSI.ManualHierarchyOverride"}}</span>
-            <input type="checkbox" name="system.manualHierarchyOverride" {{checked system.manualHierarchyOverride}} />
-          </label>
-          <label>
             <span>{{localize "NORETURN.PSI.AppTier"}}</span>
             <select name="system.tier" data-dtype="Number">
               <option value="1" {{#if (eq system.tier 1)}}selected{{/if}}>Stufe 1 (8–12 / Kat. B: 11–15)</option>
@@ -219,8 +207,37 @@
             <input type="text" name="system.caliber" value="{{system.caliber}}" />
           </label>
           <label>
-            <span>{{localize "NORETURN.Combat.Magazine"}}</span>
+            <span>{{localize "NORETURN.Combat.Magazine"}} (Text)</span>
             <input type="text" name="system.magazine" value="{{system.magazine}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.MagazineCapacity"}} (Schuss)</span>
+            <input type="number" name="system.magazineCapacity" value="{{system.magazineCapacity}}" min="0" step="1" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.AmmoCurrent"}} (Geladen)</span>
+            <input type="number" name="system.ammoCurrent" value="{{system.ammoCurrent}}" min="0" step="1" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.AmmoLoaded"}}</span>
+            <select class="nr-item-weapon-ammo-select">
+              {{#if compatibleAmmoItems.length}}
+                <optgroup label="Inventar ({{system.caliber}})">
+                  {{#each compatibleAmmoItems}}
+                    <option value="item:{{this.id}}" {{#if (eq ../system.loadedAmmoId this.id)}}selected{{/if}}>
+                      {{this.name}} [{{this.system.ammoType}}] ({{this.system.quantity}}x)
+                    </option>
+                  {{/each}}
+                </optgroup>
+              {{/if}}
+              <optgroup label="Munitionstyp (Standard)">
+                {{#each ammoTypes}}
+                  <option value="type:{{this.code}}" {{#if (and (eq ../system.loadedAmmoId "") (eq ../system.loadedAmmoType this.code))}}selected{{/if}}>
+                    {{this.label}} ({{this.effect}})
+                  </option>
+                {{/each}}
+              </optgroup>
+            </select>
           </label>
           <label>
             <span>{{localize "NORETURN.Combat.RD"}}</span>
@@ -279,6 +296,20 @@
           <label>
             <span>{{localize "NORETURN.Inventory.TechLevel"}}</span>
             <input type="text" name="system.techLevel" value="{{system.techLevel}}" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.Caliber"}} (falls Munition)</span>
+            <input type="text" name="system.caliber" value="{{system.caliber}}" placeholder="z.B. 9x19mm" />
+          </label>
+          <label>
+            <span>{{localize "NORETURN.Combat.AmmoLoaded"}} (Typ)</span>
+            <select name="system.ammoType">
+              <option value="" {{#if (eq system.ammoType "")}}selected{{/if}}>– Keine Munition –</option>
+              <option value="FMJ" {{#if (eq system.ammoType "FMJ")}}selected{{/if}}>FMJ – Vollmantel (+0 TP)</option>
+              <option value="AP" {{#if (eq system.ammoType "AP")}}selected{{/if}}>AP – Hartkern (+0 TP | ignoriert MK:A)</option>
+              <option value="HS" {{#if (eq system.ammoType "HS")}}selected{{/if}}>HS – Hohlspitz (+10 TP vs. MK:A | 0 vs. MK:B+)</option>
+              <option value="AF" {{#if (eq system.ammoType "AF")}}selected{{/if}}>AF – Anti-Fahrzeug (+10 TP | ignoriert MK:A &amp; B)</option>
+            </select>
           </label>
           <label class="full-span">
             <span>{{localize "NORETURN.Inventory.Effects"}}</span>

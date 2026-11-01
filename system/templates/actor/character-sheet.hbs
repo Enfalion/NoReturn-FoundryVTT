@@ -96,9 +96,11 @@
     <a class="item {{#if (eq activeTab 'skills')}}active{{/if}}" data-action="switchTab" data-tab="skills">
       <i class="fas fa-dice-d6"></i> {{localize "NORETURN.Sheet.Tabs.Skills"}}
     </a>
-    <a class="item {{#if (eq activeTab 'psi')}}active{{/if}}" data-action="switchTab" data-tab="psi">
-      <i class="fas fa-brain"></i> {{localize "NORETURN.Sheet.Tabs.Psi"}}
-    </a>
+    {{#if isPsiAllowed}}
+      <a class="item {{#if (eq activeTab 'psi')}}active{{/if}}" data-action="switchTab" data-tab="psi">
+        <i class="fas fa-brain"></i> {{localize "NORETURN.Sheet.Tabs.Psi"}}
+      </a>
+    {{/if}}
     <a class="item {{#if (eq activeTab 'combat')}}active{{/if}}" data-action="switchTab" data-tab="combat">
       <i class="fas fa-crosshairs"></i> {{localize "NORETURN.Sheet.Tabs.Combat"}}
     </a>
@@ -141,7 +143,7 @@
                       <small class="muted">({{localize this.abbrKey}})</small>
                     </td>
                     <td>
-                      <input type="number" name="system.attributes.primary.{{this.key}}.base" value="{{this.base}}" min="1" />
+                      <input type="number" name="system.attributes.primary.{{this.key}}.base" value="{{this.base}}" min="1" max="{{this.maxLimit}}" title="Spezies-Max: {{this.maxLimit}}" />
                     </td>
                     <td>
                       <input type="number" name="system.attributes.primary.{{this.key}}.mod" value="{{this.mod}}" />
@@ -179,7 +181,7 @@
                       <small class="muted">({{localize this.abbrKey}})</small>
                     </td>
                     <td>
-                      <input type="number" name="system.attributes.secondary.{{this.key}}.base" value="{{this.base}}" min="0" />
+                      <input type="number" name="system.attributes.secondary.{{this.key}}.base" value="{{this.base}}" min="0" max="{{this.maxLimit}}" title="Spezies-Max: {{this.maxLimit}}" />
                     </td>
                     <td>
                       <input type="number" name="system.attributes.secondary.{{this.key}}.mod" value="{{this.mod}}" />
@@ -318,13 +320,16 @@
     <!-- TAB 2: SKILLS, STYLESKILLS & CONDITIONS -->
     {{#if (eq activeTab "skills")}}
       <div class="tab-panel active">
-        <!-- Sub-Tab Navigation: Standardfertigkeiten vs. Styleskills -->
+        <!-- Sub-Tab Navigation: Standardfertigkeiten, Styleskills & Krankheiten/Gifte -->
         <div class="nr-subtabs">
           <button type="button" class="nr-subtab-btn {{#if (eq activeSkillSubtab 'standard')}}active{{/if}}" data-action="switchSkillSubtab" data-subtab="standard">
             <i class="fas fa-list-check"></i> {{localize "NORETURN.Skills.StandardHeader"}} ({{skills.length}})
           </button>
           <button type="button" class="nr-subtab-btn {{#if (eq activeSkillSubtab 'styleskills')}}active{{/if}}" data-action="switchSkillSubtab" data-subtab="styleskills">
             <i class="fas fa-star"></i> {{localize "NORETURN.StyleSkills.Header"}} ({{styleSkills.length}})
+          </button>
+          <button type="button" class="nr-subtab-btn {{#if (eq activeSkillSubtab 'conditions')}}active{{/if}}" data-action="switchSkillSubtab" data-subtab="conditions">
+            <i class="fas fa-biohazard"></i> {{localize "NORETURN.Conditions.Header"}} ({{conditions.length}})
           </button>
         </div>
 
@@ -440,55 +445,57 @@
           </div>
         {{/if}}
 
-        <!-- Krankheiten, Gifte & Trigger-System -->
-        <div class="nr-card">
-          <div class="nr-section-header">
-            <h2 class="nr-section-title">{{localize "NORETURN.Conditions.Header"}}</h2>
-            <div class="nr-inline-controls">
-              <button type="button" class="nr-btn small" data-action="createItem" data-type="disease">
-                <i class="fas fa-plus"></i> {{localize "TYPES.Item.disease"}}
-              </button>
-              <button type="button" class="nr-btn small" data-action="createItem" data-type="toxin">
-                <i class="fas fa-plus"></i> {{localize "TYPES.Item.toxin"}}
-              </button>
+        {{#if (eq activeSkillSubtab "conditions")}}
+          <!-- Krankheiten, Gifte & Trigger-System -->
+          <div class="nr-card">
+            <div class="nr-section-header">
+              <h2 class="nr-section-title">{{localize "NORETURN.Conditions.Header"}}</h2>
+              <div class="nr-inline-controls">
+                <button type="button" class="nr-btn small" data-action="createItem" data-type="disease">
+                  <i class="fas fa-plus"></i> {{localize "TYPES.Item.disease"}}
+                </button>
+                <button type="button" class="nr-btn small" data-action="createItem" data-type="toxin">
+                  <i class="fas fa-plus"></i> {{localize "TYPES.Item.toxin"}}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <table class="nr-table conditions-table">
-            <thead>
-              <tr>
-                <th>{{localize "TYPES.Item.condition"}}</th>
-                <th>{{localize "NORETURN.Conditions.Incubation"}}</th>
-                <th>{{localize "NORETURN.Conditions.Interval"}}</th>
-                <th>{{localize "NORETURN.Conditions.Intensity"}}</th>
-                <th>{{localize "NORETURN.Conditions.DamagePenalties"}}</th>
-                <th>{{localize "NORETURN.Conditions.ResistanceRoll"}}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each conditions}}
-                <tr data-item-id="{{this.id}}">
-                  <td>
-                    <a data-action="rollCondition" title="{{localize 'NORETURN.Conditions.RollResistance'}}">
-                      <strong><i class="fas fa-biohazard"></i> {{this.name}}</strong>
-                    </a>
-                  </td>
-                  <td>{{this.system.incubationTime}}</td>
-                  <td>{{this.system.testInterval}}</td>
-                  <td class="center"><strong>MW {{this.system.intensity}}</strong></td>
-                  <td>{{this.system.damagePerStage}} {{#if this.system.penaltiesPerStage}}({{this.system.penaltiesPerStage}}){{/if}}</td>
-                  <td class="actions-cell">
-                    <button type="button" class="nr-roll-btn" data-action="rollCondition" title="{{localize 'NORETURN.Conditions.RollResistance'}}">
-                      <i class="fas fa-biohazard"></i> {{localize "NORETURN.Conditions.RollBtn"}}
-                    </button>
-                    <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
-                    <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
-                  </td>
+            <table class="nr-table conditions-table">
+              <thead>
+                <tr>
+                  <th>{{localize "TYPES.Item.condition"}}</th>
+                  <th>{{localize "NORETURN.Conditions.Incubation"}}</th>
+                  <th>{{localize "NORETURN.Conditions.Interval"}}</th>
+                  <th>{{localize "NORETURN.Conditions.Intensity"}}</th>
+                  <th>{{localize "NORETURN.Conditions.DamagePenalties"}}</th>
+                  <th>{{localize "NORETURN.Conditions.ResistanceRoll"}}</th>
                 </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {{#each conditions}}
+                  <tr data-item-id="{{this.id}}">
+                    <td>
+                      <a data-action="rollCondition" title="{{localize 'NORETURN.Conditions.RollResistance'}}">
+                        <strong><i class="fas fa-biohazard"></i> {{this.name}}</strong>
+                      </a>
+                    </td>
+                    <td>{{this.system.incubationTime}}</td>
+                    <td>{{this.system.testInterval}}</td>
+                    <td class="center"><strong>MW {{this.system.intensity}}</strong></td>
+                    <td>{{this.system.damagePerStage}} {{#if this.system.penaltiesPerStage}}({{this.system.penaltiesPerStage}}){{/if}}</td>
+                    <td class="actions-cell">
+                      <button type="button" class="nr-roll-btn" data-action="rollCondition" title="{{localize 'NORETURN.Conditions.RollResistance'}}">
+                        <i class="fas fa-biohazard"></i> {{localize "NORETURN.Conditions.RollBtn"}}
+                      </button>
+                      <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
+                      <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
+          </div>
+        {{/if}}
       </div>
     {{/if}}
 
@@ -551,6 +558,15 @@
             </button>
           </div>
 
+          {{#unless psiSummary.forceHierarchyValid}}
+            <div class="nr-alert danger nr-pyramid-violation" style="margin-bottom:10px;">
+              <i class="fas fa-triangle-exclamation"></i>
+              <div>
+                <strong>{{localize "NORETURN.PSI.PyramidViolationHeader"}}:</strong> {{psiSummary.forceHierarchyWarningText}}
+              </div>
+            </div>
+          {{/unless}}
+
           <table class="nr-table psi-forces-table">
             <thead>
               <tr>
@@ -562,12 +578,13 @@
                 <th>{{localize "NORETURN.Skills.Pool"}}</th>
                 <th>{{localize "NORETURN.PSI.Mastery"}}</th>
                 <th>{{localize "NORETURN.PSI.LearnedApps"}} (S1/S2/S3)</th>
+                <th>{{localize "NORETURN.PSI.PyramidStatus"}}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {{#each psiForces}}
-                <tr data-item-id="{{this.id}}">
+                <tr data-item-id="{{this.id}}" class="{{#unless this.system.pyramidValid}}pyramid-locked{{/unless}}">
                   <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
                   <td class="center">Kategorie {{this.system.psiCategory}}</td>
                   <td class="center">{{localize "NORETURN.PSI.Tier"}} {{this.system.hierarchyTier}}</td>
@@ -583,6 +600,16 @@
                   </td>
                   <td class="center">
                     {{this.system.appCounts.[1]}} / {{this.system.appCounts.[2]}} / {{this.system.appCounts.[3]}}
+                  </td>
+                  <td class="center">
+                    {{#if this.system.pyramidValid}}
+                      <span class="noreturn-badge success"><i class="fas fa-check"></i> OK</span>
+                    {{else}}
+                      <span class="noreturn-badge lethal" title="{{this.system.pyramidReason}}">
+                        <i class="fas fa-triangle-exclamation"></i> {{localize "NORETURN.PSI.PyramidViolationShort"}}
+                      </span>
+                      <div class="muted" style="font-size:0.78em;margin-top:2px;">{{this.system.pyramidReason}}</div>
+                    {{/if}}
                   </td>
                   <td class="actions-cell">
                     <button type="button" class="nr-roll-btn" data-action="rollPsiForce" title="{{localize 'NORETURN.PSI.RollForce'}}">
@@ -612,7 +639,6 @@
                 <th>{{localize "NORETURN.Consumables.Active"}}</th>
                 <th>{{localize "NORETURN.PSI.AppName"}}</th>
                 <th>{{localize "NORETURN.PSI.ForceName"}}</th>
-                <th>{{localize "NORETURN.PSI.HierarchyTier"}}</th>
                 <th>{{localize "NORETURN.PSI.AppTier"}}</th>
                 <th>{{localize "NORETURN.PSI.TargetCorridor"}}</th>
                 <th>{{localize "NORETURN.PSI.Cost"}}</th>
@@ -629,8 +655,7 @@
                     <input type="checkbox" data-action="toggleActive" {{checked this.system.active}} />
                   </td>
                   <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
-                  <td>{{this.system.psiForce}} (Kat. {{this.system.psiCategory}})</td>
-                  <td class="center">{{localize "NORETURN.PSI.Tier"}} {{this.system.forceHierarchyTier}}</td>
+                  <td>{{this.system.psiForceLabel}} (Kat. {{this.system.psiCategory}})</td>
                   <td class="center">{{localize "NORETURN.PSI.Tier"}} {{this.system.tier}}</td>
                   <td class="center"><strong>{{this.system.targetRange}}</strong></td>
                   <td class="center">{{this.system.cost}}</td>
@@ -645,6 +670,7 @@
                       <span class="noreturn-badge lethal" title="{{this.system.pyramidReason}}">
                         <i class="fas fa-lock"></i> {{localize "NORETURN.PSI.Locked"}}
                       </span>
+                      <div class="muted" style="font-size:0.78em;margin-top:2px;">{{this.system.pyramidReason}}</div>
                     {{/if}}
                   </td>
                   <td class="actions-cell">
@@ -755,6 +781,7 @@
                 <th>{{localize "NORETURN.Combat.WeaponName"}}</th>
                 <th>{{localize "NORETURN.Combat.Caliber"}}</th>
                 <th>{{localize "NORETURN.Combat.Magazine"}}</th>
+                <th>{{localize "NORETURN.Combat.AmmoLoaded"}}</th>
                 <th>{{localize "NORETURN.Combat.Damage"}}</th>
                 <th>{{localize "NORETURN.Combat.RD"}}</th>
                 <th>{{localize "NORETURN.Combat.FireModes"}}</th>
@@ -766,8 +793,44 @@
                 <tr data-item-id="{{this.id}}">
                   <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
                   <td>{{this.system.caliber}}</td>
-                  <td>{{this.system.magazine}}</td>
-                  <td>{{this.system.damageFormula}} {{#if this.system.damageBonusPerHit}}(+{{this.system.damageBonusPerHit}}p.){{/if}}</td>
+                  <td>
+                    {{#if this.system.isRanged}}
+                      <strong>{{this.system.ammoCurrent}} / {{this.system.magazineCapacity}}</strong>
+                      <button type="button" class="nr-icon-btn" data-action="reloadWeapon" title="{{localize 'NORETURN.Combat.Reload'}}">
+                        <i class="fas fa-rotate"></i>
+                      </button>
+                    {{else}}
+                      {{this.system.magazine}}
+                    {{/if}}
+                  </td>
+                  <td>
+                    {{#if this.system.isRanged}}
+                      <select class="nr-weapon-ammo-select" data-weapon-id="{{this.id}}" style="max-width:190px;font-size:0.86em;">
+                        {{#if this.compatibleAmmoItems.length}}
+                          <optgroup label="Inventar ({{this.system.caliber}})">
+                            {{#each this.compatibleAmmoItems}}
+                              <option value="item:{{this.id}}" {{#if (eq ../system.loadedAmmoId this.id)}}selected{{/if}}>
+                                {{this.name}} [{{this.system.ammoType}}] ({{this.system.quantity}}x)
+                              </option>
+                            {{/each}}
+                          </optgroup>
+                        {{/if}}
+                        <optgroup label="Munitionstyp (Standard)">
+                          {{#each ../ammoTypes}}
+                            <option value="type:{{this.code}}" {{#if (and (eq ../system.loadedAmmoId "") (eq ../system.loadedAmmoType this.code))}}selected{{/if}}>
+                              {{this.code}} – {{this.effect}}
+                            </option>
+                          {{/each}}
+                        </optgroup>
+                      </select>
+                    {{else}}
+                      –
+                    {{/if}}
+                  </td>
+                  <td>
+                    <strong>{{this.system.effectiveDamageDisplay}}</strong>
+                    {{#if this.system.damageBonusPerHit}}(+{{this.system.damageBonusPerHit}}p.){{/if}}
+                  </td>
                   <td class="center">{{this.system.recoilDampening}}</td>
                   <td>{{this.system.fireModes}}</td>
                   <td class="actions-cell">

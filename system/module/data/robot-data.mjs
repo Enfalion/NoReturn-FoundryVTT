@@ -425,16 +425,22 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
       }
     }
 
-    if (!activeSpeciesItem && this.personal?.spezies) {
-      const preset = PLAYABLE_SPECIES_PRESETS[this.personal.spezies];
-      if (preset) {
-        addAttrMods(preset.attributeModifiers, 1);
-        addSkillMods(preset.skillModifiers, 1);
-        this.speciesSummary = preset;
-      }
+    const selectedSpeciesKey = this.personal?.spezies || "Mensch";
+    const selectedPreset = PLAYABLE_SPECIES_PRESETS[selectedSpeciesKey] || null;
+    if (activeSpeciesItem && (!selectedPreset || activeSpeciesItem.name === selectedSpeciesKey)) {
+      this.speciesSummary = activeSpeciesItem.system;
+    } else if (selectedPreset) {
+      addAttrMods(selectedPreset.attributeModifiers, 1);
+      addSkillMods(selectedPreset.skillModifiers, 1);
+      this.speciesSummary = selectedPreset;
     } else if (activeSpeciesItem) {
       this.speciesSummary = activeSpeciesItem.system;
     }
+
+    this.isPsiAllowed =
+      this.speciesSummary?.psiAllowed !== undefined
+        ? Boolean(this.speciesSummary.psiAllowed)
+        : true;
 
     this.skillBonuses = skillBonuses;
     this.itemAttrMods = itemAttrMods;
@@ -592,21 +598,40 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
     };
     this.isOrganismCritical = restOrg <= 0;
 
-    const psiForces = items.filter((i) => i.type === "psiForce" && i.system.psiCategory === "A");
+    const psiForces = items.filter(
+      (i) => i.type === "psiForce" && (i.system.psiCategory || i.system.category || "A") === "A"
+    );
     const getForceTier = (f) =>
-      resolvePsiHierarchyTier(
-        f.system.psiForce || f.name,
-        f.system.hierarchyTier,
-        Boolean(f.system.manualHierarchyOverride)
-      );
+      resolvePsiHierarchyTier(f.system.forceId || f.name, {
+        manualOverride: Boolean(f.system.manualHierarchyOverride),
+        itemTier: f.system.hierarchyTier
+      });
     const t1Forces = psiForces.filter((f) => getForceTier(f) === 1).length;
     const t2Forces = psiForces.filter((f) => getForceTier(f) === 2).length;
     const t3Forces = psiForces.filter((f) => getForceTier(f) === 3).length;
+    const forceHierarchyValid = t2Forces <= t1Forces && t3Forces <= t2Forces && t3Forces <= t1Forces;
+    const forceHierarchyWarnings = [];
+    if (t2Forces > t1Forces) {
+      forceHierarchyWarnings.push(
+        t1Forces === 0
+          ? `Pyramiden-Verstoß: ${t2Forces} PSI-Kraft/Kräfte der Hierarchiestufe 2 erlernt, ohne dass eine PSI-Kraft der Hierarchiestufe 1 vorhanden ist!`
+          : `Pyramiden-Verstoß: Für ${t2Forces} PSI-Kräfte der Hierarchiestufe 2 werden mindestens ${t2Forces} Kräfte der Hierarchiestufe 1 benötigt (aktuell: ${t1Forces}).`
+      );
+    }
+    if (t3Forces > t2Forces || t3Forces > t1Forces) {
+      forceHierarchyWarnings.push(
+        t2Forces === 0
+          ? `Pyramiden-Verstoß: ${t3Forces} PSI-Kraft/Kräfte der Hierarchiestufe 3 erlernt, ohne dass eine PSI-Kraft der Hierarchiestufe 2 vorhanden ist!`
+          : `Pyramiden-Verstoß: Für ${t3Forces} PSI-Kräfte der Hierarchiestufe 3 werden mindestens je ${t3Forces} Kräfte der Hierarchiestufe 1 (${t1Forces}) und Hierarchiestufe 2 (${t2Forces}) benötigt.`
+      );
+    }
     this.psiSummary = {
       t1Forces,
       t2Forces,
       t3Forces,
-      forceHierarchyValid: t2Forces <= t1Forces && t3Forces <= t2Forces
+      forceHierarchyValid,
+      forceHierarchyWarnings,
+      forceHierarchyWarningText: forceHierarchyWarnings.join(" ")
     };
 
     // Hybrid Primary & Secondary Attributes (combining All-Over / Base + Mod + Item Modifiers)

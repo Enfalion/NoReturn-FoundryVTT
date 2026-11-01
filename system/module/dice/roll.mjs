@@ -11,6 +11,8 @@
  * Includes strict cancel/close handling: closing any dialog via "Abbrechen", Escape, or X
  * resolves with `{ cancelled: true }` / `null` and aborts before `Roll.evaluate()` and Chat output.
  */
+import { AMMO_TYPE_DEFINITIONS } from "../data/item-data.mjs";
+
 export const DIFFICULTY_PRESETS = [
   { key: "Routine", mw: 5, labelKey: "NORETURN.Dice.Difficulty.Routine" },
   { key: "Normal", mw: 10, labelKey: "NORETURN.Dice.Difficulty.Normal" },
@@ -75,6 +77,145 @@ export class NoReturnRoll {
   }
 
   /**
+   * Build collapsible HTML spoiler ("Gewürfelte Würfel anzeigen") for any Roll instance,
+   * visually highlighting the Hazard-Die from normal dice (Punkt 5).
+   */
+  static buildDiceSpoilerHtml(roll, { markLastDieAsHazardIfNone = false } = {}) {
+    if (!roll || !Array.isArray(roll.terms)) return "";
+    const normalResults = [];
+    const hazardResults = [];
+
+    for (const term of roll.terms) {
+      if (term instanceof foundry.dice.terms.Die || (term?.results && term?.faces)) {
+        const isHazard =
+          Boolean(term.modifiers?.some((m) => String(m).startsWith("x"))) ||
+          String(term.options?.flavor || "").toLowerCase().includes("hazard");
+        for (const r of term.results || []) {
+          if (isHazard) {
+            hazardResults.push({
+              result: r.result,
+              exploded: Boolean(r.exploded)
+            });
+          } else {
+            normalResults.push({
+              result: r.result,
+              exploded: Boolean(r.exploded)
+            });
+          }
+        }
+      }
+    }
+
+    if (markLastDieAsHazardIfNone && hazardResults.length === 0 && normalResults.length > 0) {
+      const last = normalResults.pop();
+      hazardResults.push(last);
+    }
+
+    if (normalResults.length === 0 && hazardResults.length === 0) return "";
+
+    const spoilerLabel = this._i18n("NORETURN.Dice.ShowRolledDice", "Gewürfelte Würfel anzeigen");
+    const normalLabel = this._i18n("NORETURN.Dice.NormalDice", "Reguläre W6");
+    const hazardLabel = this._i18n("NORETURN.Dice.HazardDice", "Hazard-Di (1d6x6)");
+
+    const normalHtml = normalResults.length
+      ? `<div class="dice-row">
+          <span class="dice-label">${normalLabel}:</span>
+          <div class="dice-chips">
+            ${normalResults
+              .map(
+                (r) =>
+                  `<span class="die-chip normal-die" title="${normalLabel}">${r.result}</span>`
+              )
+              .join("")}
+          </div>
+        </div>`
+      : "";
+
+    const hazardHtml = hazardResults.length
+      ? `<div class="dice-row hazard-row">
+          <span class="dice-label hazard-label"><i class="fas fa-radiation"></i> ${hazardLabel}:</span>
+          <div class="dice-chips">
+            ${hazardResults
+              .map(
+                (r) =>
+                  `<span class="die-chip hazard-die ${
+                    r.exploded ? "exploded" : ""
+                  }" title="${hazardLabel}"><i class="fas fa-bolt hazard-chip-icon"></i> ${r.result}</span>`
+              )
+              .join("")}
+          </div>
+        </div>`
+      : "";
+
+    return `
+      <details class="nr-dice-spoiler">
+        <summary><i class="fas fa-dice"></i> ${spoilerLabel} (${roll.formula})</summary>
+        <div class="dice-breakdown">
+          ${normalHtml}
+          ${hazardHtml}
+        </div>
+      </details>
+    `;
+  }
+
+  /**
+   * Live recalculation callback for the PSI-App roll dialog (Punkt 4).
+   * Immediately updates the prominent End-Würfelpool, formula breakdown, target corridor, and [KS] display.
+   */
+  static updatePsiDialogLive(formOrEl) {
+    const root =
+      formOrEl?.closest?.(".psi-dialog") ||
+      formOrEl?.querySelector?.(".psi-dialog") ||
+      document.querySelector(".noreturn-roll-dialog.psi-dialog");
+    if (!root) return;
+    const form = root.closest("form") || formOrEl;
+    if (!form) return;
+
+    const basePool = Math.max(1, Number(root.dataset.basePool) || 1);
+    const baseMin = Math.max(1, Number(root.dataset.baseMin) || 8);
+    const baseMax = Math.max(1, Number(root.dataset.baseMax) || 12);
+
+    const dynInput = form.querySelector('[name="dynamicPool"]');
+    const gatheredInput = form.querySelector('[name="gatheredKs"]');
+    const corridorInput = form.querySelector('[name="corridorAdjust"]');
+    const overexertInput = form.querySelector('[name="overexertionCost"]');
+    const minInput = form.querySelector('[name="targetMin"]');
+    const maxInput = form.querySelector('[name="targetMax"]');
+
+    const dynamicPool = Math.max(1, Number(dynInput?.value ?? basePool) || 1);
+    const gatheredKs = Math.max(0, Number(gatheredInput?.value ?? 0) || 0);
+    const corridorAdjust = Number(corridorInput?.value ?? 0) || 0;
+    const overexertionCost = Math.max(0, Number(overexertInput?.value ?? 0) || 0);
+    const rawMin = Math.max(1, Number(minInput?.value ?? baseMin) || baseMin);
+    const rawMax = Math.max(1, Number(maxInput?.value ?? baseMax) || baseMax);
+
+    const endPool = Math.max(1, dynamicPool + gatheredKs - corridorAdjust + overexertionCost);
+    const reducedFromMax = Math.max(0, basePool - dynamicPool);
+    const totalKs = Math.max(0, reducedFromMax + gatheredKs);
+    const effectKs = Math.max(0, totalKs - Math.max(0, corridorAdjust));
+    const effectiveMin = Math.max(1, rawMin - corridorAdjust);
+    const effectiveMax = Math.max(effectiveMin, rawMax + corridorAdjust);
+
+    const poolValEl = root.querySelector("[data-live-pool]");
+    if (poolValEl) poolValEl.textContent = `${endPool}W6`;
+
+    const formulaEl = root.querySelector("[data-live-formula]");
+    if (formulaEl) {
+      const corrSign = corridorAdjust > 0 ? `-${corridorAdjust}` : corridorAdjust < 0 ? `+${Math.abs(corridorAdjust)}` : "±0";
+      formulaEl.textContent = `Dynamischer Pool (${dynamicPool}W6) + Vorab-KS (+${gatheredKs}W6) ${corrSign}W6 (Korridor) + Überanstrengung (+${overexertionCost}W6)`;
+    }
+
+    const corridorEl = root.querySelector("[data-live-corridor]");
+    if (corridorEl) corridorEl.textContent = `${effectiveMin} – ${effectiveMax}`;
+
+    const ksEl = root.querySelector("[data-live-ks]");
+    if (ksEl) ksEl.textContent = `${effectKs} [KS]`;
+
+    const overEl = root.querySelector("[data-live-overexertion]");
+    if (overEl) overEl.textContent = `${overexertionCost} Psyche`;
+  }
+
+  /**
    * Central wrapper around DialogV2.wait that guarantees cancelling via "Abbrechen",
    * Escape key, or the window close button (X) always resolves with `{ cancelled: true }`.
    */
@@ -83,6 +224,7 @@ export class NoReturnRoll {
     content,
     rollLabel = null,
     rollIcon = "fas fa-dice-d6",
+    onRender = null,
     parseForm
   }) {
     if (!foundry?.applications?.api?.DialogV2) {
@@ -95,6 +237,11 @@ export class NoReturnRoll {
       const raw = await foundry.applications.api.DialogV2.wait({
         window: { title },
         content,
+        render: (event, dialog) => {
+          if (typeof onRender === "function") {
+            onRender(event, dialog);
+          }
+        },
         buttons: [
           {
             action: "roll",
@@ -427,6 +574,8 @@ export class NoReturnRoll {
           "Standard-Initiative"
         )}</span>`;
 
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(roll);
+
     const content = `
       <div class="noreturn-chat-card initiative-card">
         <header class="card-header">
@@ -441,6 +590,7 @@ export class NoReturnRoll {
     }${comp.woundPenalty > 0 ? ` - Mali (${comp.woundPenalty})` : ""}</span>
           <span>Pool: <strong>${totalPool}W6</strong> (<code>${formula}</code>)</span>
         </div>
+        ${diceSpoilerHtml}
         <div class="card-total initiative-total">${roll.total}</div>
       </div>
     `;
@@ -464,18 +614,31 @@ export class NoReturnRoll {
   }
 
   /**
-   * 4. WAFFEN- / ANGRIFFSPROBE (Punkt 3.4)
+   * 4. WAFFEN- / ANGRIFFSPROBE (Punkt 3.4 & Punkt 6)
    * Dialog enthält ausschließlich: Waffenreichweite, Zielzonen-Auswahl, Deckung des Ziels, Feuermodus
-   * (sowie Verteidigung/MW des Ziels).
+   * (sowie Verteidigung/MW des Ziels). Berücksichtigt Magazinstand und geladene Munition.
    */
   static async rollWeaponAttack(actor, weapon, { skipDialog = false } = {}) {
     if (!weapon) return null;
     const sys = weapon.system || {};
-    const skillKey = sys.skill || "schiessen";
+    const isRanged = Boolean(sys.isRanged || sys.weaponType === "ranged");
+    const magCap = Number(sys.magazineCapacity) || 0;
+    const ammoCur = Number(sys.ammoCurrent) || 0;
+
+    if (isRanged && magCap > 0 && ammoCur <= 0) {
+      ui.notifications?.warn(
+        `${weapon.name}: Magazin ist leer (0 / ${magCap})! Bitte vor dem Schuss nachladen.`
+      );
+      return null;
+    }
+
+    const skillKey = sys.skill || "schusswaffen";
     const skillItem = actor?.items?.find(
       (i) =>
         i.type === "skill" &&
-        (i.system.skillId === skillKey || i.name.toLowerCase() === skillKey.toLowerCase())
+        (i.system.skillId === skillKey ||
+          i.name.toLowerCase() === skillKey.toLowerCase() ||
+          (skillKey === "schiessen" && i.system.skillId === "schusswaffen"))
     );
 
     const attrDice = Number(actor?.system?.attributes?.primary?.geschick?.overall) || 1;
@@ -564,6 +727,13 @@ export class NoReturnRoll {
       targetDefense = dialogResult.targetDefense;
     }
 
+    const shotsConsumed =
+      fireMode === "auto" ? 5 : fireMode === "burst" ? 3 : fireMode === "semi" ? 2 : 1;
+    if (isRanged && magCap > 0) {
+      const nextAmmo = Math.max(0, ammoCur - shotsConsumed);
+      await weapon.update({ "system.ammoCurrent": nextAmmo });
+    }
+
     const calledShotPenalty = targetZone === "random" ? 0 : targetZone === "12" ? -4 : -2;
     const fireModeBonus =
       fireMode === "auto" ? 3 : fireMode === "burst" ? 2 : fireMode === "semi" ? 1 : 0;
@@ -575,11 +745,16 @@ export class NoReturnRoll {
       targetZone === "random"
         ? "Zufallszone (2W6)"
         : `Gezielt: ${this._i18n(`NORETURN.Health.Zones.${targetZone}`, `Zone ${targetZone}`)}`;
+    const ammoTag = isRanged
+      ? ` | Munition: ${sys.loadedAmmoType || "FMJ"}${
+          magCap > 0 ? ` (${Math.max(0, ammoCur - shotsConsumed)}/${magCap})` : ""
+        }`
+      : "";
 
     const checkResult = await this.executeCheck({
       actor,
       title: `${weapon.name} (${this._i18n("NORETURN.Combat.RollAttack", "Angriff")})`,
-      flavorSubtitle: `${zoneText} | Feuermodus: ${fireMode.toUpperCase()} | Deckung: +${coverMod} MW`,
+      flavorSubtitle: `${zoneText} | Feuermodus: ${fireMode.toUpperCase()} | Deckung: +${coverMod} MW${ammoTag}`,
       attributeDice: attrDice,
       skillDice,
       bonusDice: totalBonusDice,
@@ -602,7 +777,7 @@ export class NoReturnRoll {
   }
 
   /**
-   * 5. WIDERSTANDSPROBE (KRANKHEIT / GIFT) (Punkt 3.5)
+   * 5. WIDERSTANDSPROBE (KRANKHEIT / GIFT) (Punkt 3.5 & Punkt 5)
    * Dialog enthält ausschließlich: Giftstufe (Intensität), Schadensintervall, Zähigkeits-Modifikator.
    */
   static async rollConditionResistance(actor, conditionItem, { skipDialog = false } = {}) {
@@ -683,6 +858,7 @@ export class NoReturnRoll {
       ? this._i18n("NORETURN.Conditions.Resisted", "WIDERSTANDEN (Erfolg)")
       : this._i18n("NORETURN.Conditions.Infected", "INFIZIERT / SYMPTOMSCHUB (Fehlschlag)");
     const statusClass = isSuccess ? "success" : "failure";
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(roll, { markLastDieAsHazardIfNone: true });
 
     const content = `
       <div class="noreturn-chat-card condition-card">
@@ -701,6 +877,7 @@ export class NoReturnRoll {
       testInterval || "–"
     }</strong></span>
         </div>
+        ${diceSpoilerHtml}
         <div class="card-totals-row">
           <div class="stat-box">
             <span class="stat-label">${this._i18n("NORETURN.Dice.ResultTotal", "Ergebnis")}</span>
@@ -741,6 +918,40 @@ export class NoReturnRoll {
     });
 
     return { roll, total, intensity, isSuccess };
+  }
+
+  /**
+   * 5B. ALLGEMEINE INFEKTIONSRESISTENZ-PROBE (mit Würfel-Spoiler & Hazard-Die-Hervorhebung)
+   */
+  static async rollInfectionResistance(actor) {
+    const rawFormula = actor?.system?.status?.infektionsresistenz || "2d6";
+    const formula = rawFormula.replace(/(\d+)W(\d+)/gi, "$1d$2").replace(/p\./gi, "");
+    const roll = new Roll(formula);
+    await roll.evaluate();
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(roll, { markLastDieAsHazardIfNone: true });
+
+    const content = `
+      <div class="noreturn-chat-card condition-card">
+        <header class="card-header">
+          <h3><i class="fas fa-biohazard"></i> ${this._i18n(
+            "NORETURN.Status.Infektionsresistenz",
+            "Infektionsresistenz"
+          )}</h3>
+          <span class="card-subtitle">Formel: <code>${rawFormula}</code></span>
+        </header>
+        ${diceSpoilerHtml}
+        <div class="card-total">${roll.total}</div>
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      flavor: `${this._i18n("NORETURN.Status.Infektionsresistenz", "Infektionsresistenz")} (${rawFormula})`,
+      content,
+      rolls: [roll]
+    });
+
+    return roll;
   }
 
   /**
@@ -828,21 +1039,28 @@ export class NoReturnRoll {
   }
 
   /**
-   * 6B. PSI-APP-PROBE (Punkt 3.6 & Punkt 4.1)
-   * Dialog & Chat zeigen die konkreten Regeln und Berechnungen des dynamischen Würfelpools,
-   * Überanstrengungskosten und den Schwellenwert/Zielkorridor an.
+   * 6B. PSI-APP-PROBE (Punkt 4 & Punkt 5)
+   * Live-Pool-Rechner im Dialog:
+   *  - Aktueller Würfelpool optisch groß & prominent hervorgehoben
+   *  - Numerische Spinner-Inputs für:
+   *      1. Dynamischer Pool
+   *      2. Vorab gesammelte Kraftstufe
+   *      3. Zielkorridor-Änderung / Anpassung
+   *      4. Überanstrengungskosten
+   *  - Echtzeit-Neuberechnung des End-Würfelpools bei jeder Änderung
+   *  - Bestehende Chat-Ausgabe + aufklappbarer Würfel-Spoiler mit Hazard-Die-Hervorhebung
    */
   static async rollPsiApp(actor, appItem, { skipDialog = false } = {}) {
     if (!appItem) return null;
     const sys = appItem.system || {};
     const tier = Number(sys.tier || sys.level || 1);
 
-    if (tier >= 2 && sys.pyramidValid === false) {
+    if (sys.pyramidValid === false) {
       ui.notifications?.warn(
         sys.pyramidReason ||
-          `PSI-Pyramide nicht erfüllt: Für ${appItem.name} (Stufe ${tier}) fehlen Vorstufen-Apps derselben PSI-Kraft!`
+          `PSI-Pyramide nicht erfüllt: Für ${appItem.name} (App-Stufe ${tier}) fehlen Voraussetzungen!`
       );
-      return null;
+      if (tier >= 2) return null;
     }
 
     const basePool = Math.max(1, Number(sys.forcePool || sys.forceLevel || 1));
@@ -850,10 +1068,12 @@ export class NoReturnRoll {
     const baseMax = Number(sys.targetMax || 12);
     const defaultExhaustion = Math.max(0, Number(sys.exhaustionCost) || 0);
     const woundPenalty = Number(actor?.system?.health?.gesamteMali || 0);
+    const initialDynamicPool = Math.max(1, basePool - woundPenalty);
+    const initialEndPool = Math.max(1, initialDynamicPool + defaultExhaustion);
 
-    let diceToReduce = 0;
+    let dynamicPool = initialDynamicPool;
     let gatheredKs = 0;
-    let rangeExpandKs = 0;
+    let corridorAdjust = 0;
     let overexertionCost = defaultExhaustion;
     let customTargetMin = baseMin;
     let customTargetMax = baseMax;
@@ -862,56 +1082,70 @@ export class NoReturnRoll {
       const dialogResult = await this._waitDialog({
         title: `PSI-App wirken: ${appItem.name} (${sys.psiForceLabel || sys.psiForce}, Kat. ${
           sys.category || "A"
-        })`,
+        }, App-Stufe ${tier})`,
         rollLabel: "PSI-App wirken",
         rollIcon: "fas fa-brain",
+        onRender: (_event, dialog) => {
+          const el = dialog?.element || document.querySelector(".noreturn-roll-dialog.psi-dialog");
+          if (!el) return;
+          const inputs = el.querySelectorAll(".nr-live-psi-input");
+          inputs.forEach((inp) => {
+            inp.addEventListener("input", () => NoReturnRoll.updatePsiDialogLive(inp));
+            inp.addEventListener("change", () => NoReturnRoll.updatePsiDialogLive(inp));
+          });
+          NoReturnRoll.updatePsiDialogLive(el);
+        },
         content: `
-          <div class="noreturn-roll-dialog psi-dialog">
+          <div class="noreturn-roll-dialog psi-dialog" data-base-pool="${initialDynamicPool}" data-base-min="${baseMin}" data-base-max="${baseMax}">
+            <div class="nr-psi-live-pool-banner">
+              <div class="nr-psi-live-pool-title">AKTUELLER END-WÜRFELPOOL</div>
+              <div class="nr-psi-live-pool-value" data-live-pool>${initialEndPool}W6</div>
+              <div class="nr-psi-live-pool-formula" data-live-formula>
+                Dynamischer Pool (${initialDynamicPool}W6) + Vorab-KS (+0W6) ±0W6 (Korridor) + Überanstrengung (+${defaultExhaustion}W6)
+              </div>
+              <div class="nr-psi-live-pool-metrics">
+                <span>Effektiver Zielkorridor: <strong data-live-corridor>${baseMin} – ${baseMax}</strong></span>
+                <span>Effekt-[KS]: <strong data-live-ks>0 [KS]</strong></span>
+                <span>Überanstrengung: <strong data-live-overexertion>${defaultExhaustion} Psyche</strong></span>
+              </div>
+            </div>
+
             <div class="nr-psi-pool-rules">
               <strong><i class="fas fa-circle-info"></i> Dynamischer PSI-Würfelpool (GRW S. 190):</strong>
-              <p><strong>Basis-Pool (${sys.psiForceLabel || sys.psiForce}):</strong> ${basePool}W6 (inkl. 1 Hazard-Di) | <strong>Wundmali:</strong> -${woundPenalty}W6</p>
-              <p>• <strong>Würfelreduktion:</strong> Jeder freiwillig reduzierte Würfel (max. ${Math.max(
-                0,
-                basePool - 1
-              )}) erzeugt <strong>+1 [KS]</strong>.<br/>
-                 • <strong>Kraft sammeln:</strong> Vorab gesammelte [KS] stehen zusätzlich bereit.<br/>
-                 • <strong>Einsatz von [KS]:</strong> Verbreitert den Zielkorridor um <strong>±1 je [KS]</strong> oder verstärkt den App-Effekt (erhöht Zeitaufwand auf 2 Aktionen).</p>
+              <p><strong>Basis-Pool (${sys.psiForceLabel || sys.psiForce}):</strong> ${basePool}W6${
+          woundPenalty > 0 ? ` | <strong>Wundmali:</strong> -${woundPenalty}W6` : ""
+        }</p>
+            </div>
+
+            <div class="form-group">
+              <label>${this._i18n("NORETURN.PSI.DynamicPoolCounter", "Dynamischer Pool")} (Basis: ${initialDynamicPool}W6)</label>
+              <input type="number" name="dynamicPool" class="nr-live-psi-input" value="${initialDynamicPool}" min="1" max="30" step="1" oninput="window.NoReturnRoll?.updatePsiDialogLive?.(this)" onchange="window.NoReturnRoll?.updatePsiDialogLive?.(this)" />
             </div>
             <div class="form-group">
-              <label>Dynamischer Pool: Würfelreduktion für [KS] (0 bis ${Math.max(0, basePool - 1)})</label>
-              <input type="number" name="diceToReduce" value="0" min="0" max="${Math.max(
-                0,
-                basePool - 1
-              )}" step="1" />
+              <label>${this._i18n("NORETURN.PSI.GatheredKsCounter", "Vorab gesammelte Kraftstufe")}</label>
+              <input type="number" name="gatheredKs" class="nr-live-psi-input" value="0" min="0" max="20" step="1" oninput="window.NoReturnRoll?.updatePsiDialogLive?.(this)" onchange="window.NoReturnRoll?.updatePsiDialogLive?.(this)" />
             </div>
             <div class="form-group">
-              <label>Vorab gesammelte Kraftstufen [KS]</label>
-              <input type="number" name="gatheredKs" value="0" min="0" max="10" step="1" />
+              <label>${this._i18n("NORETURN.PSI.CorridorAdjustCounter", "Zielkorridor-Änderung / Anpassung")}</label>
+              <input type="number" name="corridorAdjust" class="nr-live-psi-input" value="0" min="-10" max="20" step="1" oninput="window.NoReturnRoll?.updatePsiDialogLive?.(this)" onchange="window.NoReturnRoll?.updatePsiDialogLive?.(this)" />
             </div>
             <div class="form-group">
-              <label>Davon [KS] für Zielkorridor-Erweiterung (±1 je [KS])</label>
-              <input type="number" name="rangeExpandKs" value="0" min="0" max="10" step="1" />
+              <label>${this._i18n("NORETURN.PSI.OverexertionCounter", "Überanstrengungskosten")}</label>
+              <input type="number" name="overexertionCost" class="nr-live-psi-input" value="${defaultExhaustion}" min="0" max="50" step="1" oninput="window.NoReturnRoll?.updatePsiDialogLive?.(this)" onchange="window.NoReturnRoll?.updatePsiDialogLive?.(this)" />
             </div>
             <div class="form-group">
-              <label>Überanstrengungskosten (Psyche-Punkte)</label>
-              <input type="number" name="overexertionCost" value="${defaultExhaustion}" min="0" step="1" />
-            </div>
-            <div class="form-group">
-              <label>Schwellenwert / Zielkorridor (Min – Max)</label>
+              <label>Schwellenwert / Basis-Zielkorridor (Min – Max)</label>
               <div class="flexrow">
-                <input type="number" name="targetMin" value="${baseMin}" min="1" step="1" />
-                <input type="number" name="targetMax" value="${baseMax}" min="1" step="1" />
+                <input type="number" name="targetMin" class="nr-live-psi-input" value="${baseMin}" min="1" step="1" oninput="window.NoReturnRoll?.updatePsiDialogLive?.(this)" onchange="window.NoReturnRoll?.updatePsiDialogLive?.(this)" />
+                <input type="number" name="targetMax" class="nr-live-psi-input" value="${baseMax}" min="1" step="1" oninput="window.NoReturnRoll?.updatePsiDialogLive?.(this)" onchange="window.NoReturnRoll?.updatePsiDialogLive?.(this)" />
               </div>
             </div>
           </div>
         `,
         parseForm: (form) => ({
-          diceToReduce: Math.min(
-            Math.max(0, basePool - 1),
-            Math.max(0, Number(form.elements.diceToReduce?.value) || 0)
-          ),
+          dynamicPool: Math.max(1, Number(form.elements.dynamicPool?.value) || initialDynamicPool),
           gatheredKs: Math.max(0, Number(form.elements.gatheredKs?.value) || 0),
-          rangeExpandKs: Math.max(0, Number(form.elements.rangeExpandKs?.value) || 0),
+          corridorAdjust: Number(form.elements.corridorAdjust?.value) || 0,
           overexertionCost: Math.max(0, Number(form.elements.overexertionCost?.value) || 0),
           targetMin: Math.max(1, Number(form.elements.targetMin?.value) || baseMin),
           targetMax: Math.max(1, Number(form.elements.targetMax?.value) || baseMax)
@@ -919,20 +1153,22 @@ export class NoReturnRoll {
       });
 
       if (!dialogResult || dialogResult.cancelled) return null;
-      diceToReduce = dialogResult.diceToReduce;
+      dynamicPool = dialogResult.dynamicPool;
       gatheredKs = dialogResult.gatheredKs;
+      corridorAdjust = dialogResult.corridorAdjust;
       overexertionCost = dialogResult.overexertionCost;
       customTargetMin = dialogResult.targetMin;
       customTargetMax = dialogResult.targetMax;
-      rangeExpandKs = Math.min(diceToReduce + gatheredKs, dialogResult.rangeExpandKs);
     }
 
-    const totalKs = diceToReduce + gatheredKs;
-    const effectKs = Math.max(0, totalKs - rangeExpandKs);
+    const diceToReduce = Math.max(0, initialDynamicPool - dynamicPool);
+    const totalKs = Math.max(0, diceToReduce + gatheredKs);
+    const rangeExpandKs = corridorAdjust;
+    const effectKs = Math.max(0, totalKs - Math.max(0, rangeExpandKs));
     const effectiveMin = Math.max(1, customTargetMin - rangeExpandKs);
-    const effectiveMax = customTargetMax + rangeExpandKs;
+    const effectiveMax = Math.max(effectiveMin, customTargetMax + rangeExpandKs);
 
-    const activePool = Math.max(1, basePool - diceToReduce - woundPenalty);
+    const activePool = Math.max(1, dynamicPool + gatheredKs - corridorAdjust + overexertionCost);
     const normalDice = Math.max(0, activePool - 1);
     const formula = normalDice > 0 ? `${normalDice}d6 + 1d6x6` : "1d6x6";
 
@@ -977,18 +1213,19 @@ export class NoReturnRoll {
     const statusLabel = isSuccess
       ? `ZIELBEREICH GETROFFEN (${effectiveMin}–${effectiveMax}) – ERFOLG`
       : `ZIELBEREICH VERFEHLT (${effectiveMin}–${effectiveMax}) – PSIONISCHER PATZER!`;
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(roll);
 
     const content = `
       <div class="noreturn-chat-card psi-card">
         <header class="card-header">
-          <h3><i class="fas fa-brain"></i> ${appItem.name} (Stufe ${tier})</h3>
+          <h3><i class="fas fa-brain"></i> ${appItem.name} (App-Stufe ${tier})</h3>
           <span class="card-subtitle">${sys.psiForceLabel || sys.psiForce} (Kategorie ${
       sys.category || "A"
-    }, Hierarchiestufe ${sys.forceHierarchyTier || 1})</span>
+    })</span>
         </header>
         <div class="psi-app-details">
-          <strong>Dynamischer Würfelpool:</strong> ${basePool}W6 (Basis) - ${diceToReduce}W6 (Reduktion) - ${woundPenalty}W6 (Mali) = <strong>${activePool}W6</strong> (<code>${formula}</code>)<br/>
-          <strong>Kraftstufen [KS]:</strong> ${totalKs} Gesamt (${diceToReduce} aus Pool + ${gatheredKs} gesammelt) → ${rangeExpandKs} [KS] für Zielkorridor (±${rangeExpandKs}), <strong>${effectKs} [KS] für App-Effekt</strong><br/>
+          <strong>Dynamischer Würfelpool:</strong> ${dynamicPool}W6 (Dynamisch) + ${gatheredKs}W6 (Vorab-KS) - ${corridorAdjust}W6 (Zielkorridor-Anpassung) + ${overexertionCost}W6 (Überanstrengung) = <strong>${activePool}W6</strong> (<code>${formula}</code>)<br/>
+          <strong>Kraftstufen [KS]:</strong> ${totalKs} Gesamt (${diceToReduce} aus Pool + ${gatheredKs} gesammelt) → ${rangeExpandKs} für Zielkorridor-Änderung / Anpassung (±${rangeExpandKs}), <strong>${effectKs} [KS] für App-Effekt</strong><br/>
           <strong>Überanstrengungskosten:</strong> ${psycheCost} Psyche | <strong>Aktionskosten:</strong> ${
       totalKs > 0 ? "2 Aktionen (mit [KS])" : sys.cost || "1 Aktion"
     }
@@ -998,6 +1235,7 @@ export class NoReturnRoll {
             ? `<div class="card-meta"><span><em>Meisterschafts-Reroll genutzt (1. Wurf war ${firstAttemptTotal})</em></span></div>`
             : ""
         }
+        ${diceSpoilerHtml}
         <div class="card-totals-row">
           <div class="stat-box">
             <span class="stat-label">Ergebnis</span>
@@ -1291,7 +1529,7 @@ export class NoReturnRoll {
   }
 
   /**
-   * Roll 2d6 to determine the NoReturn Hit Zone (Trefferzone 2-12).
+   * Roll 2d6 to determine the NoReturn Hit Zone (Trefferzone 2-12) with collapsible dice spoiler (Punkt 5).
    */
   static async rollHitZone(actor = null) {
     const roll = new Roll("2d6");
@@ -1303,6 +1541,7 @@ export class NoReturnRoll {
     const lethalTag = isLethal
       ? `<span class="noreturn-badge lethal">${this._i18n("NORETURN.Health.Lethal", "Tödlich")}</span>`
       : "";
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(roll);
 
     const content = `
       <div class="noreturn-chat-card hitzone-card">
@@ -1316,6 +1555,7 @@ export class NoReturnRoll {
           <div class="hitzone-number">${zoneCode}</div>
           <div class="hitzone-name">${zoneLabel} ${lethalTag}</div>
         </div>
+        ${diceSpoilerHtml}
       </div>
     `;
 
@@ -1329,32 +1569,51 @@ export class NoReturnRoll {
   }
 
   /**
-   * Roll Weapon Damage (Melee ST W6 + flat, or Ranged flat + Good Hits).
+   * Roll Weapon Damage (Melee ST W6 + flat, or Ranged formula + loaded ammunition bonus + Good Hits) (Punkt 5 & Punkt 6).
    */
   static async rollWeaponDamage(actor, weapon, { goodHits = 0, calledZone = null } = {}) {
-    const sys = weapon.system;
-    const isMelee = sys.weaponType === "melee";
+    const sys = weapon.system || {};
+    const isRanged = Boolean(sys.isRanged || sys.weaponType === "ranged");
+    const isMelee = !isRanged && sys.weaponType === "melee";
     const staerke = Number(actor?.system?.attributes?.primary?.staerke?.overall ?? 1);
-    const flatDmg = Number(sys.damageFlat) || 0;
+    const ammoCode = (sys.loadedAmmoType || "FMJ").toUpperCase();
+    const ammoDef = AMMO_TYPE_DEFINITIONS[ammoCode] || AMMO_TYPE_DEFINITIONS.FMJ;
+    const ammoDmgBonus = isRanged ? ammoDef.damageBonus : 0;
+    const baseFlat = Number(sys.damageFlat) || 0;
+    const effectiveFlat = Number(sys.effectiveDamageFlat ?? baseFlat + ammoDmgBonus);
 
     let formula = "";
     if (isMelee) {
       const diceCount = Math.max(1, staerke + goodHits);
-      formula = flatDmg > 0 ? `${diceCount}d6 + ${flatDmg}` : `${diceCount}d6`;
-    } else if (String(sys.damageFormula).includes("d")) {
-      formula = goodHits > 0 ? `${sys.damageFormula} + ${goodHits}d6` : String(sys.damageFormula);
+      formula = baseFlat > 0 ? `${diceCount}d6 + ${baseFlat}` : `${diceCount}d6`;
     } else {
-      formula = goodHits > 0 ? `${flatDmg} + ${goodHits}d6` : `${flatDmg}`;
+      const baseFormula = String(sys.effectiveDamageFormula || sys.damageFormula || "1d6").trim();
+      if (baseFormula.includes("d") || baseFormula.includes("W") || baseFormula.includes("w")) {
+        const normalized = baseFormula.replace(/(\d+)\s*[wW]\s*(\d+)/g, "$1d$2").replace(/p\./gi, "");
+        formula = goodHits > 0 ? `${normalized} + ${goodHits}d6` : normalized;
+      } else {
+        formula = goodHits > 0 ? `${effectiveFlat} + ${goodHits}d6` : `${effectiveFlat}`;
+      }
     }
 
     const roll = new Roll(formula);
     await roll.evaluate();
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(roll);
 
     const zoneInfo = calledZone
       ? `<div class="card-meta"><span>Gezielte Trefferzone: <strong>${this._i18n(
           `NORETURN.Health.Zones.${calledZone}`,
           `Zone ${calledZone}`
         )}</strong></span></div>`
+      : "";
+
+    const ammoInfoHtml = isRanged
+      ? `<div class="card-meta ammo-meta">
+          <span><i class="fas fa-bullets"></i> Munition: <strong>${
+            sys.loadedAmmoName || ammoDef.label
+          }</strong></span>
+          <span>${ammoDef.summary}</span>
+        </div>`
       : "";
 
     const content = `
@@ -1371,7 +1630,9 @@ export class NoReturnRoll {
     }</strong></span>
           <span>Formel: <code>${formula}</code></span>
         </div>
+        ${ammoInfoHtml}
         ${zoneInfo}
+        ${diceSpoilerHtml}
         <div class="card-total damage-total">${roll.total} TP</div>
         <div class="card-actions">
           <button type="button" class="noreturn-chat-btn" data-action="roll-hitzone">
@@ -1394,9 +1655,10 @@ export class NoReturnRoll {
   }
 
   /**
-   * Roll Damage Resistance (Schadenswiderstand = Konstitution W6 + Rüstungswert RW).
+   * Roll Damage Resistance / Soak (Schadenswiderstand = Konstitution W6 + effektiver Rüstungswert RW)
+   * with integrated Armor Penetration query (Punkt 5 & Punkt 6).
    */
-  static async rollSoak(actor, zoneCode = "7") {
+  static async rollSoak(actor, zoneCode = "7", { skipDialog = false } = {}) {
     const ko = Number(actor?.system?.attributes?.primary?.konstitution?.overall ?? 1);
     let rw = 0;
     let mk = "A";
@@ -1409,27 +1671,146 @@ export class NoReturnRoll {
       mk = z?.materialCategory ?? "A";
     }
 
+    const zoneLabel = this._i18n(`NORETURN.Health.Zones.${zoneCode}`, `Zone ${zoneCode}`);
+    let ammoType = "FMJ";
+    let incomingDamage = 0;
+
+    if (!skipDialog) {
+      const dialogResult = await this._waitDialog({
+        title: `${this._i18n("NORETURN.Health.RollSoak", "Schadenswiderstand & Panzerungs-Abfrage")}: ${zoneLabel}`,
+        rollIcon: "fas fa-shield-halved",
+        content: `
+          <div class="noreturn-roll-dialog soak-dialog">
+            <div class="form-group">
+              <label>${this._i18n("NORETURN.Health.Zone", "Getroffene Trefferzone")}</label>
+              <input type="text" value="${zoneLabel} — KO: ${ko}W6 | Rüstung: RW ${rw} (MK:${mk})" disabled />
+            </div>
+            <div class="form-group">
+              <label>${this._i18n("NORETURN.Combat.AmmoPenetrationQuery", "Verwendete Munition / Schadensart (Panzerungs-Abfrage)")}</label>
+              <select name="ammoType">
+                <option value="FMJ">Vollmantel (FMJ) / Standard — Normale Rüstungswirkung (MK:A–C)</option>
+                <option value="AP">Hartkern (AP) — Durchschlägt / ignoriert MK:A komplett (RW = 0 bei MK:A)</option>
+                <option value="HS">Hohlspitz (HS) — +10 TP gegen MK:A, prallt ab an MK:B & MK:C (0 Schaden!)</option>
+                <option value="AF">Anti-Fahrzeug (AF) — +10 TP, durchschlägt / ignoriert MK:A & MK:B komplett</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>${this._i18n("NORETURN.Health.MaterialCategory", "Getroffene Materialkategorie (MK)")}</label>
+              <select name="mkOverride">
+                <option value="NONE" ${rw <= 0 ? "selected" : ""}>Ungepanzert (RW 0)</option>
+                <option value="A" ${rw > 0 && mk === "A" ? "selected" : ""}>MK: A (Weichballistik / Leder / Kevlar)</option>
+                <option value="B" ${rw > 0 && mk === "B" ? "selected" : ""}>MK: B (Hartballistik / Keramik / Robotik)</option>
+                <option value="C" ${rw > 0 && mk === "C" ? "selected" : ""}>MK: C (Schwere Fahrzeug- / Militärpanzerung)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>${this._i18n("NORETURN.Combat.IncomingDamageOptional", "Eingehender Roh-Schaden in TP (optional, 0 = nur Soak würfeln)")}</label>
+              <input type="number" name="incomingDamage" value="0" min="0" step="1" />
+            </div>
+          </div>
+        `,
+        parseForm: (form) => ({
+          ammoType: form.elements.ammoType?.value || "FMJ",
+          mkOverride: form.elements.mkOverride?.value || (rw > 0 ? mk : "NONE"),
+          incomingDamage: Math.max(0, Number(form.elements.incomingDamage?.value) || 0)
+        })
+      });
+
+      if (!dialogResult || dialogResult.cancelled) return null;
+      ammoType = dialogResult.ammoType;
+      if (dialogResult.mkOverride === "NONE") {
+        rw = 0;
+      } else {
+        mk = dialogResult.mkOverride;
+      }
+      incomingDamage = dialogResult.incomingDamage;
+    }
+
+    const ammoDef = AMMO_TYPE_DEFINITIONS[ammoType] || AMMO_TYPE_DEFINITIONS.FMJ;
+    const isBlockedByArmor = rw > 0 && ammoDef.blockedByMk.includes(mk);
+    const isArmorIgnored = rw > 0 && ammoDef.ignoresMk.includes(mk);
+    const effectiveRw = isArmorIgnored ? 0 : rw;
+
     const normalKo = Math.max(0, ko - 1);
     const dicePart = normalKo > 0 ? `${normalKo}d6 + 1d6x6` : `1d6x6`;
-    const formula = rw > 0 ? `${dicePart} + ${rw}` : dicePart;
+    const formula = effectiveRw > 0 ? `${dicePart} + ${effectiveRw}` : dicePart;
 
     const roll = new Roll(formula);
     await roll.evaluate();
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(roll);
 
-    const zoneLabel = this._i18n(`NORETURN.Health.Zones.${zoneCode}`, `Zone ${zoneCode}`);
+    let penetrationBanner = "";
+    let cardStatusClass = "success";
+    if (isBlockedByArmor) {
+      penetrationBanner = `
+        <div class="card-outcome success">
+          <strong><i class="fas fa-shield-virus"></i> NICHT DURCHDRUNGEN! (${ammoDef.label} prallt an MK:${mk} ab → 0 Schaden!)</strong>
+        </div>
+      `;
+    } else if (isArmorIgnored) {
+      cardStatusClass = "failure";
+      penetrationBanner = `
+        <div class="card-outcome failure">
+          <strong><i class="fas fa-burst"></i> PANZERUNG DURCHSCHLAGEN! (${ammoDef.label} ignoriert MK:${mk} → Effektiver RW = 0 statt ${rw})</strong>
+        </div>
+      `;
+    } else if (rw > 0) {
+      penetrationBanner = `
+        <div class="card-outcome">
+          <strong><i class="fas fa-shield-halved"></i> Panzerung wirksam (MK:${mk}, RW ${effectiveRw}) gegen ${ammoDef.label}</strong>
+        </div>
+      `;
+    } else {
+      penetrationBanner = `
+        <div class="card-outcome">
+          <strong>Ungepanzerte Trefferzone (RW 0) gegen ${ammoDef.label}</strong>
+        </div>
+      `;
+    }
+
+    const remainingDamage = isBlockedByArmor
+      ? 0
+      : incomingDamage > 0
+      ? Math.max(0, incomingDamage - roll.total)
+      : null;
+
+    const remainingHtml =
+      incomingDamage > 0
+        ? `<div class="card-totals-row">
+            <div class="stat-box">
+              <span class="stat-label">Roh-Schaden</span>
+              <span class="stat-value">${incomingDamage} TP</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Soak Gesamt</span>
+              <span class="stat-value">${isBlockedByArmor ? "Blockiert" : `${roll.total} TP`}</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Restschaden</span>
+              <span class="stat-value">${remainingDamage} TP</span>
+            </div>
+          </div>`
+        : "";
+
     const content = `
-      <div class="noreturn-chat-card soak-card">
+      <div class="noreturn-chat-card soak-card ${cardStatusClass}">
         <header class="card-header">
           <h3><i class="fas fa-shield-halved"></i> ${this._i18n(
             "NORETURN.Health.RollSoak",
             "Schadenswiderstand"
-          )}</h3>
+          )} – ${zoneLabel}</h3>
+          <span class="card-subtitle">Munition: ${ammoDef.label} | Rüstung: RW ${rw} (MK:${mk})</span>
         </header>
         <div class="card-meta">
-          <span>${zoneLabel}</span>
-          <span>KO (${ko}W6) + RW (${rw}, MK:${mk})</span>
+          <span>KO (${ko}W6) + Effektiver RW (${effectiveRw})</span>
+          <span>Formel: <code>${formula}</code></span>
         </div>
-        <div class="card-total soak-total">${roll.total} TP absorbiert</div>
+        ${penetrationBanner}
+        ${diceSpoilerHtml}
+        ${remainingHtml}
+        <div class="card-total soak-total">${
+          isBlockedByArmor ? "0 Schaden (Abgeprallt)" : `${roll.total} TP absorbiert`
+        }</div>
       </div>
     `;
 
@@ -1441,4 +1822,8 @@ export class NoReturnRoll {
 
     return roll;
   }
+}
+
+if (typeof globalThis !== "undefined") {
+  globalThis.NoReturnRoll = NoReturnRoll;
 }
