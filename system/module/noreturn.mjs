@@ -274,7 +274,7 @@ async function ensureCompendiumFolders() {
 }
 
 Hooks.once("init", () => {
-  console.log("NoReturn | Initializing NoReturn RPG System v1.1.1 (Foundry VTT v14)");
+  console.log("NoReturn | Initializing NoReturn RPG System v1.1.3 (Foundry VTT v14)");
 
   // Register System Settings: GM Override for PSI Force Hierarchy Tiers (Punkt 4.3)
   game.settings.register("noreturn", "psiHierarchyOverrides", {
@@ -408,6 +408,52 @@ Hooks.on("renderChatMessageHTML", (message, html) => {
       event.preventDefault();
       const actor = ChatMessage.getSpeakerActor(message.speaker);
       await NoReturnRoll.rollHitZone(actor);
+    });
+  });
+
+  html.querySelectorAll("[data-action='roll-target-defense']").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      await NoReturnRoll.rollTargetDefense(message);
+    });
+  });
+
+  html.querySelectorAll("[data-action='roll-direct-damage']").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      const attackFlow = message?.flags?.noreturn?.attackFlow;
+      if (!attackFlow) return;
+      const mw = Number(attackFlow.effectiveTargetMw) || 10;
+      const attackTotal = Number(attackFlow.attackTotal) || 0;
+      if (attackTotal < mw) {
+        ui.notifications?.info(
+          `Angriff (${attackTotal}) verfehlt den Ziel-MW (${mw})!`
+        );
+        return;
+      }
+      const margin = attackTotal - mw;
+      const step = Number(attackFlow.goodHitStep) || 10;
+      const goodHits = margin >= step ? Math.floor(margin / step) : 0;
+      await NoReturnRoll.resolveHitAndDamage(attackFlow, {
+        margin,
+        goodHits,
+        defenseTotal: mw
+      });
+    });
+  });
+
+  html.querySelectorAll("[data-action='roll-target-soak']").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      const hitIndex = Number(btn.dataset.hitIndex) || 0;
+      await NoReturnRoll.rollTargetSoak(message, hitIndex);
+    });
+  });
+
+  html.querySelectorAll("[data-action='apply-zone-damage']").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      await NoReturnRoll.applyZoneDamage(message);
     });
   });
 });

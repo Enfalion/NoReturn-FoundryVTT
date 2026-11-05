@@ -40,6 +40,8 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       rollCondition: NoReturnCharacterSheet.#onRollCondition,
       applySpeciesPreset: NoReturnCharacterSheet.#onApplySpeciesPreset,
       reloadWeapon: NoReturnCharacterSheet.#onReloadWeapon,
+      loadWeaponAmmo: NoReturnCharacterSheet.#onLoadWeaponAmmo,
+      unloadWeaponAmmo: NoReturnCharacterSheet.#onUnloadWeaponAmmo,
       createItem: NoReturnCharacterSheet.#onCreateItem,
       editItem: NoReturnCharacterSheet.#onEditItem,
       deleteItem: NoReturnCharacterSheet.#onDeleteItem,
@@ -247,33 +249,30 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
         const weaponId = sel.dataset.weaponId || sel.closest("[data-item-id]")?.dataset.itemId;
         const weapon = this.document.items.get(weaponId);
         if (!weapon) return;
-        const val = sel.value || "TYPE:FMJ";
-        if (val.startsWith("TYPE:")) {
-          const code = val.replace("TYPE:", "");
+        const val = String(sel.value || "").trim();
+        if (!val || val === "unload") {
+          await NoReturnRoll.unloadWeaponAmmo(this.document, weapon);
+          return;
+        }
+        if (val.toLowerCase().startsWith("type:")) {
+          const code = val.slice(5).toUpperCase();
           const def = AMMO_TYPE_DEFINITIONS[code] || AMMO_TYPE_DEFINITIONS.FMJ;
+          const curAmmo = Number(weapon.system?.ammoCurrent) || 0;
+          if (curAmmo > 0 && weapon.system?.loadedAmmoId) {
+            await NoReturnRoll.unloadWeaponAmmo(this.document, weapon, { notify: false });
+          }
           await weapon.update({
             "system.loadedAmmoId": "",
             "system.loadedAmmoType": def.code,
-            "system.loadedAmmoName": def.label
+            "system.loadedAmmoName": def.label,
+            "system.loadedAmmoDamageMod": def.damageBonus
           });
         } else {
-          const ammoItem = this.document.items.get(val);
-          if (ammoItem) {
-            const code = (ammoItem.system?.ammoType || "FMJ").toUpperCase();
-            const magCap = Number(weapon.system?.magazineCapacity) || 0;
-            const curAmmo = Number(weapon.system?.ammoCurrent) || 0;
-            const availQty = Math.max(0, Number(ammoItem.system?.quantity) || 0);
-            const loadCount = curAmmo === 0 && magCap > 0 ? Math.min(magCap, availQty) : curAmmo;
-            if (curAmmo === 0 && loadCount > 0) {
-              await ammoItem.update({ "system.quantity": Math.max(0, availQty - loadCount) });
-            }
-            await weapon.update({
-              "system.loadedAmmoId": ammoItem.id,
-              "system.loadedAmmoType": code,
-              "system.loadedAmmoName": ammoItem.name,
-              "system.ammoCurrent": loadCount
-            });
-          }
+          const itemId = val.toLowerCase().startsWith("item:") ? val.slice(5) : val;
+          await NoReturnRoll.loadWeaponAmmo(this.document, weapon, {
+            ammoItemId: itemId,
+            skipDialog: true
+          });
         }
       });
     });
@@ -393,6 +392,23 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       }
     }
 
+    // 7. Gear / Ammunition / Consumable stacking when dropped from Compendium or sidebar
+    if ((item.type === "gear" || item.type === "consumable") && item.parent?.id !== this.document.id) {
+      const existingGear = this.document.items.find(
+        (i) =>
+          i.type === item.type &&
+          i.name === item.name &&
+          String(i.system?.caliber || "") === String(item.system?.caliber || "") &&
+          String(i.system?.ammoType || "") === String(item.system?.ammoType || "")
+      );
+      if (existingGear) {
+        const addQty = Math.max(1, Number(item.system?.quantity) || 1);
+        const curQty = Math.max(0, Number(existingGear.system?.quantity) || 0);
+        await existingGear.update({ "system.quantity": curQty + addQty });
+        return existingGear;
+      }
+    }
+
     return super._onDropItem
       ? super._onDropItem(event, data)
       : this.document.createEmbeddedDocuments("Item", [item.toObject()]);
@@ -487,34 +503,27 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const itemId = target.closest("[data-item-id]")?.dataset.itemId;
     const weapon = this.document.items.get(itemId);
     if (!weapon) return;
-    const magCap = Number(weapon.system?.magazineCapacity) || 0;
-    if (magCap <= 0) return;
+    await NoReturnRoll.loadWeaponAmmo(this.document, weapon, {
+      skipDialog: Boolean(event.shiftKey)
+    });
+  }
 
-    const curAmmo = Number(weapon.system?.ammoCurrent) || 0;
-    const needed = Math.max(0, magCap - curAmmo);
-    if (needed === 0) {
-      ui.notifications?.info(`${weapon.name}: Magazin ist bereits voll (${magCap}/${magCap}).`);
-      return;
-    }
+  static async #onLoadWeaponAmmo(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const weapon = this.document.items.get(itemId);
+    if (!weapon) return;
+    await NoReturnRoll.loadWeaponAmmo(this.document, weapon, {
+      skipDialog: Boolean(event.shiftKey)
+    });
+  }
 
-    const loadedId = weapon.system?.loadedAmmoId;
-    const ammoItem = loadedId ? this.document.items.get(loadedId) : null;
-    if (ammoItem) {
-      const avail = Math.max(0, Number(ammoItem.system?.quantity) || 0);
-      if (avail <= 0) {
-        ui.notifications?.warn(`${ammoItem.name}: Keine Patronen mehr im Inventar!`);
-        return;
-      }
-      const toLoad = Math.min(needed, avail);
-      await ammoItem.update({ "system.quantity": avail - toLoad });
-      await weapon.update({ "system.ammoCurrent": curAmmo + toLoad });
-      ui.notifications?.info(
-        `${weapon.name}: +${toLoad} Schuss (${ammoItem.name}) nachgeladen (${curAmmo + toLoad}/${magCap}).`
-      );
-    } else {
-      await weapon.update({ "system.ammoCurrent": magCap });
-      ui.notifications?.info(`${weapon.name}: Magazin geladen (${magCap}/${magCap}).`);
-    }
+  static async #onUnloadWeaponAmmo(event, target) {
+    event.preventDefault();
+    const itemId = target.closest("[data-item-id]")?.dataset.itemId;
+    const weapon = this.document.items.get(itemId);
+    if (!weapon) return;
+    await NoReturnRoll.unloadWeaponAmmo(this.document, weapon);
   }
 
   static async #onRollAttribute(event, target) {

@@ -96,11 +96,20 @@ export function normalizeCaliber(cal) {
 }
 
 export function isAmmoCompatibleWithWeapon(ammoItem, weaponCaliber = "") {
-  if (!ammoItem?.system?.isAmmo) return false;
+  if (!ammoItem?.system) return false;
+  const sys = ammoItem.system;
+  const isAmmoItem = Boolean(
+    sys.isAmmo ||
+      (sys.category || "").toLowerCase() === "munition" ||
+      sys.ammoType ||
+      (ammoItem.type === "consumable" && sys.caliber)
+  );
+  if (!isAmmoItem) return false;
+
   const wRaw = String(weaponCaliber ?? "").trim();
   if (!wRaw || wRaw === "–" || wRaw === "-") return false;
 
-  const aRaw = String(ammoItem.system.caliber ?? "").trim();
+  const aRaw = String(sys.caliber ?? "").trim();
   if (!aRaw || /p1\s*[-–]\s*p4|r1\s*[-–]\s*r3|universal|alle/i.test(aRaw)) return true;
 
   const wNorm = normalizeCaliber(wRaw).replace(/,/g, ".");
@@ -114,6 +123,241 @@ export function isAmmoCompatibleWithWeapon(ammoItem, weaponCaliber = "") {
   }
 
   return wNorm.includes(aNorm) || aNorm.includes(wNorm);
+}
+
+/**
+ * Safely read an actor's effective attribute value (overall / total), even if called
+ * during prepareEmbeddedDocuments() before actor.prepareDerivedData() has finished (Punkt 1).
+ */
+export function getEffectiveActorAttribute(actor, attrKey) {
+  if (!actor || !attrKey) return 0;
+  const key = String(attrKey).trim().toLowerCase();
+  const prim = actor.system?.attributes?.primary?.[key];
+  if (prim) {
+    if (actor.type === "robot" && ["geschick", "staerke", "konstitution", "schnelligkeit", "wahrnehmung"].includes(key)) {
+      return Math.max(0, Number(prim.overall ?? actor.system?.allOver?.[key] ?? prim.base ?? 1));
+    }
+    if (prim.itemMod !== undefined) {
+      return Math.max(0, Number(prim.overall) || 0);
+    }
+    return Math.max(0, (Number(prim.base) || 0) + (Number(prim.mod) || 0));
+  }
+  const sec = actor.system?.attributes?.secondary?.[key];
+  if (sec) {
+    if (sec.itemMod !== undefined) {
+      return Math.max(0, Number(sec.total) || 0);
+    }
+    return Math.max(0, (Number(sec.base) || 0) + (Number(sec.mod) || 0));
+  }
+  return 0;
+}
+
+export function normalizeSkillKey(raw = "") {
+  return String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/ß/g, "ss")
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/[\s-]+/g, "_");
+}
+
+/**
+ * Resolve the matching combat skill and attack dice pool for a weapon on an actor (Punkt 2).
+ * Maps weapon subtypes/categories/skills to GRW combat skills:
+ *  - Feuerwaffen (Pistolen, Gewehre, SMGs, Schrotflinten): Schießen + Geschick
+ *  - Schwere Waffen: Schwere Waffen + Geschick
+ *  - Projektilwaffen (Bögen, Armbrüste): Projektilwaffen + Geschick
+ *  - Wurfwaffen / Granaten: Wurfwaffen + Geschick
+ *  - Sprühwaffen / Flammenwerfer: Sprühwaffen + Geschick
+ *  - Kurzdistanzwaffen (KW / Messer / waffenlos): Nahkampf + Geschick
+ *  - Distanzwaffen (DW / Schwerter / Stangenwaffen): Waffenkampf + Geschick
+ */
+export function resolveWeaponCombatSkill(actor, weapon) {
+  const sys = weapon?.system || weapon || {};
+  const rawSkill = normalizeSkillKey(sys.skill || "");
+  const rawCat = normalizeSkillKey(sys.category || "");
+  const rawRange = normalizeSkillKey(sys.range || "");
+  const rawName = normalizeSkillKey(weapon?.name || "");
+  const combined = `${rawSkill} ${rawCat} ${rawRange} ${rawName}`;
+
+  let canonicalId = "schiessen";
+  let canonicalLabel = "Schießen";
+  let aliases = ["schiessen", "schusswaffen", "feuerwaffen"];
+
+  if (
+    rawSkill.includes("schwere") ||
+    rawSkill === "geschuetze" ||
+    rawCat.includes("schwere") ||
+    combined.includes("granatwerfer") ||
+    combined.includes("raketenwerfer") ||
+    combined.includes("maschinengewehr")
+  ) {
+    canonicalId = "schwere_waffen";
+    canonicalLabel = "Schwere Waffen";
+    aliases = ["schwere_waffen", "schwere_waffe", "geschuetze"];
+  } else if (
+    rawSkill.includes("projektil") ||
+    combined.includes("armbrust") ||
+    combined.includes("bogen") ||
+    normalizeCaliber(sys.caliber) === "bolzen" ||
+    normalizeCaliber(sys.caliber) === "pfeil"
+  ) {
+    canonicalId = "projektilwaffen";
+    canonicalLabel = "Projektilwaffen";
+    aliases = ["projektilwaffen", "projektilwaffe"];
+  } else if (rawSkill.includes("wurf") || rawCat.includes("wurf") || combined.includes("wurfmesser")) {
+    canonicalId = "wurfwaffen";
+    canonicalLabel = "Wurfwaffen";
+    aliases = ["wurfwaffen", "wurfwaffe"];
+  } else if (rawSkill.includes("sprueh") || combined.includes("flammenwerfer") || combined.includes("sprueh")) {
+    canonicalId = "spruehwaffen";
+    canonicalLabel = "Sprühwaffen";
+    aliases = ["spruehwaffen", "spruehwaffe"];
+  } else if (
+    rawSkill === "waffenkampf" ||
+    rawCat.includes("distanz") ||
+    rawRange.includes("distanzwaffe") ||
+    (sys.weaponType === "melee" && (rawCat.includes("distanz") || rawSkill.includes("waffenkampf")))
+  ) {
+    canonicalId = "waffenkampf";
+    canonicalLabel = "Waffenkampf";
+    aliases = ["waffenkampf", "distanzwaffen", "distanzwaffe"];
+  } else if (
+    rawSkill === "nahkampf" ||
+    rawCat.includes("kurzdistanz") ||
+    rawRange.includes("kurzdistanz") ||
+    sys.weaponType === "melee"
+  ) {
+    canonicalId = "nahkampf";
+    canonicalLabel = "Nahkampf";
+    aliases = ["nahkampf", "kurzdistanzwaffen", "waffenlos"];
+  } else {
+    canonicalId = "schiessen";
+    canonicalLabel = "Schießen";
+    aliases = ["schiessen", "schusswaffen", "feuerwaffen"];
+  }
+
+  let skillItem = null;
+  if (actor?.items) {
+    skillItem = actor.items.find((i) => {
+      if (i.type !== "skill") return false;
+      const iId = normalizeSkillKey(i.system?.skillId || "");
+      const iName = normalizeSkillKey(i.name || "");
+      return aliases.includes(iId) || aliases.includes(iName) || iId === rawSkill || iName === rawSkill;
+    });
+  }
+
+  const attrDice = Math.max(1, getEffectiveActorAttribute(actor, "geschick") || 1);
+  const skillLevel = skillItem ? Math.max(0, Number(skillItem.system?.level) || 0) : 0;
+  const skillMod =
+    skillItem && skillLevel > 0
+      ? Number(skillItem.system?.effectiveMod ?? skillItem.system?.mod) || 0
+      : 0;
+  const weaponAttackBonus = Number(sys.attackBonus) || 0;
+  // GRW rule: If skill is 0 (unlearned), roll only with Attribute (+ weapon bonus) without penalty.
+  // If skill > 0, base pool is Attribute + Skill + SkillMod + WeaponAttackBonus.
+  const baseAttackPool = Math.max(
+    1,
+    attrDice + (skillLevel > 0 ? skillLevel + skillMod : 0) + weaponAttackBonus
+  );
+
+  return {
+    canonicalId,
+    canonicalLabel,
+    skillItem,
+    skillLevel,
+    skillMod,
+    attrKey: "geschick",
+    attrLabel: "Geschick",
+    attrDice,
+    weaponAttackBonus,
+    baseAttackPool
+  };
+}
+
+/**
+ * Parse a weapon's fireModes string (e.g. "Semi 1(5x), Burst 2(3x), Auto 44(15g)", "Single 1(1x)", "Repetier 1(1x)")
+ * into structured fire mode capabilities according to GRW S. 60-61 (Punkt 4).
+ */
+export function parseWeaponFireModes(fireModesStr = "", weaponSys = {}) {
+  const raw = String(fireModesStr || "").trim();
+  const isRanged = Boolean(
+    weaponSys.isRanged ||
+      weaponSys.weaponType === "ranged" ||
+      (weaponSys.caliber && weaponSys.caliber !== "–" && weaponSys.weaponType !== "melee")
+  );
+
+  const modes = {
+    single: { supported: false, key: "single", label: "Einzelschuss (E)", bulletsPerShot: 1, maxShots: 1 },
+    repetier: { supported: false, key: "repetier", label: "Repetier (R)", bulletsPerShot: 1, maxShots: 1 },
+    semi: { supported: false, key: "semi", label: "Semiautomatik (S)", bulletsPerTrigger: 1, maxTriggers: 1 },
+    burst: { supported: false, key: "burst", label: "Burst-Modus (B)", bulletsPerBurst: 3, maxBursts: 1 },
+    auto: { supported: false, key: "auto", label: "Vollautomatik (A)", listedDamage: 0, bulletsConsumed: 10 }
+  };
+
+  if (!isRanged || /nahkampf/i.test(raw)) {
+    modes.single.supported = true;
+    modes.single.label = "Einzelangriff (Nahkampf)";
+    return { ...modes, availableModes: [modes.single] };
+  }
+
+  const singleMatch = raw.match(/Single\s*(\d+)?\s*(?:\(\s*(\d+)\s*x\s*\))?/i);
+  if (singleMatch || /einzel/i.test(raw)) {
+    modes.single.supported = true;
+    modes.single.bulletsPerShot = Number(singleMatch?.[1]) || 1;
+    modes.single.maxShots = Number(singleMatch?.[2]) || 1;
+  }
+
+  const repMatch = raw.match(/Repetier\s*(\d+)?\s*(?:\(\s*(\d+)\s*x\s*\))?/i);
+  if (repMatch) {
+    modes.repetier.supported = true;
+    modes.repetier.bulletsPerShot = Number(repMatch[1]) || 1;
+    modes.repetier.maxShots = Number(repMatch[2]) || 1;
+  }
+
+  const semiMatch = raw.match(/Semi\s*(\d+)?\s*(?:\(\s*(\d+)\s*x?\s*\))?/i);
+  if (semiMatch) {
+    modes.semi.supported = true;
+    const n1 = Number(semiMatch[1]) || 1;
+    const n2 = Number(semiMatch[2]) || 0;
+    if (n2 > 0) {
+      modes.semi.bulletsPerTrigger = n1;
+      modes.semi.maxTriggers = n2;
+    } else {
+      modes.semi.bulletsPerTrigger = 1;
+      modes.semi.maxTriggers = Math.max(1, n1);
+    }
+  }
+
+  const burstMatch = raw.match(/Burst\s*(\d+)?\s*(?:\(\s*(\d+)\s*x?\s*\))?/i);
+  if (burstMatch) {
+    modes.burst.supported = true;
+    modes.burst.bulletsPerBurst = Number(burstMatch[1]) || 3;
+    modes.burst.maxBursts = Number(burstMatch[2]) || 2;
+  }
+
+  const autoMatch = raw.match(/Auto\s*(\d+)?\s*(?:\(\s*(\d+)\s*g\s*\))?/i);
+  if (autoMatch) {
+    modes.auto.supported = true;
+    modes.auto.listedDamage = Number(autoMatch[1]) || 0;
+    modes.auto.bulletsConsumed = Number(autoMatch[2]) || 10;
+  }
+
+  // Always allow single shot on ranged weapons if no explicit single/repetier was parsed
+  if (!modes.single.supported && !modes.repetier.supported) {
+    modes.single.supported = true;
+  }
+
+  const availableModes = [];
+  if (modes.single.supported) availableModes.push(modes.single);
+  if (modes.repetier.supported) availableModes.push(modes.repetier);
+  if (modes.semi.supported) availableModes.push(modes.semi);
+  if (modes.burst.supported) availableModes.push(modes.burst);
+  if (modes.auto.supported) availableModes.push(modes.auto);
+
+  return { ...modes, availableModes };
 }
 
 export function parseMagazineCapacity(magazineStr, explicitCap = 0) {
@@ -275,26 +519,28 @@ export class NoReturnSkillData extends foundry.abstract.TypeDataModel {
 
     if (actor) {
       if (this.attribute) {
-        const prim = actor.system?.attributes?.primary?.[this.attribute];
-        const sec = actor.system?.attributes?.secondary?.[this.attribute];
-        if (prim) attrVal = Number(prim.overall ?? prim.base ?? 0);
-        else if (sec) attrVal = Number(sec.total ?? sec.base ?? 0);
+        attrVal = getEffectiveActorAttribute(actor, this.attribute);
       }
 
       const skillBonuses = actor.system?.skillBonuses || {};
       const idKey = (this.skillId || "").toLowerCase();
       const nameKey = (this.parent?.name || "").toLowerCase();
+      const normNameKey = normalizeSkillKey(this.parent?.name || "");
       if (idKey && skillBonuses[idKey]) {
         itemBonusMod += Number(skillBonuses[idKey]) || 0;
       } else if (nameKey && skillBonuses[nameKey]) {
         itemBonusMod += Number(skillBonuses[nameKey]) || 0;
+      } else if (normNameKey && skillBonuses[normNameKey]) {
+        itemBonusMod += Number(skillBonuses[normNameKey]) || 0;
       }
     }
 
     this.attributeValue = attrVal;
     this.itemBonusMod = itemBonusMod;
     this.effectiveMod = (Number(this.mod) || 0) + itemBonusMod;
-    this.pool = Math.max(0, attrVal + (Number(this.level) || 0) + this.effectiveMod);
+    const lvl = Math.max(0, Number(this.level) || 0);
+    // GRW rule: Pool = Attributswert (aktuell/effektiv) + Fertigkeitswert (aktuell/effektiv) + Modifikatoren
+    this.pool = Math.max(0, attrVal + lvl + this.effectiveMod);
   }
 }
 
@@ -336,10 +582,7 @@ export class NoReturnStyleSkillData extends foundry.abstract.TypeDataModel {
     const actor = this.parent?.parent;
     let attrVal = 0;
     if (actor && this.attribute) {
-      const prim = actor.system?.attributes?.primary?.[this.attribute];
-      const sec = actor.system?.attributes?.secondary?.[this.attribute];
-      if (prim) attrVal = Number(prim.overall ?? prim.base ?? 0);
-      else if (sec) attrVal = Number(sec.total ?? sec.base ?? 0);
+      attrVal = getEffectiveActorAttribute(actor, this.attribute);
     }
     this.attributeValue = attrVal;
     this.effectiveMod = Number(this.mod) || 0;
@@ -569,23 +812,25 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
       weaponId: new fields.StringField({ required: false, blank: true, initial: "" }),
       category: new fields.StringField({ required: false, blank: true, initial: "faustfeuerwaffe" }),
       weaponType: new fields.StringField({ required: false, blank: true, initial: "ranged" }),
-      skill: new fields.StringField({ required: false, blank: true, initial: "schusswaffen" }),
+      skill: new fields.StringField({ required: false, blank: true, initial: "schiessen" }),
       attackBonus: new fields.NumberField({ required: true, integer: true, initial: 0 }),
       parryBonus: new fields.NumberField({ required: true, integer: true, initial: 0 }),
-      damageFormula: new fields.StringField({ required: false, blank: true, initial: "1d6+10" }),
-      damageDice: new fields.NumberField({ required: true, integer: true, min: 0, initial: 1 }),
-      damageFlat: new fields.NumberField({ required: true, integer: true, initial: 10 }),
+      damageFormula: new fields.StringField({ required: false, blank: true, initial: "20" }),
+      damageDice: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
+      damageFlat: new fields.NumberField({ required: true, integer: true, initial: 20 }),
       damageBonusPerHit: new fields.NumberField({ required: true, integer: true, initial: 4 }),
-      caliber: new fields.StringField({ required: false, blank: true, initial: "9mm" }),
-      magazine: new fields.StringField({ required: false, blank: true, initial: "15 (Stange)" }),
+      caliber: new fields.StringField({ required: false, blank: true, initial: "9mm (P3)" }),
+      magazine: new fields.StringField({ required: false, blank: true, initial: "15(m)" }),
       magazineCapacity: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
       ammoCurrent: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
       loadedAmmoId: new fields.StringField({ required: false, blank: true, initial: "" }),
-      loadedAmmoType: new fields.StringField({ required: false, blank: true, initial: "FMJ" }),
+      loadedAmmoType: new fields.StringField({ required: false, blank: true, initial: "" }),
       loadedAmmoName: new fields.StringField({ required: false, blank: true, initial: "" }),
+      loadedAmmoDamageMod: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      loadedAmmoBulletDamage: new fields.NumberField({ required: true, integer: true, initial: 0 }),
       recoilDampening: new fields.NumberField({ required: true, integer: true, min: 0, initial: 2 }),
-      fireModes: new fields.StringField({ required: false, blank: true, initial: "Semi (1)" }),
-      range: new fields.StringField({ required: false, blank: true, initial: "Fernkampfwaffe" }),
+      fireModes: new fields.StringField({ required: false, blank: true, initial: "Semi 1(5x)" }),
+      range: new fields.StringField({ required: false, blank: true, initial: "Pistole" }),
       techLevel: new fields.StringField({ required: false, blank: true, initial: "II" }),
       price: new fields.NumberField({ required: true, min: 0, initial: 300 }),
       weight: new fields.NumberField({ required: true, min: 0, initial: 1.0 }),
@@ -600,57 +845,145 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
     const normCal = normalizeCaliber(this.caliber);
     const derivedMagCap = parseMagazineCapacity(this.magazine, this.magazineCapacity);
     this.magazineCapacity = derivedMagCap;
-    this.isRanged = Boolean(
-      normCal ||
-        derivedMagCap > 0 ||
-        (this.category || "").toLowerCase().includes("fernkampf") ||
-        ["schusswaffen", "schwere_waffen", "schiessen", "projektilwaffen", "energiewaffen"].includes(
-          (this.skill || "").toLowerCase()
-        )
-    );
+    const isMeleeExplicit =
+      this.weaponType === "melee" ||
+      ["nahkampf", "waffenkampf"].includes(normalizeSkillKey(this.skill)) ||
+      /nahkampf/i.test(this.fireModes || "");
+    this.isRanged =
+      !isMeleeExplicit &&
+      Boolean(
+        this.weaponType === "ranged" ||
+          normCal ||
+          derivedMagCap > 0 ||
+          (this.category || "").toLowerCase().includes("fernkampf") ||
+          [
+            "schusswaffen",
+            "schwere_waffen",
+            "schiessen",
+            "projektilwaffen",
+            "wurfwaffen",
+            "spruehwaffen",
+            "energiewaffen"
+          ].includes(normalizeSkillKey(this.skill))
+      );
+
+    // Expose magazine object alias `{ value, max }` alongside `ammoCurrent` / `magazineCapacity`
+    this.magazineObj = {
+      value: Math.max(0, Number(this.ammoCurrent) || 0),
+      max: derivedMagCap
+    };
 
     const actor = this.parent?.parent;
-    let resolvedAmmoType = (this.loadedAmmoType || "FMJ").toUpperCase();
-    if (!AMMO_TYPE_DEFINITIONS[resolvedAmmoType]) resolvedAmmoType = "FMJ";
-    let resolvedAmmoName = this.loadedAmmoName || AMMO_TYPE_DEFINITIONS[resolvedAmmoType].label;
+    this.combatSkillInfo = resolveWeaponCombatSkill(actor, this.parent);
+    this.attackPool = this.combatSkillInfo.baseAttackPool;
+    this.parsedFireModes = parseWeaponFireModes(this.fireModes, this);
 
+    // Dynamically resolve currently loaded ammunition from inventory (Punkt 3)
+    const curRounds = Math.max(0, Number(this.ammoCurrent) || 0);
+    let resolvedAmmoItem = null;
     if (actor?.items && this.loadedAmmoId) {
-      const ammoItem = actor.items.get(this.loadedAmmoId);
-      if (ammoItem) {
-        const itemTypeCode = String(ammoItem.system?.ammoType || "FMJ").toUpperCase();
-        if (AMMO_TYPE_DEFINITIONS[itemTypeCode]) {
-          resolvedAmmoType = itemTypeCode;
-        }
-        resolvedAmmoName = ammoItem.name;
-      }
+      resolvedAmmoItem = actor.items.get(this.loadedAmmoId) || null;
     }
 
-    const ammoDef = AMMO_TYPE_DEFINITIONS[resolvedAmmoType] || AMMO_TYPE_DEFINITIONS.FMJ;
+    let resolvedAmmoType = String(this.loadedAmmoType || "").toUpperCase();
+    let resolvedAmmoName = this.loadedAmmoName || "";
+    let ammoDamageBonus = Number(this.loadedAmmoDamageMod) || 0;
+    let bulletDamage = Number(this.damageBonusPerHit) || 0;
+    let ignoresMk = [];
+    let blockedByMk = [];
+
+    if (resolvedAmmoItem) {
+      const itemCode = String(resolvedAmmoItem.system?.ammoType || "").toUpperCase();
+      if (itemCode) resolvedAmmoType = itemCode;
+      resolvedAmmoName = resolvedAmmoItem.name;
+      const def = AMMO_TYPE_DEFINITIONS[resolvedAmmoType] || null;
+      ammoDamageBonus = Number(resolvedAmmoItem.system?.damageMod ?? def?.damageBonus ?? 0);
+      if (Number(resolvedAmmoItem.system?.bulletDamage) > 0) {
+        bulletDamage = Number(resolvedAmmoItem.system.bulletDamage);
+      }
+      ignoresMk = def?.ignoresMk ? [...def.ignoresMk] : [];
+      blockedByMk = def?.blockedByMk ? [...def.blockedByMk] : [];
+    } else if (resolvedAmmoType && AMMO_TYPE_DEFINITIONS[resolvedAmmoType]) {
+      const def = AMMO_TYPE_DEFINITIONS[resolvedAmmoType];
+      if (!resolvedAmmoName) resolvedAmmoName = def.label;
+      ammoDamageBonus = Number(this.loadedAmmoDamageMod || def.damageBonus || 0);
+      ignoresMk = [...def.ignoresMk];
+      blockedByMk = [...def.blockedByMk];
+    } else if (curRounds > 0 && this.isRanged) {
+      // Weapon has rounds in magazine (e.g. from compendium) without a specific custom ammo item linked yet
+      resolvedAmmoType = resolvedAmmoType || "FMJ";
+      const def = AMMO_TYPE_DEFINITIONS[resolvedAmmoType] || AMMO_TYPE_DEFINITIONS.FMJ;
+      resolvedAmmoName = resolvedAmmoName || def.label;
+      ammoDamageBonus = def.damageBonus;
+      ignoresMk = [...def.ignoresMk];
+      blockedByMk = [...def.blockedByMk];
+    }
+
+    if (this.isRanged && curRounds <= 0 && !resolvedAmmoItem) {
+      this.isLoaded = false;
+      this.loadedAmmoDisplay = "Entladen (0 Schuss)";
+      ammoDamageBonus = 0;
+    } else {
+      this.isLoaded = !this.isRanged || curRounds > 0 || derivedMagCap === 0;
+      this.loadedAmmoDisplay = resolvedAmmoName || (resolvedAmmoType ? resolvedAmmoType : "–");
+    }
+
     this.loadedAmmoType = resolvedAmmoType;
     this.loadedAmmoName = resolvedAmmoName;
-    this.ammoSummary = ammoDef.summary;
-    this.ammoDamageBonus = this.isRanged ? ammoDef.damageBonus : 0;
+    this.ammoDamageBonus = this.isRanged ? ammoDamageBonus : 0;
+    this.bulletDamage = this.isRanged ? bulletDamage : 0;
+    this.ammoIgnoresMk = ignoresMk;
+    this.ammoBlockedByMk = blockedByMk;
+    this.ammoSummary =
+      resolvedAmmoType && AMMO_TYPE_DEFINITIONS[resolvedAmmoType]
+        ? AMMO_TYPE_DEFINITIONS[resolvedAmmoType].summary
+        : "";
 
-    // Parse base dice and flat damage from damageFormula if needed
-    const rawFormula = String(this.damageFormula || "1d6").trim();
+    // Parse base weapon damage & dice
+    const rawFormula = String(this.damageFormula || "").trim();
     const diceMatch = rawFormula.match(/(\d+)\s*[dDwW]\s*(\d+)/);
-    const flatMatch = rawFormula.match(/([+-]\s*\d+)(?!\s*[dDwW])/);
-    const baseDice = diceMatch ? parseInt(diceMatch[1], 10) : Number(this.damageDice) || 1;
-    const baseDieFaces = diceMatch ? parseInt(diceMatch[2], 10) : 6;
-    const baseFlat = flatMatch
-      ? parseInt(flatMatch[1].replace(/\s+/g, ""), 10)
-      : diceMatch
-      ? 0
-      : Number(this.damageFlat) || 0;
+    const flatFromFormulaMatch = rawFormula.match(/([+-]\s*\d+)(?!\s*[dDwW])/);
+    const pureNumberMatch = rawFormula.match(/^\s*(\d+)\s*$/);
 
-    const totalFlat = baseFlat + this.ammoDamageBonus;
-    this.effectiveDamageFlat = totalFlat;
-    const signStr = totalFlat > 0 ? `+${totalFlat}` : totalFlat < 0 ? `${totalFlat}` : "";
-    this.effectiveDamageFormula = `${baseDice}d${baseDieFaces}${signStr}`;
-    this.effectiveDamageDisplay =
-      this.ammoDamageBonus > 0
-        ? `${baseDice}W${baseDieFaces}${signStr} (${resolvedAmmoType})`
-        : `${baseDice}W${baseDieFaces}${signStr}`;
+    const baseDice = diceMatch ? parseInt(diceMatch[1], 10) : 0;
+    const baseDieFaces = diceMatch ? parseInt(diceMatch[2], 10) : 6;
+    const baseFlat =
+      Number(this.damageFlat) > 0
+        ? Number(this.damageFlat)
+        : flatFromFormulaMatch
+        ? parseInt(flatFromFormulaMatch[1].replace(/\s+/g, ""), 10)
+        : pureNumberMatch
+        ? parseInt(pureNumberMatch[1], 10)
+        : 0;
+
+    this.baseWeaponDamage = baseFlat;
+    this.baseDamageDice = baseDice;
+    this.baseDamageDieFaces = baseDieFaces;
+
+    if (this.isRanged) {
+      // Single-shot damage: Grundschaden + (Schaden der Kugel * 1) + Munitions-Modifikator
+      const singleShotFlat = baseFlat + this.bulletDamage + this.ammoDamageBonus;
+      this.effectiveDamageFlat = singleShotFlat;
+      if (baseDice > 0) {
+        const signStr = singleShotFlat > 0 ? ` + ${singleShotFlat}` : singleShotFlat < 0 ? ` - ${Math.abs(singleShotFlat)}` : "";
+        this.effectiveDamageFormula = `${baseDice}d${baseDieFaces}${signStr}`;
+        this.effectiveDamageDisplay = `${baseDice}W${baseDieFaces}${signStr} TP`;
+      } else {
+        this.effectiveDamageFormula = `${singleShotFlat}`;
+        const parts = [`${baseFlat}`];
+        if (this.bulletDamage > 0) parts.push(`+${this.bulletDamage}/Kugel`);
+        if (this.ammoDamageBonus !== 0) {
+          parts.push(`${this.ammoDamageBonus > 0 ? `+${this.ammoDamageBonus}` : this.ammoDamageBonus} (${resolvedAmmoType})`);
+        }
+        this.effectiveDamageDisplay = `${singleShotFlat} TP (${parts.join(" ")})`;
+      }
+    } else {
+      // Melee weapon: @staerke W6 + baseFlat
+      const st = actor ? Math.max(1, getEffectiveActorAttribute(actor, "staerke") || 1) : 1;
+      this.effectiveDamageFlat = baseFlat;
+      this.effectiveDamageFormula = baseFlat > 0 ? `${st}d6 + ${baseFlat}` : `${st}d6`;
+      this.effectiveDamageDisplay = baseFlat > 0 ? `${st}W6 + ${baseFlat} TP` : `${st}W6 TP`;
+    }
   }
 }
 
@@ -685,6 +1018,8 @@ export class NoReturnGearData extends foundry.abstract.TypeDataModel {
       caliber: new fields.StringField({ required: false, blank: true, initial: "" }),
       ammoType: new fields.StringField({ required: false, blank: true, initial: "" }),
       isAmmo: new fields.BooleanField({ required: true, initial: false }),
+      damageMod: new fields.NumberField({ required: false, integer: true, nullable: true, initial: null }),
+      bulletDamage: new fields.NumberField({ required: false, integer: true, nullable: true, initial: null }),
       quantity: new fields.NumberField({ required: true, integer: true, min: 0, initial: 1 }),
       weight: new fields.NumberField({ required: true, min: 0, initial: 0.2 }),
       price: new fields.NumberField({ required: true, min: 0, initial: 50 }),
@@ -698,7 +1033,7 @@ export class NoReturnGearData extends foundry.abstract.TypeDataModel {
     const nameLower = (this.parent?.name || "").toLowerCase();
     const catLower = (this.category || "").toLowerCase();
     if (!this.ammoType) {
-      if (nameLower.includes("(ap)") || nameLower.includes("hartkern")) this.ammoType = "AP";
+      if (nameLower.includes("(ap)") || nameLower.includes("hartkern") || nameLower.includes("panzerbrechend")) this.ammoType = "AP";
       else if (nameLower.includes("(hs)") || nameLower.includes("hohlspitz")) this.ammoType = "HS";
       else if (nameLower.includes("(af)") || nameLower.includes("anti-fahrzeug")) this.ammoType = "AF";
       else if (
@@ -711,25 +1046,25 @@ export class NoReturnGearData extends foundry.abstract.TypeDataModel {
       }
     }
     if (!this.caliber && (this.isAmmo || catLower === "munition" || nameLower.includes("munition"))) {
-      // Infer caliber from item name if not explicitly set, e.g. "Munition 9mm (FMJ)"
       const calCandidates = [
+        "4,6mm (P1)",
+        "5,56mm (P2)",
+        "9mm (P3)",
+        "11mm (P4)",
+        "5,56mm (R1)",
+        "7,62mm (R2)",
+        "12,5mm (R3)",
         "9mm",
-        ".45",
-        ".357",
-        ".50",
+        "11mm",
         "5,56mm",
         "7,62mm",
         "4,6mm",
-        "12ga",
-        ".308",
-        "12,7mm",
-        "Pfeile",
+        "12,5mm",
         "Bolzen",
-        "Kleinkaliber",
-        "Brennstofftank",
+        "Gra.",
         "Granate",
-        "Rakete",
-        "Energiezelle"
+        "Rak.",
+        "Rakete"
       ];
       for (const cand of calCandidates) {
         if (nameLower.includes(cand.toLowerCase())) {
@@ -739,6 +1074,10 @@ export class NoReturnGearData extends foundry.abstract.TypeDataModel {
       }
     }
     this.isAmmo = Boolean(this.isAmmo || this.caliber || catLower === "munition" || this.ammoType);
+    if (this.isAmmo && (this.damageMod === null || this.damageMod === undefined)) {
+      const def = AMMO_TYPE_DEFINITIONS[this.ammoType] || AMMO_TYPE_DEFINITIONS.FMJ;
+      this.damageMod = def.damageBonus;
+    }
   }
 }
 

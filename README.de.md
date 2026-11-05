@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.2 (Deutsch)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.3 (Deutsch)
 
 Offizielle Systemimplementierung des postapokalyptischen Sci-Fi-Rollenspiels **NoReturn (1. Edition)** für **Foundry Virtual Tabletop v14** von **Enfalion**.
 
@@ -17,7 +17,18 @@ Direkter Release-Download:
 
 ---
 
-## Systemumfang & Neuerungen in v1.1.2
+## Systemumfang & Neuerungen in v1.1.3
+
+1. **Korrektur der Fertigkeits-Pool-Berechnung (Off-by-One / Hazard-Di Fix):**
+   - Exakte Pool-Mathematik `Attributswert (effektiv) + Fertigkeitswert (effektiv) + situative Boni - situative Mali` (z. B. `Schießen 5 + Geschick 2 = 7W6`, gerollt als `6d6 + 1d6x6`). Der Hazard-Di ersetzt exakt 1 Würfel des Pools und zieht keinen Würfel ab.
+2. **Automatische Verknüpfung von Waffen-Angriffsproben mit Kampffertigkeiten:**
+   - Alle 7 GRW-Kampffertigkeiten (*Schießen*, *Schwere Waffen*, *Projektilwaffen*, *Wurfwaffen*, *Sprühwaffen*, *Nahkampf*, *Waffenkampf*) werden automatisch mit `Geschick` und dem Waffenbonus zum Angriffs-Pool verknüpft.
+3. **Echtes Inventar-Munitions-Management (Laden, Wechseln, Entladen & Dynamischer Schaden):**
+   - Buttons **„Laden / Wechseln“** und **„Entladen“** an jeder Fernkampfwaffe transferieren Patronen echt zwischen Charakterinventar und Waffenmagazin (`0/x` bis `max`) und berechnen Schaden und Durchschlag dynamisch anhand der geladenen Munition (`FMJ`, `HS`, `AP`, `AF` oder eigene Schadens-Modifikatoren).
+4. **Feuermodi, Schussanzahl, Rückstoßdämpfung (RD) & Munitionsverbrauch (GRW S. 60–61):**
+   - Unterstützt **Einzelschuss**, **Repetier**, **Semiautomatik** (wählbare Abzüge `1..X`, Rückstoß `Abzüge - RD`), **Burst** (*Konzentriertes Feuer* `+10 TP` & Gute Treffer je 5 Pkt. / *Streufeuer* `+2W6` Angriff, Rückstoß `Bursts - RD`) und **Vollautomatik** (*Regulär* `+RD W6` / *Sperrfeuer* `-2W6`, 3 Zufallszonen à `2W6`).
+5. **Automatisierter Target-Kampfablauf aus dem Chat:**
+   - Interaktiver Workflow: **Angriff** → **Verteidigung würfeln** → **Trefferzone (`2W6`) & Rüstungs-/MK-Prüfung** → **Schadenswiderstand (`KO + effektiver RW`)** → **Restschaden direkt auf Zone anwenden**.
 
 1. **PSI-Feinschliff, Pyramiden-Validierung & Live-Pool-Rechner:**
    - Umbenennung des Hauptreiters in **„PSI“**; PSI-Apps besitzen ausschließlich eine **App-Stufe** (keine eigene Hierarchiestufe).

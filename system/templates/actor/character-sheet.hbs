@@ -779,6 +779,7 @@
             <thead>
               <tr>
                 <th>{{localize "NORETURN.Combat.WeaponName"}}</th>
+                <th>{{localize "NORETURN.Skills.Pool"}}</th>
                 <th>{{localize "NORETURN.Combat.Caliber"}}</th>
                 <th>{{localize "NORETURN.Combat.Magazine"}}</th>
                 <th>{{localize "NORETURN.Combat.AmmoLoaded"}}</th>
@@ -791,14 +792,25 @@
             <tbody>
               {{#each weapons}}
                 <tr data-item-id="{{this.id}}">
-                  <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
+                  <td>
+                    <a data-action="editItem"><strong>{{this.name}}</strong></a>
+                    <div class="muted" style="font-size:0.78em;">{{this.system.combatSkillInfo.canonicalLabel}}</div>
+                  </td>
+                  <td class="pool-cell center">
+                    <strong>{{this.system.attackPool}}W6</strong>
+                  </td>
                   <td>{{this.system.caliber}}</td>
                   <td>
                     {{#if this.system.isRanged}}
                       <strong>{{this.system.ammoCurrent}} / {{this.system.magazineCapacity}}</strong>
-                      <button type="button" class="nr-icon-btn" data-action="reloadWeapon" title="{{localize 'NORETURN.Combat.Reload'}}">
-                        <i class="fas fa-rotate"></i>
-                      </button>
+                      <div class="nr-inline-controls" style="gap:3px;margin-top:3px;">
+                        <button type="button" class="nr-btn small" data-action="loadWeaponAmmo" title="Munition aus Inventar laden / wechseln">
+                          <i class="fas fa-rotate"></i> Laden / Wechseln
+                        </button>
+                        <button type="button" class="nr-btn small secondary" data-action="unloadWeaponAmmo" title="Magazin entladen (zurück ins Inventar)">
+                          <i class="fas fa-eject"></i> Entladen
+                        </button>
+                      </div>
                     {{else}}
                       {{this.system.magazine}}
                     {{/if}}
@@ -806,6 +818,9 @@
                   <td>
                     {{#if this.system.isRanged}}
                       <select class="nr-weapon-ammo-select" data-weapon-id="{{this.id}}" style="max-width:190px;font-size:0.86em;">
+                        <option value="unload" {{#if (and (eq this.system.ammoCurrent 0) (eq this.system.loadedAmmoId ""))}}selected{{/if}}>
+                          – Nicht geladen (0/{{this.system.magazineCapacity}}) –
+                        </option>
                         {{#if this.compatibleAmmoItems.length}}
                           <optgroup label="Inventar ({{this.system.caliber}})">
                             {{#each this.compatibleAmmoItems}}
@@ -815,9 +830,9 @@
                             {{/each}}
                           </optgroup>
                         {{/if}}
-                        <optgroup label="Munitionstyp (Standard)">
+                        <optgroup label="Munitionstyp (Manuell)">
                           {{#each ../ammoTypes}}
-                            <option value="type:{{this.code}}" {{#if (and (eq ../system.loadedAmmoId "") (eq ../system.loadedAmmoType this.code))}}selected{{/if}}>
+                            <option value="type:{{this.code}}" {{#if (and (gt ../system.ammoCurrent 0) (eq ../system.loadedAmmoId "") (eq ../system.loadedAmmoType this.code))}}selected{{/if}}>
                               {{this.code}} – {{this.effect}}
                             </option>
                           {{/each}}
@@ -829,7 +844,9 @@
                   </td>
                   <td>
                     <strong>{{this.system.effectiveDamageDisplay}}</strong>
-                    {{#if this.system.damageBonusPerHit}}(+{{this.system.damageBonusPerHit}}p.){{/if}}
+                    {{#if this.system.damageBonusPerHit}}
+                      <div class="muted" style="font-size:0.78em;">Grund: {{this.system.baseWeaponDamage}} | Kugel: +{{this.system.damageBonusPerHit}}</div>
+                    {{/if}}
                   </td>
                   <td class="center">{{this.system.recoilDampening}}</td>
                   <td>{{this.system.fireModes}}</td>

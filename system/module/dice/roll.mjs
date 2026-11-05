@@ -11,7 +11,13 @@
  * Includes strict cancel/close handling: closing any dialog via "Abbrechen", Escape, or X
  * resolves with `{ cancelled: true }` / `null` and aborts before `Roll.evaluate()` and Chat output.
  */
-import { AMMO_TYPE_DEFINITIONS } from "../data/item-data.mjs";
+import {
+  AMMO_TYPE_DEFINITIONS,
+  getEffectiveActorAttribute,
+  isAmmoCompatibleWithWeapon,
+  parseWeaponFireModes,
+  resolveWeaponCombatSkill
+} from "../data/item-data.mjs";
 
 export const DIFFICULTY_PRESETS = [
   { key: "Routine", mw: 5, labelKey: "NORETURN.Dice.Difficulty.Routine" },
@@ -284,22 +290,26 @@ export class NoReturnRoll {
   }
 
   /**
-   * 1. ATTRIBUTSPROBE (Punkt 3.1)
-   * Dialog enthält ausschließlich: Attributswert, Situationsmodifikator (+/-), Schwellenwert.
+   * 1. ATTRIBUTSPROBE (Punkt 1 & 3.1)
+   * Dialog enthält: Attributswert, Situationsmodifikator (+/-), Wundmali, Schwellenwert.
    */
   static async rollAttributeCheck(
     actor,
     {
       attrKey = "geschick",
       label = "Attributsprobe",
-      attributeDice = 1,
+      attributeDice = null,
       alphaBio = false,
       targetNumber = 10,
       skipDialog = false
     } = {}
   ) {
-    const baseAttr = Math.max(1, Number(attributeDice) || 1);
-    const woundPenalty = Number(actor?.system?.health?.gesamteMali || 0);
+    const resolvedAttr =
+      attributeDice !== null && attributeDice !== undefined
+        ? Number(attributeDice)
+        : getEffectiveActorAttribute(actor, attrKey);
+    const baseAttr = Math.max(1, resolvedAttr || 1);
+    let woundPenalty = Math.max(0, Number(actor?.system?.health?.gesamteMali || 0));
     let situationalMod = 0;
     let mw = Number(targetNumber) || 10;
 
@@ -317,6 +327,10 @@ export class NoReturnRoll {
               <input type="number" name="situationalMod" value="0" step="1" />
             </div>
             <div class="form-group">
+              <label>${this._i18n("NORETURN.Health.GesamteMali", "Wund- / Schmerzmali (-W6)")}</label>
+              <input type="number" name="woundPenalty" value="${woundPenalty}" min="0" step="1" />
+            </div>
+            <div class="form-group">
               <label>${this._i18n("NORETURN.Dice.TargetNumber", "Schwellenwert (MW)")}</label>
               <div class="flexrow">
                 <select name="presetMw" onchange="this.form.targetNumber.value = this.value">
@@ -329,12 +343,14 @@ export class NoReturnRoll {
         `,
         parseForm: (form) => ({
           situationalMod: Number(form.elements.situationalMod?.value) || 0,
+          woundPenalty: Math.max(0, Number(form.elements.woundPenalty?.value ?? woundPenalty) || 0),
           targetNumber: Math.max(1, Number(form.elements.targetNumber?.value) || 10)
         })
       });
 
       if (!dialogResult || dialogResult.cancelled) return null;
       situationalMod = dialogResult.situationalMod;
+      woundPenalty = dialogResult.woundPenalty;
       mw = dialogResult.targetNumber;
     }
 
@@ -343,7 +359,7 @@ export class NoReturnRoll {
       title: label,
       flavorSubtitle: `${this._i18n("NORETURN.Dice.AttributeDialogTitle", "Attributsprobe")} (${baseAttr}W6${
         situationalMod !== 0 ? ` ${situationalMod > 0 ? `+${situationalMod}` : situationalMod}W6` : ""
-      })`,
+      }${woundPenalty > 0 ? ` -${woundPenalty}W6 Mali` : ""})`,
       attributeDice: baseAttr,
       skillDice: 0,
       bonusDice: situationalMod,
@@ -357,8 +373,9 @@ export class NoReturnRoll {
   }
 
   /**
-   * 2. FERTIGKEITSPROBE (Punkt 3.2)
-   * Dialog enthält ausschließlich: Fertigkeitswert, Basisattribut, Modifikatoren, Spezialisierungs-Bonus, Schwellenwert.
+   * 2. FERTIGKEITSPROBE (Punkt 1: Off-by-One / Hazard-Di Fix)
+   * Gesamt-Würfel = Attributswert (effektiv) + Fertigkeitswert (effektiv) + situative Boni - situative Mali.
+   * Der Hazard-Di ersetzt exakt 1 Würfel des Pools (reduziert den Pool NICHT!).
    */
   static async rollSkillCheck(
     actor,
@@ -368,24 +385,28 @@ export class NoReturnRoll {
     if (!skillItem) return null;
     const attrKey = skillItem.system?.attribute || "";
     const prim = actor?.system?.attributes?.primary?.[attrKey];
-    const sec = actor?.system?.attributes?.secondary?.[attrKey];
-    const attributeDice = prim ? Number(prim.overall) || 0 : sec ? Number(sec.total) || 0 : 0;
+    const attributeDice = getEffectiveActorAttribute(actor, attrKey);
     const attrLabel = attrKey
       ? this._i18n(`NORETURN.Attributes.${attrKey}`, attrKey)
       : this._i18n("NORETURN.Dice.NoBaseAttribute", "Kein Basisattribut");
     const skillDice = Number(skillItem.system?.level) || 0;
     const defaultMod = Number(skillItem.system?.effectiveMod ?? skillItem.system?.mod) || 0;
-    const woundPenalty = Number(actor?.system?.health?.gesamteMali || 0);
+    let woundPenalty = Math.max(0, Number(actor?.system?.health?.gesamteMali || 0));
 
     let bonusDice = defaultMod;
     let specializationBonus = 0;
     let mw = Number(targetNumber) || 10;
+    const baseSkillPool = Math.max(1, attributeDice + skillDice + defaultMod);
 
     if (!skipDialog) {
       const dialogResult = await this._waitDialog({
         title: `${this._i18n("NORETURN.Dice.SkillDialogTitle", "Fertigkeitsprobe")}: ${skillItem.name}`,
         content: `
           <div class="noreturn-roll-dialog skill-dialog">
+            <div class="form-group">
+              <label>${this._i18n("NORETURN.Dice.Pool", "Basis-Würfelpool")}</label>
+              <input type="text" value="${attrLabel} (${attributeDice}W6) + ${skillItem.name} (${skillDice}W6)${defaultMod !== 0 ? ` + Mod (${defaultMod}W6)` : ""} = ${baseSkillPool}W6 (inkl. 1 Hazard-Di)" disabled />
+            </div>
             <div class="form-group">
               <label>${this._i18n("NORETURN.Dice.SkillValue", "Fertigkeitswert")} (${skillItem.name})</label>
               <input type="number" name="skillDice" value="${skillDice}" disabled />
@@ -395,12 +416,16 @@ export class NoReturnRoll {
               <input type="number" name="attributeDice" value="${attributeDice}" disabled />
             </div>
             <div class="form-group">
-              <label>${this._i18n("NORETURN.Dice.Modifiers", "Modifikatoren (+/- W6)")}</label>
+              <label>${this._i18n("NORETURN.Dice.Modifiers", "Situative Modifikatoren (+/- W6)")}</label>
               <input type="number" name="bonusDice" value="${defaultMod}" step="1" />
             </div>
             <div class="form-group">
               <label>${this._i18n("NORETURN.Dice.SpecializationBonus", "Spezialisierungs-Bonus (+W6)")}</label>
               <input type="number" name="specializationBonus" value="0" min="0" max="6" step="1" />
+            </div>
+            <div class="form-group">
+              <label>${this._i18n("NORETURN.Health.GesamteMali", "Wund- / Schmerzmali (-W6)")}</label>
+              <input type="number" name="woundPenalty" value="${woundPenalty}" min="0" step="1" />
             </div>
             <div class="form-group">
               <label>${this._i18n("NORETURN.Dice.TargetNumber", "Schwellenwert (MW)")}</label>
@@ -416,6 +441,7 @@ export class NoReturnRoll {
         parseForm: (form) => ({
           bonusDice: Number(form.elements.bonusDice?.value) || 0,
           specializationBonus: Math.max(0, Number(form.elements.specializationBonus?.value) || 0),
+          woundPenalty: Math.max(0, Number(form.elements.woundPenalty?.value ?? woundPenalty) || 0),
           targetNumber: Math.max(1, Number(form.elements.targetNumber?.value) || 10)
         })
       });
@@ -423,12 +449,15 @@ export class NoReturnRoll {
       if (!dialogResult || dialogResult.cancelled) return null;
       bonusDice = dialogResult.bonusDice;
       specializationBonus = dialogResult.specializationBonus;
+      woundPenalty = dialogResult.woundPenalty;
       mw = dialogResult.targetNumber;
     }
 
     const totalBonus = bonusDice + specializationBonus;
     const subtitleParts = [`${attrLabel} (${attributeDice}W6) + Stufe (${skillDice}W6)`];
+    if (bonusDice !== 0) subtitleParts.push(`Mod (${bonusDice > 0 ? `+${bonusDice}` : bonusDice}W6)`);
     if (specializationBonus > 0) subtitleParts.push(`Spez. (+${specializationBonus}W6)`);
+    if (woundPenalty > 0) subtitleParts.push(`Mali (-${woundPenalty}W6)`);
 
     return this.executeCheck({
       actor,
@@ -460,11 +489,7 @@ export class NoReturnRoll {
         hasBillyTheKid: false
       };
     }
-    const schnelligkeit = Number(
-      actor.system?.attributes?.primary?.schnelligkeit?.overall ??
-        actor.system?.allOver?.schnelligkeit ??
-        1
-    );
+    const schnelligkeit = Math.max(1, getEffectiveActorAttribute(actor, "schnelligkeit") || 1);
     const alphaBio = Boolean(actor.system?.attributes?.primary?.schnelligkeit?.alphaBio);
     const reaktionItem = actor.items?.find(
       (i) =>
@@ -614,9 +639,327 @@ export class NoReturnRoll {
   }
 
   /**
-   * 4. WAFFEN- / ANGRIFFSPROBE (Punkt 3.4 & Punkt 6)
-   * Dialog enthält ausschließlich: Waffenreichweite, Zielzonen-Auswahl, Deckung des Ziels, Feuermodus
-   * (sowie Verteidigung/MW des Ziels). Berücksichtigt Magazinstand und geladene Munition.
+   * 3B. ECHTES MUNITIONS-MANAGEMENT (Punkt 3: Laden, Entladen, Durchtauschen & Dynamischer Schaden)
+   * Entlädt eine Fernkampfwaffe und transferiert verbleibende Kugeln zurück in das passende Inventar-Item.
+   */
+  static async unloadWeaponAmmo(actor, weapon, { notify = true } = {}) {
+    if (!actor || !weapon) return 0;
+    const sys = weapon.system || {};
+    const curAmmo = Math.max(0, Number(sys.ammoCurrent) || 0);
+    const loadedId = sys.loadedAmmoId || "";
+    const loadedType = (sys.loadedAmmoType || "").toUpperCase();
+    const loadedName = sys.loadedAmmoName || "";
+    const cal = sys.caliber || "";
+
+    if (curAmmo > 0) {
+      let targetItem = loadedId ? actor.items?.get(loadedId) : null;
+      if (!targetItem) {
+        targetItem = actor.items?.find(
+          (i) =>
+            isAmmoCompatibleWithWeapon(i, cal) &&
+            String(i.system?.ammoType || "FMJ").toUpperCase() === (loadedType || "FMJ")
+        );
+      }
+      if (targetItem) {
+        const curQty = Math.max(0, Number(targetItem.system?.quantity) || 0);
+        await targetItem.update({ "system.quantity": curQty + curAmmo });
+      } else if (cal) {
+        const def = AMMO_TYPE_DEFINITIONS[loadedType] || AMMO_TYPE_DEFINITIONS.FMJ;
+        await actor.createEmbeddedDocuments("Item", [
+          {
+            name: loadedName || `${cal} (${def.code})`,
+            type: "gear",
+            system: {
+              caliber: cal,
+              ammoType: def.code,
+              damageMod: Number(sys.loadedAmmoDamageMod ?? def.damageBonus) || 0,
+              quantity: curAmmo,
+              effects: def.summary
+            }
+          }
+        ]);
+      }
+    }
+
+    await weapon.update({
+      "system.ammoCurrent": 0,
+      "system.loadedAmmoId": "",
+      "system.loadedAmmoType": "",
+      "system.loadedAmmoName": "",
+      "system.loadedAmmoDamageMod": 0
+    });
+
+    if (notify) {
+      ui.notifications?.info(
+        curAmmo > 0
+          ? `${weapon.name}: ${curAmmo} Schuss (${loadedName || loadedType || "Munition"}) entladen und zurück ins Inventar gelegt.`
+          : `${weapon.name}: Magazin entladen (0/${Number(sys.magazineCapacity) || 0}).`
+      );
+    }
+    return curAmmo;
+  }
+
+  /**
+   * Lädt oder wechselt Munition aus dem Charakterinventar in die Waffe (Punkt 3).
+   * Befindet sich noch ein anderer Munitionstyp in der Waffe, wird dieser zuerst ins Inventar zurückgelegt.
+   */
+  static async loadWeaponAmmo(actor, weapon, { ammoItemId = null, skipDialog = false } = {}) {
+    if (!actor || !weapon) return null;
+    const sys = weapon.system || {};
+    const cal = sys.caliber || "";
+    const magCap = Math.max(1, Number(sys.magazineCapacity) || 1);
+
+    const compatibleItems = (actor.items ? Array.from(actor.items) : []).filter(
+      (i) => isAmmoCompatibleWithWeapon(i, cal) && (Number(i.system?.quantity) || 0) > 0
+    );
+
+    let chosenItem = ammoItemId ? actor.items?.get(ammoItemId) : null;
+
+    if (!chosenItem && !skipDialog) {
+      if (compatibleItems.length === 0) {
+        ui.notifications?.warn(
+          `${weapon.name}: Keine passende Munition für Kaliber "${cal || "Unbekannt"}" mit Menge > 0 im Inventar gefunden!`
+        );
+        return null;
+      }
+
+      const curLoadedInfo =
+        (Number(sys.ammoCurrent) || 0) > 0
+          ? `${sys.ammoCurrent}/${magCap} (${sys.loadedAmmoName || sys.loadedAmmoType || "Geladen"})`
+          : `Leer (0/${magCap})`;
+
+      const optionsHtml = compatibleItems
+        .map((item) => {
+          const code = String(item.system?.ammoType || "FMJ").toUpperCase();
+          const def = AMMO_TYPE_DEFINITIONS[code] || AMMO_TYPE_DEFINITIONS.FMJ;
+          const dmgMod =
+            item.system?.damageMod !== null &&
+            item.system?.damageMod !== undefined &&
+            item.system?.damageMod !== ""
+              ? Number(item.system.damageMod)
+              : def.damageBonus;
+          const selected = item.id === sys.loadedAmmoId ? "selected" : "";
+          return `<option value="${item.id}" ${selected}>${item.name} [${code}] — ${item.system.quantity} Schuss im Inventar (Schaden ${dmgMod >= 0 ? `+${dmgMod}` : dmgMod}, ${def.effect})</option>`;
+        })
+        .join("");
+
+      const dialogRes = await this._waitDialog({
+        title: `Munition laden / wechseln: ${weapon.name} (${cal})`,
+        rollLabel: "Laden / Wechseln",
+        rollIcon: "fas fa-rotate",
+        content: `
+          <div class="noreturn-roll-dialog ammo-load-dialog">
+            <div class="form-group">
+              <label>Aktuelles Magazin (${weapon.name})</label>
+              <input type="text" value="${curLoadedInfo}" disabled />
+            </div>
+            <div class="form-group">
+              <label>Kompatible Munition im Inventar (Kaliber: ${cal})</label>
+              <select name="ammoItemId">
+                ${optionsHtml}
+              </select>
+            </div>
+            <p style="font-size:0.85em;opacity:0.85;margin-top:6px;">
+              <i class="fas fa-circle-info"></i> Falls sich bereits andere Munition im Magazin befindet, werden die restlichen Patronen automatisch ins Inventar zurückgelegt.
+            </p>
+          </div>
+        `,
+        parseForm: (form) => ({
+          ammoItemId: form.elements.ammoItemId?.value || ""
+        })
+      });
+
+      if (!dialogRes || dialogRes.cancelled || !dialogRes.ammoItemId) return null;
+      chosenItem = actor.items?.get(dialogRes.ammoItemId);
+    } else if (!chosenItem && skipDialog) {
+      chosenItem =
+        (sys.loadedAmmoId && compatibleItems.find((i) => i.id === sys.loadedAmmoId)) ||
+        compatibleItems[0] ||
+        null;
+    }
+
+    if (!chosenItem) {
+      ui.notifications?.warn(`${weapon.name}: Keine kompatible Munition im Inventar verfügbar!`);
+      return null;
+    }
+
+    const curAmmo = Math.max(0, Number(sys.ammoCurrent) || 0);
+    const hasLinkedInventoryAmmo = Boolean(sys.loadedAmmoId);
+    const isSameAmmo = hasLinkedInventoryAmmo && sys.loadedAmmoId === chosenItem.id;
+
+    // Falls bereits echte Munition eines anderen Typs/Items geladen ist: zuerst entladen und zurück ins Inventar!
+    if (curAmmo > 0 && hasLinkedInventoryAmmo && !isSameAmmo) {
+      await this.unloadWeaponAmmo(actor, weapon, { notify: false });
+    }
+
+    const freshCurAmmo = isSameAmmo ? curAmmo : 0;
+    const needed = Math.max(0, magCap - freshCurAmmo);
+    const availQty = Math.max(0, Number(chosenItem.system?.quantity) || 0);
+
+    if (needed === 0) {
+      ui.notifications?.info(`${weapon.name}: Magazin ist bereits voll (${magCap}/${magCap} ${chosenItem.name}).`);
+      return chosenItem;
+    }
+    if (availQty <= 0) {
+      ui.notifications?.warn(`${chosenItem.name}: Keine Patronen mehr im Inventar!`);
+      return null;
+    }
+
+    const toLoad = Math.min(needed, availQty);
+    const newAmmoCurrent = freshCurAmmo + toLoad;
+    const code = String(chosenItem.system?.ammoType || "FMJ").toUpperCase();
+    const def = AMMO_TYPE_DEFINITIONS[code] || AMMO_TYPE_DEFINITIONS.FMJ;
+    const customDmgMod =
+      chosenItem.system?.damageMod !== null &&
+      chosenItem.system?.damageMod !== undefined &&
+      chosenItem.system?.damageMod !== ""
+        ? Number(chosenItem.system.damageMod)
+        : def.damageBonus;
+
+    await chosenItem.update({ "system.quantity": Math.max(0, availQty - toLoad) });
+    await weapon.update({
+      "system.ammoCurrent": newAmmoCurrent,
+      "system.loadedAmmoId": chosenItem.id,
+      "system.loadedAmmoType": def.code,
+      "system.loadedAmmoName": chosenItem.name,
+      "system.loadedAmmoDamageMod": customDmgMod
+    });
+
+    ui.notifications?.info(
+      `${weapon.name}: ${toLoad} Schuss ${chosenItem.name} [${def.code}] geladen (Magazin: ${newAmmoCurrent}/${magCap}).`
+    );
+    return chosenItem;
+  }
+
+  /**
+   * Live-Rechner für den Waffen-Angriffsdialog (Punkt 4: Feuermodi, Schussanzahl, Rückstoß & Schaden).
+   */
+  static updateWeaponDialogLive(formOrEl) {
+    const root =
+      formOrEl?.closest?.(".weapon-dialog") ||
+      formOrEl?.querySelector?.(".weapon-dialog") ||
+      document.querySelector(".noreturn-roll-dialog.weapon-dialog");
+    if (!root) return;
+    const form = root.closest("form") || formOrEl;
+    if (!form) return;
+
+    const isRanged = root.dataset.isRanged === "true";
+    const basePool = Number(root.dataset.basePool) || 1;
+    const rd = Number(root.dataset.rd) || 0;
+    const baseDamage = Number(root.dataset.baseDamage) || 0;
+    const bulletDamage = Number(root.dataset.bulletDamage) || 0;
+    const ammoMod = Number(root.dataset.ammoMod) || 0;
+    const ammoCurrent = Number(root.dataset.ammoCurrent) || 0;
+    const semiBulletsPerTrigger = Math.max(1, Number(root.dataset.semiBulletsPerTrigger) || 1);
+    const burstBulletsPerBurst = Math.max(1, Number(root.dataset.burstBulletsPerBurst) || 3);
+    const autoBulletsConsumed = Math.max(1, Number(root.dataset.autoBulletsConsumed) || 10);
+
+    const fireMode = form.querySelector('[name="fireMode"]')?.value || "single";
+    const rangeMod = Number(form.querySelector('[name="rangeMod"]')?.value) || 0;
+    const sitMod = Number(form.querySelector('[name="situationalMod"]')?.value) || 0;
+    const woundPenalty = Math.max(0, Number(form.querySelector('[name="woundPenalty"]')?.value) || 0);
+
+    const semiGroup = root.querySelector('[data-mode-group="semi"]');
+    const burstGroup = root.querySelector('[data-mode-group="burst"]');
+    const autoGroup = root.querySelector('[data-mode-group="auto"]');
+    const zoneSelect = form.querySelector('[name="targetZone"]');
+
+    if (semiGroup) semiGroup.style.display = fireMode === "semi" ? "" : "none";
+    if (burstGroup) burstGroup.style.display = fireMode === "burst" ? "" : "none";
+    if (autoGroup) autoGroup.style.display = fireMode === "auto" ? "" : "none";
+
+    if (zoneSelect) {
+      if (fireMode === "auto") {
+        zoneSelect.value = "random";
+        zoneSelect.disabled = true;
+      } else {
+        zoneSelect.disabled = false;
+      }
+    }
+
+    const targetZone = zoneSelect?.value || "random";
+    const calledShotPenalty = targetZone === "random" ? 0 : targetZone === "12" ? -4 : -2;
+
+    let recoilPenalty = 0;
+    let fireModeBonusDice = 0;
+    let ammoConsumed = isRanged ? 1 : 0;
+    let damagePreview = "";
+    let goodHitStep = 10;
+
+    if (!isRanged) {
+      damagePreview = `${root.dataset.meleeDamagePreview || `${baseDamage} TP`}`;
+    } else if (fireMode === "semi") {
+      const triggerInput = form.querySelector('[name="triggerCount"]');
+      const maxTriggersByAmmo = Math.max(1, Math.floor(ammoCurrent / semiBulletsPerTrigger));
+      const maxTriggers = Math.min(Number(triggerInput?.max) || 1, maxTriggersByAmmo);
+      const triggerCount = Math.min(maxTriggers, Math.max(1, Number(triggerInput?.value) || 1));
+      recoilPenalty = Math.max(0, triggerCount - rd);
+      ammoConsumed = triggerCount * semiBulletsPerTrigger;
+      const totalFlat = baseDamage + bulletDamage * triggerCount + ammoMod;
+      damagePreview = `${totalFlat} TP [Grund ${baseDamage} + (${bulletDamage}×${triggerCount}) + Muni ${ammoMod >= 0 ? `+${ammoMod}` : ammoMod}]`;
+    } else if (fireMode === "burst") {
+      const burstInput = form.querySelector('[name="burstCount"]');
+      const burstSubmode = form.querySelector('[name="burstSubmode"]')?.value || "concentrated";
+      const maxBurstsByAmmo = Math.max(1, Math.floor(ammoCurrent / burstBulletsPerBurst));
+      const maxBursts = Math.min(Number(burstInput?.max) || 1, maxBurstsByAmmo);
+      const burstCount = Math.min(maxBursts, Math.max(1, Number(burstInput?.value) || 1));
+      recoilPenalty = Math.max(0, burstCount - rd);
+      ammoConsumed = burstCount * burstBulletsPerBurst;
+      const concBonus = burstSubmode === "concentrated" ? 10 : 0;
+      if (burstSubmode === "spread") {
+        fireModeBonusDice = 2;
+      } else {
+        goodHitStep = 5;
+      }
+      const totalFlat = baseDamage + bulletDamage * burstCount + ammoMod + concBonus;
+      damagePreview = `${totalFlat} TP [Grund ${baseDamage} + (${bulletDamage}×${burstCount}) + Muni ${ammoMod >= 0 ? `+${ammoMod}` : ammoMod}${concBonus > 0 ? " + 10 Konz." : ""}] (Gute Treffer je ${goodHitStep} Pkt.)`;
+    } else if (fireMode === "auto") {
+      const autoSubmode = form.querySelector('[name="autoSubmode"]')?.value || "regular";
+      recoilPenalty = 0;
+      ammoConsumed = autoBulletsConsumed;
+      goodHitStep = 5;
+      if (autoSubmode === "regular") {
+        fireModeBonusDice = rd;
+      } else {
+        fireModeBonusDice = -2;
+      }
+      const totalFlat = baseDamage + 10 + bulletDamage * 2 + ammoMod;
+      damagePreview = `3 Zonen × ${totalFlat} TP [Grund ${baseDamage} + 10 + (${bulletDamage}×2) + Muni ${ammoMod >= 0 ? `+${ammoMod}` : ammoMod}] (Gute Treffer je 5 Pkt.)`;
+    } else {
+      // single or repetier
+      recoilPenalty = Math.max(0, 1 - rd);
+      ammoConsumed = 1;
+      const totalFlat = baseDamage + bulletDamage * 1 + ammoMod;
+      damagePreview = `${totalFlat} TP [Grund ${baseDamage} + Kugel ${bulletDamage} + Muni ${ammoMod >= 0 ? `+${ammoMod}` : ammoMod}]`;
+    }
+
+    const endPool = Math.max(
+      1,
+      basePool + rangeMod + calledShotPenalty + fireModeBonusDice + sitMod - recoilPenalty - woundPenalty
+    );
+
+    const poolEl = root.querySelector("[data-live-attack-pool]");
+    if (poolEl) poolEl.textContent = `${endPool}W6`;
+
+    const recoilEl = root.querySelector("[data-live-recoil]");
+    if (recoilEl) recoilEl.textContent = `-${recoilPenalty}W6 (RD ${rd})`;
+
+    const ammoEl = root.querySelector("[data-live-ammo]");
+    if (ammoEl) {
+      ammoEl.textContent = isRanged ? `${ammoConsumed} Schuss (Magazin: ${ammoCurrent})` : "–";
+    }
+
+    const dmgEl = root.querySelector("[data-live-damage]");
+    if (dmgEl) dmgEl.textContent = damagePreview;
+  }
+
+  /**
+   * 4. WAFFEN- / ANGRIFFSPROBE (Punkte 2, 3, 4 & 5)
+   * - Verknüpft Waffe automatisch mit der passenden Kampffertigkeit (+ Geschick).
+   * - Prüft geladene Munition & Magazinstand (kein FMJ-Hardcoding!).
+   * - Unterstützt Einzelschuss/Repetier, Semiautomatik (Abdrücken 1..X), Burst (Konzentriert/Streufeuer, Bursts 1..Y)
+   *   und Vollautomatik (Regulär +RD W6 / Sperrfeuer -2W6, 3 Zufallszonen).
+   * - Startet den interaktiven Target-Kampfablauf im Chat (Verteidigung -> Zone & MK -> Schadenswiderstand).
    */
   static async rollWeaponAttack(actor, weapon, { skipDialog = false } = {}) {
     if (!weapon) return null;
@@ -625,41 +968,164 @@ export class NoReturnRoll {
     const magCap = Number(sys.magazineCapacity) || 0;
     const ammoCur = Number(sys.ammoCurrent) || 0;
 
-    if (isRanged && magCap > 0 && ammoCur <= 0) {
-      ui.notifications?.warn(
-        `${weapon.name}: Magazin ist leer (0 / ${magCap})! Bitte vor dem Schuss nachladen.`
-      );
-      return null;
+    if (isRanged && magCap > 0) {
+      if (ammoCur <= 0 || (!sys.loadedAmmoId && !sys.loadedAmmoType)) {
+        ui.notifications?.warn(
+          `${weapon.name}: Keine Munition geladen (0 / ${magCap})! Bitte zuerst über "Laden / Wechseln" Munition aus dem Inventar laden.`
+        );
+        return null;
+      }
     }
 
-    const skillKey = sys.skill || "schusswaffen";
-    const skillItem = actor?.items?.find(
-      (i) =>
-        i.type === "skill" &&
-        (i.system.skillId === skillKey ||
-          i.name.toLowerCase() === skillKey.toLowerCase() ||
-          (skillKey === "schiessen" && i.system.skillId === "schusswaffen"))
-    );
+    const combatSkill = resolveWeaponCombatSkill(actor, weapon);
+    const attrDice = combatSkill.attrDice;
+    const skillDice = combatSkill.skillLevel;
+    const weaponAttackBonus = combatSkill.weaponAttackBonus + combatSkill.skillMod;
+    const baseAttackPool = Math.max(1, attrDice + skillDice + weaponAttackBonus);
+    let woundPenalty = Math.max(0, Number(actor?.system?.health?.gesamteMali || 0));
 
-    const attrDice = Number(actor?.system?.attributes?.primary?.geschick?.overall) || 1;
-    const skillDice = Number(skillItem?.system?.level || 0);
-    const weaponAttackBonus =
-      (Number(sys.attackBonus) || 0) +
-      (Number(skillItem?.system?.effectiveMod ?? skillItem?.system?.mod) || 0);
-    const woundPenalty = Number(actor?.system?.health?.gesamteMali || 0);
+    const rd = Math.max(0, Number(sys.recoilDampening) || 0);
+    const baseDamage = Number(sys.baseWeaponDamage ?? sys.damageFlat) || 0;
+    const bulletDamage = Number(sys.bulletDamage ?? sys.damageBonusPerHit) || 0;
+    const loadedAmmo = sys.loadedAmmo || AMMO_TYPE_DEFINITIONS[sys.loadedAmmoType] || AMMO_TYPE_DEFINITIONS.FMJ;
+    const ammoMod = isRanged ? Number(loadedAmmo.damageBonus) || 0 : 0;
+    const staerke = Math.max(1, getEffectiveActorAttribute(actor, "staerke") || 1);
+    const meleeDamagePreview = `${staerke}W6${baseDamage > 0 ? ` + ${baseDamage}` : ""} TP`;
+
+    const parsedModes = isRanged
+      ? parseWeaponFireModes(sys.fireModes, sys)
+      : {
+          single: { supported: true, key: "single", label: "Nahkampfangriff" },
+          repetier: { supported: false },
+          semi: { supported: false, bulletsPerTrigger: 1, maxTriggers: 1 },
+          burst: { supported: false, bulletsPerBurst: 3, maxBursts: 1 },
+          auto: { supported: false, totalBurstScore: 0, bulletsConsumed: 10 },
+          supportedList: [{ supported: true, key: "single", label: "Nahkampfangriff" }]
+        };
+
+    const supportedModes = parsedModes.supportedList?.length
+      ? parsedModes.supportedList
+      : [{ supported: true, key: "single", label: "Einzelschuss (1 Kugel)" }];
+
+    // Target detection (Punkt 5 Schritt 1)
+    const targetToken = game?.user?.targets?.first?.() || null;
+    const targetActor = targetToken?.actor || null;
 
     let rangeMod = 0;
     let targetZone = "random";
     let coverMod = 0;
-    let fireMode = "single";
+    let fireMode = supportedModes[0].key;
+    let triggerCount = 1;
+    let burstCount = 1;
+    let burstSubmode = "concentrated";
+    let autoSubmode = "regular";
+    let situationalMod = 0;
     let targetDefense = 10;
 
+    const maxSemiTriggers = parsedModes.semi?.supported
+      ? Math.max(
+          1,
+          Math.min(
+            parsedModes.semi.maxTriggers || 1,
+            magCap > 0 ? Math.floor(ammoCur / (parsedModes.semi.bulletsPerTrigger || 1)) : parsedModes.semi.maxTriggers
+          )
+        )
+      : 1;
+
+    const maxBurstCount = parsedModes.burst?.supported
+      ? Math.max(
+          1,
+          Math.min(
+            parsedModes.burst.maxBursts || 1,
+            magCap > 0 ? Math.floor(ammoCur / (parsedModes.burst.bulletsPerBurst || 3)) : parsedModes.burst.maxBursts
+          )
+        )
+      : 1;
+
     if (!skipDialog) {
+      const modeOptionsHtml = supportedModes
+        .map((m) => `<option value="${m.key}">${m.label}</option>`)
+        .join("");
+
+      const targetBannerHtml = targetActor
+        ? `<div class="nr-target-banner" style="padding:6px 10px;margin-bottom:8px;background:rgba(40,90,65,0.35);border-left:3px solid #4caf50;border-radius:4px;font-size:0.9em;">
+             <i class="fas fa-bullseye"></i> <strong>Anvisiertes Ziel:</strong> ${targetToken.name || targetActor.name}
+           </div>`
+        : `<div class="nr-target-banner" style="padding:6px 10px;margin-bottom:8px;background:rgba(90,70,30,0.3);border-left:3px solid #d4882a;border-radius:4px;font-size:0.86em;">
+             <i class="fas fa-info-circle"></i> Kein Token anvisiert (Tipp: Ziel-Token mit <code>T</code> markieren für den automatischen Verteidigungs- &amp; Schadens-Flow).
+           </div>`;
+
       const dialogResult = await this._waitDialog({
         title: `${this._i18n("NORETURN.Combat.RollAttack", "Waffen- / Angriffsprobe")}: ${weapon.name}`,
         rollIcon: "fas fa-crosshairs",
+        onRender: (_event, dialog) => {
+          const el = dialog?.element || document.querySelector(".noreturn-roll-dialog.weapon-dialog");
+          if (!el) return;
+          el.querySelectorAll("input, select").forEach((inp) => {
+            inp.addEventListener("input", () => NoReturnRoll.updateWeaponDialogLive(inp));
+            inp.addEventListener("change", () => NoReturnRoll.updateWeaponDialogLive(inp));
+          });
+          NoReturnRoll.updateWeaponDialogLive(el);
+        },
         content: `
-          <div class="noreturn-roll-dialog weapon-dialog">
+          <div class="noreturn-roll-dialog weapon-dialog"
+               data-is-ranged="${isRanged}"
+               data-base-pool="${baseAttackPool}"
+               data-rd="${rd}"
+               data-base-damage="${baseDamage}"
+               data-bullet-damage="${bulletDamage}"
+               data-ammo-mod="${ammoMod}"
+               data-ammo-current="${ammoCur}"
+               data-semi-bullets-per-trigger="${parsedModes.semi?.bulletsPerTrigger || 1}"
+               data-burst-bullets-per-burst="${parsedModes.burst?.bulletsPerBurst || 3}"
+               data-auto-bullets-consumed="${parsedModes.auto?.bulletsConsumed || 10}"
+               data-melee-damage-preview="${meleeDamagePreview}">
+            ${targetBannerHtml}
+            <div class="nr-psi-live-pool-banner" style="margin-bottom:8px;">
+              <div class="nr-psi-live-pool-title">${combatSkill.canonicalLabel} (${skillDice}W6) + Geschick (${attrDice}W6)${weaponAttackBonus !== 0 ? ` + Waffenbonus (${weaponAttackBonus}W6)` : ""}</div>
+              <div class="nr-psi-live-pool-value" data-live-attack-pool>${baseAttackPool}W6</div>
+              <div class="nr-psi-live-pool-metrics">
+                <span>Rückstoß-Malus: <strong data-live-recoil>0W6</strong></span>
+                <span>Verbrauch: <strong data-live-ammo>${isRanged ? `1 Schuss (${ammoCur}/${magCap})` : "–"}</strong></span>
+              </div>
+              <div style="font-size:0.84em;margin-top:4px;">Schaden: <strong data-live-damage>–</strong></div>
+            </div>
+
+            ${
+              isRanged
+                ? `<div class="form-group">
+                     <label>${this._i18n("NORETURN.Combat.FireModes", "Feuermodus")} (${sys.fireModes || "Einzel"})</label>
+                     <select name="fireMode">
+                       ${modeOptionsHtml}
+                     </select>
+                   </div>
+                   <div class="form-group" data-mode-group="semi" style="display:none;">
+                     <label>Anzahl Abdrücken (1 bis ${maxSemiTriggers}, je ${parsedModes.semi?.bulletsPerTrigger || 1} Kugel)</label>
+                     <input type="number" name="triggerCount" value="1" min="1" max="${maxSemiTriggers}" step="1" />
+                   </div>
+                   <div data-mode-group="burst" style="display:none;">
+                     <div class="form-group">
+                       <label>Anzahl Bursts (1 bis ${maxBurstCount}, je ${parsedModes.burst?.bulletsPerBurst || 3} Kugeln)</label>
+                       <input type="number" name="burstCount" value="1" min="1" max="${maxBurstCount}" step="1" />
+                     </div>
+                     <div class="form-group">
+                       <label>Burst-Art (GRW S. 60)</label>
+                       <select name="burstSubmode">
+                         <option value="concentrated">Konzentriertes Feuer (+10 Schaden, Gute Treffer je 5 Punkte)</option>
+                         <option value="spread">Streufeuer (+2W6 Angriffsbonus, Gute Treffer je 10 Punkte)</option>
+                       </select>
+                     </div>
+                   </div>
+                   <div class="form-group" data-mode-group="auto" style="display:none;">
+                     <label>Vollautomatik-Modus (Verbrauch: ${parsedModes.auto?.bulletsConsumed || 10} Kugeln, 3 Zufallszonen)</label>
+                     <select name="autoSubmode">
+                       <option value="regular">Regulärer Angriff (+${rd}W6 durch RD, 0 Rückstoß)</option>
+                       <option value="suppressive">Sperrfeuer (-2W6 Kampfnachteil)</option>
+                     </select>
+                   </div>`
+                : ""
+            }
+
             <div class="form-group">
               <label>${this._i18n("NORETURN.Combat.Range", "Waffenreichweite")} (${sys.range || "Standard"})</label>
               <select name="rangeMod">
@@ -696,84 +1162,263 @@ export class NoReturnRoll {
               </select>
             </div>
             <div class="form-group">
-              <label>${this._i18n("NORETURN.Combat.FireModes", "Feuermodus")} (${sys.fireModes || "Einzel"})</label>
-              <select name="fireMode">
-                <option value="single">Einzelschuss / Einzelhieb (±0 W6)</option>
-                <option value="semi">Halbautomatik / Doppelschuss (+1 W6)</option>
-                <option value="burst">Salve (+2 W6, Überschuss je 5 Punkte)</option>
-                <option value="auto">Vollautomatik / Sperrfeuer (+3 W6, Überschuss je 5 Punkte)</option>
-              </select>
+              <label>Situationsmodifikator (+/- W6)</label>
+              <input type="number" name="situationalMod" value="0" step="1" />
             </div>
             <div class="form-group">
-              <label>${this._i18n("NORETURN.Dice.TargetNumber", "Basis-Verteidigung / MW des Ziels")}</label>
+              <label>Wund- / Schmerzmali (-W6)</label>
+              <input type="number" name="woundPenalty" value="${woundPenalty}" min="0" step="1" />
+            </div>
+            <div class="form-group">
+              <label>${this._i18n("NORETURN.Dice.TargetNumber", "Basis-Verteidigung / MW (falls ohne aktiven Verteidigungswurf)")}</label>
               <input type="number" name="targetDefense" value="10" min="1" step="1" />
             </div>
           </div>
         `,
         parseForm: (form) => ({
+          fireMode: form.elements.fireMode?.value || supportedModes[0].key,
+          triggerCount: Math.max(1, Number(form.elements.triggerCount?.value) || 1),
+          burstCount: Math.max(1, Number(form.elements.burstCount?.value) || 1),
+          burstSubmode: form.elements.burstSubmode?.value || "concentrated",
+          autoSubmode: form.elements.autoSubmode?.value || "regular",
           rangeMod: Number(form.elements.rangeMod?.value) || 0,
           targetZone: form.elements.targetZone?.value || "random",
           coverMod: Number(form.elements.coverMod?.value) || 0,
-          fireMode: form.elements.fireMode?.value || "single",
+          situationalMod: Number(form.elements.situationalMod?.value) || 0,
+          woundPenalty: Math.max(0, Number(form.elements.woundPenalty?.value ?? woundPenalty) || 0),
           targetDefense: Math.max(1, Number(form.elements.targetDefense?.value) || 10)
         })
       });
 
       if (!dialogResult || dialogResult.cancelled) return null;
-      rangeMod = dialogResult.rangeMod;
-      targetZone = dialogResult.targetZone;
-      coverMod = dialogResult.coverMod;
       fireMode = dialogResult.fireMode;
+      triggerCount = dialogResult.triggerCount;
+      burstCount = dialogResult.burstCount;
+      burstSubmode = dialogResult.burstSubmode;
+      autoSubmode = dialogResult.autoSubmode;
+      rangeMod = dialogResult.rangeMod;
+      targetZone = fireMode === "auto" ? "random" : dialogResult.targetZone;
+      coverMod = dialogResult.coverMod;
+      situationalMod = dialogResult.situationalMod;
+      woundPenalty = dialogResult.woundPenalty;
       targetDefense = dialogResult.targetDefense;
     }
 
-    const shotsConsumed =
-      fireMode === "auto" ? 5 : fireMode === "burst" ? 3 : fireMode === "semi" ? 2 : 1;
-    if (isRanged && magCap > 0) {
-      const nextAmmo = Math.max(0, ammoCur - shotsConsumed);
-      await weapon.update({ "system.ammoCurrent": nextAmmo });
+    // Berechne Munitionsverbrauch, Rückstoß, Angriffsbonus und Basisschaden gemäß Punkt 4 (GRW S. 60-61)
+    let shotsConsumed = 0;
+    let recoilPenalty = 0;
+    let fireModeBonusDice = 0;
+    let goodHitStep = 10;
+    let flatShotDamage = baseDamage;
+    let zoneRollsCount = 1;
+    let modeDisplayLabel = "Einzelschuss";
+
+    if (isRanged) {
+      if (fireMode === "semi") {
+        const bpt = parsedModes.semi?.bulletsPerTrigger || 1;
+        triggerCount = Math.min(maxSemiTriggers, Math.max(1, triggerCount));
+        shotsConsumed = triggerCount * bpt;
+        recoilPenalty = Math.max(0, triggerCount - rd);
+        flatShotDamage = baseDamage + bulletDamage * triggerCount + ammoMod;
+        modeDisplayLabel = `Semi (${triggerCount}× Abzug, ${shotsConsumed} Schuss)`;
+      } else if (fireMode === "burst") {
+        const bpb = parsedModes.burst?.bulletsPerBurst || 3;
+        burstCount = Math.min(maxBurstCount, Math.max(1, burstCount));
+        shotsConsumed = burstCount * bpb;
+        recoilPenalty = Math.max(0, burstCount - rd);
+        const isConc = burstSubmode === "concentrated";
+        if (!isConc) {
+          fireModeBonusDice = 2;
+        } else {
+          goodHitStep = 5;
+        }
+        flatShotDamage = baseDamage + bulletDamage * burstCount + ammoMod + (isConc ? 10 : 0);
+        modeDisplayLabel = `Burst (${burstCount}× Salve, ${isConc ? "Konzentriert +10 TP" : "Streufeuer +2W6"})`;
+      } else if (fireMode === "auto") {
+        shotsConsumed = parsedModes.auto?.bulletsConsumed || 10;
+        if (magCap > 0 && ammoCur < shotsConsumed) {
+          ui.notifications?.warn(
+            `${weapon.name}: Nicht genug Munition im Magazin für Vollautomatik (${ammoCur}/${shotsConsumed} benötigt)!`
+          );
+          return null;
+        }
+        recoilPenalty = 0;
+        goodHitStep = 5;
+        zoneRollsCount = 3;
+        targetZone = "random";
+        fireModeBonusDice = autoSubmode === "regular" ? rd : -2;
+        flatShotDamage = baseDamage + 10 + bulletDamage * 2 + ammoMod;
+        modeDisplayLabel = `Vollautomatik (${autoSubmode === "regular" ? `Regulär +${rd}W6` : "Sperrfeuer -2W6"}, 3 Zonen)`;
+      } else {
+        // single or repetier
+        shotsConsumed = 1;
+        recoilPenalty = Math.max(0, 1 - rd);
+        flatShotDamage = baseDamage + bulletDamage * 1 + ammoMod;
+        modeDisplayLabel = fireMode === "repetier" ? "Repetier (1 Schuss)" : "Einzelschuss (1 Schuss)";
+      }
+    } else {
+      modeDisplayLabel = "Nahkampf";
+    }
+
+    if (isRanged && magCap > 0 && shotsConsumed > ammoCur) {
+      ui.notifications?.warn(
+        `${weapon.name}: Nicht genug Kugeln im Magazin (${ammoCur} vorhanden, ${shotsConsumed} benötigt)!`
+      );
+      return null;
+    }
+
+    const remainingAmmoAfterShot = isRanged && magCap > 0 ? Math.max(0, ammoCur - shotsConsumed) : ammoCur;
+    if (isRanged && magCap > 0 && shotsConsumed > 0) {
+      await weapon.update({ "system.ammoCurrent": remainingAmmoAfterShot });
     }
 
     const calledShotPenalty = targetZone === "random" ? 0 : targetZone === "12" ? -4 : -2;
-    const fireModeBonus =
-      fireMode === "auto" ? 3 : fireMode === "burst" ? 2 : fireMode === "semi" ? 1 : 0;
-    const isBurstOrAuto = fireMode === "burst" || fireMode === "auto";
     const effectiveTargetMw = Math.max(1, targetDefense + coverMod);
-    const totalBonusDice = weaponAttackBonus + rangeMod + calledShotPenalty + fireModeBonus;
+    const totalBonusDice =
+      weaponAttackBonus + rangeMod + calledShotPenalty + fireModeBonusDice + situationalMod - recoilPenalty;
+
+    const rawPool = attrDice + skillDice + totalBonusDice - woundPenalty;
+    const totalPool = Math.max(1, rawPool);
+
+    const allAttributeHazard = Boolean(actor?.system?.attributes?.primary?.geschick?.alphaBio);
+    const allSkillHazard = Boolean(combatSkill.skillItem?.system?.betaBio);
+    let hazardCount = 1;
+    if (allAttributeHazard && allSkillHazard) {
+      hazardCount = Math.min(totalPool, Math.max(1, attrDice + skillDice));
+    } else if (allAttributeHazard) {
+      hazardCount = Math.min(totalPool, Math.max(1, attrDice));
+    } else if (allSkillHazard) {
+      hazardCount = Math.min(totalPool, Math.max(1, skillDice + (attrDice > 0 ? 1 : 0)));
+    }
+    const normalCount = Math.max(0, totalPool - hazardCount);
+    const formulaParts = [];
+    if (normalCount > 0) formulaParts.push(`${normalCount}d6`);
+    if (hazardCount > 0) formulaParts.push(`${hazardCount}d6x6`);
+    const formula = formulaParts.join(" + ") || "1d6x6";
+
+    const roll = new Roll(formula);
+    await roll.evaluate();
+    const total = roll.total;
+    const isFumble = total < 5;
+    const isSuccess = !isFumble && total >= effectiveTargetMw;
+    const margin = total - effectiveTargetMw;
+    const goodHits = isSuccess && margin >= goodHitStep ? Math.floor(margin / goodHitStep) : 0;
 
     const zoneText =
       targetZone === "random"
-        ? "Zufallszone (2W6)"
+        ? zoneRollsCount === 3
+          ? "3 Zufallszonen (je 2W6)"
+          : "Zufallszone (2W6)"
         : `Gezielt: ${this._i18n(`NORETURN.Health.Zones.${targetZone}`, `Zone ${targetZone}`)}`;
-    const ammoTag = isRanged
-      ? ` | Munition: ${sys.loadedAmmoType || "FMJ"}${
-          magCap > 0 ? ` (${Math.max(0, ammoCur - shotsConsumed)}/${magCap})` : ""
-        }`
-      : "";
 
-    const checkResult = await this.executeCheck({
-      actor,
-      title: `${weapon.name} (${this._i18n("NORETURN.Combat.RollAttack", "Angriff")})`,
-      flavorSubtitle: `${zoneText} | Feuermodus: ${fireMode.toUpperCase()} | Deckung: +${coverMod} MW${ammoTag}`,
-      attributeDice: attrDice,
-      skillDice,
-      bonusDice: totalBonusDice,
-      woundPenalty,
-      targetNumber: effectiveTargetMw,
-      useHazardDie: true,
-      allAttributeHazard: Boolean(actor?.system?.attributes?.primary?.geschick?.alphaBio),
-      allSkillHazard: Boolean(skillItem?.system?.betaBio),
-      burstMode: isBurstOrAuto
+    const ammoLabel = isRanged
+      ? `${loadedAmmo.customName || loadedAmmo.label} [${loadedAmmo.code}] (${remainingAmmoAfterShot}/${magCap})`
+      : "Nahkampf";
+
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(roll);
+
+    const attackFlow = {
+      attackerActorId: actor?.id || "",
+      attackerTokenId: actor?.token?.id || "",
+      attackerName: actor?.name || "Angreifer",
+      targetActorId: targetActor?.id || "",
+      targetTokenId: targetToken?.id || "",
+      targetSceneId: targetToken?.scene?.id || canvas?.scene?.id || "",
+      targetName: targetToken?.name || targetActor?.name || "Ziel",
+      weaponId: weapon.id,
+      weaponName: weapon.name,
+      isRanged,
+      caliber: sys.caliber || "",
+      skillLabel: combatSkill.canonicalLabel,
+      fireMode,
+      burstSubmode,
+      autoSubmode,
+      modeDisplayLabel,
+      shotsConsumed,
+      recoilPenalty,
+      calledZone: targetZone !== "random" ? targetZone : null,
+      zoneRollsCount,
+      coverMod,
+      goodHitStep,
+      baseDamage,
+      bulletDamage,
+      ammoMod,
+      flatShotDamage,
+      staerke,
+      loadedAmmo: {
+        code: loadedAmmo.code || "FMJ",
+        label: loadedAmmo.customName || loadedAmmo.label || "FMJ",
+        damageBonus: ammoMod,
+        ignoresMk: loadedAmmo.ignoresMk || [],
+        blockedByMk: loadedAmmo.blockedByMk || []
+      },
+      attackTotal: total,
+      effectiveTargetMw,
+      isFumble
+    };
+
+    const content = `
+      <div class="noreturn-chat-card check-card attack-flow-card ${
+        isFumble ? "fumble" : "success"
+      }">
+        <header class="card-header">
+          <h3><i class="fas fa-crosshairs"></i> ${weapon.name} – Angriff (${combatSkill.canonicalLabel})</h3>
+          <div class="card-subtitle">${modeDisplayLabel} | ${zoneText}${
+      coverMod > 0 ? ` | Deckung +${coverMod}` : ""
+    }</div>
+        </header>
+        <div class="card-meta">
+          <span>Pool: <strong>${totalPool}W6</strong> (GE ${attrDice} + ${
+      combatSkill.canonicalLabel
+    } ${skillDice}${recoilPenalty > 0 ? ` - Rückstoß ${recoilPenalty}` : ""})</span>
+          <span>Munition: <strong>${ammoLabel}</strong></span>
+        </div>
+        ${
+          targetActor
+            ? `<div class="card-meta"><span><i class="fas fa-bullseye"></i> Ziel: <strong>${attackFlow.targetName}</strong></span></div>`
+            : ""
+        }
+        ${diceSpoilerHtml}
+        <div class="card-outcome">
+          <div class="outcome-numbers">
+            <div class="outcome-box">
+              <span class="lbl">Angriffswert</span>
+              <span class="val total-val">${total}</span>
+            </div>
+            <div class="outcome-box">
+              <span class="lbl">Basis-Schaden</span>
+              <span class="val">${isRanged ? `${flatShotDamage} TP` : meleeDamagePreview}</span>
+            </div>
+          </div>
+          ${
+            isFumble
+              ? `<div class="outcome-banner"><span class="banner-fumble"><i class="fas fa-skull-crossbones"></i> PATZER (Wurf &lt; 5)!</span></div>`
+              : `<div class="card-actions" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                   <button type="button" class="noreturn-chat-btn" data-action="roll-target-defense">
+                     <i class="fas fa-shield-halved"></i> Verteidigung würfeln (Ausweichen / Parade / Reaktion)
+                   </button>
+                   <button type="button" class="noreturn-chat-btn secondary" data-action="roll-direct-damage">
+                     <i class="fas fa-burst"></i> Direkt Zone &amp; Schaden auswerten (gegen MW ${effectiveTargetMw})
+                   </button>
+                 </div>`
+          }
+        </div>
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      flavor: `${weapon.name} – Angriffsprobe`,
+      content,
+      rolls: [roll],
+      flags: {
+        noreturn: {
+          attackFlow
+        }
+      }
     });
 
-    if (checkResult && checkResult.isSuccess) {
-      await this.rollWeaponDamage(actor, weapon, {
-        goodHits: checkResult.goodHits,
-        calledZone: targetZone !== "random" ? targetZone : null
-      });
-    }
-
-    return checkResult;
+    return { roll, total, isSuccess, isFumble, margin, goodHits, attackFlow };
   }
 
   /**
@@ -1569,25 +2214,573 @@ export class NoReturnRoll {
   }
 
   /**
-   * Roll Weapon Damage (Melee ST W6 + flat, or Ranged formula + loaded ammunition bonus + Good Hits) (Punkt 5 & Punkt 6).
+   * Hilfsfunktion: Löst Ziel-Token und Ziel-Actor aus einer gespeicherten Attack-/Damage-Flow-Flag-Struktur auf.
+   */
+  static _resolveFlowTarget(flow = {}) {
+    let token = null;
+    let actor = null;
+    if (flow.targetTokenId && canvas?.tokens) {
+      token = canvas.tokens.get(flow.targetTokenId) || null;
+      actor = token?.actor || null;
+    }
+    if (!actor && flow.targetActorId && game?.actors) {
+      actor = game.actors.get(flow.targetActorId) || null;
+    }
+    if (!actor) {
+      const controlled = canvas?.tokens?.controlled?.[0] || game?.user?.targets?.first?.() || null;
+      if (controlled?.actor) {
+        token = controlled;
+        actor = controlled.actor;
+      } else if (game?.user?.character) {
+        actor = game.user.character;
+      }
+    }
+    return { token, actor };
+  }
+
+  /**
+   * Liest Rüstungswert (RW) und Materialkategorie (MK) einer Trefferzone des Ziels aus.
+   */
+  static _getActorZoneArmor(actor, zoneCode = "7") {
+    if (!actor) return { rw: 0, mk: "A" };
+    if (actor.type === "robot") {
+      const rw = Number(actor.system?.zones?.[zoneCode]?.values?.panzerung ?? 0);
+      const mk = actor.system?.zones?.[zoneCode]?.values?.materialCategory ?? "B";
+      return { rw, mk };
+    }
+    const z = actor.system?.health?.zones?.[zoneCode] || {};
+    const rw = Number(z.equippedArmor ?? z.armor ?? 0);
+    const mk = z.materialCategory || "A";
+    return { rw, mk };
+  }
+
+  /**
+   * Punkt 5 – Schritt 2: Verteidigungswurf des Ziels & automatische Trefferauswertung.
+   */
+  static async rollTargetDefense(message) {
+    const attackFlow = message?.flags?.noreturn?.attackFlow;
+    if (!attackFlow) return null;
+
+    const { token, actor: defender } = this._resolveFlowTarget(attackFlow);
+    if (!defender) {
+      ui.notifications?.warn(
+        "Kein Ziel-Charakter gefunden! Bitte Ziel-Token auswählen oder anvisieren."
+      );
+      return null;
+    }
+
+    const sk = Math.max(1, getEffectiveActorAttribute(defender, "schnelligkeit") || 1);
+    const ge = Math.max(1, getEffectiveActorAttribute(defender, "geschick") || 1);
+    const woundPenalty = Math.max(0, Number(defender.system?.health?.gesamteMali || 0));
+
+    const findSkillLvl = (id, namePart) => {
+      const it = defender.items?.find(
+        (i) =>
+          i.type === "skill" &&
+          (i.system?.skillId === id || i.name?.toLowerCase().includes(namePart))
+      );
+      if (!it) return 0;
+      return Math.max(0, (Number(it.system?.level) || 0) + (Number(it.system?.effectiveMod ?? it.system?.mod) || 0));
+    };
+
+    const dodgeLvl = findSkillLvl("ausweichen", "ausweichen");
+    const meleeLvl = findSkillLvl("nahkampf", "nahkampf");
+    const weaponCombatLvl = findSkillLvl("waffenkampf", "waffenkampf");
+    const reaktionLvl = findSkillLvl("reaktion", "reaktion");
+
+    const dodgePool = Math.max(1, sk + dodgeLvl);
+    const parryMeleePool = Math.max(1, ge + meleeLvl);
+    const parryWeaponPool = Math.max(1, ge + weaponCombatLvl);
+    const reaktionPool = Math.max(1, sk + reaktionLvl);
+
+    const dialogRes = await this._waitDialog({
+      title: `Verteidigung würfeln: ${token?.name || defender.name} gegen ${attackFlow.weaponName}`,
+      rollLabel: "Verteidigung würfeln",
+      rollIcon: "fas fa-shield-halved",
+      content: `
+        <div class="noreturn-roll-dialog defense-dialog">
+          <div class="form-group">
+            <label>Gegnerischer Angriffswert (${attackFlow.attackerName} – ${attackFlow.weaponName})</label>
+            <input type="text" value="Angriff: ${attackFlow.attackTotal}${attackFlow.coverMod > 0 ? ` (Deckungsbonus für Verteidiger: +${attackFlow.coverMod})` : ""}" disabled />
+          </div>
+          <div class="form-group">
+            <label>Verteidigungsart wählen</label>
+            <select name="defenseType">
+              <option value="dodge">Ausweichen: SK (${sk}) + Ausweichen (${dodgeLvl}) = ${dodgePool}W6</option>
+              ${
+                !attackFlow.isRanged
+                  ? `<option value="parryMelee">Parade (Nahkampf): GE (${ge}) + Nahkampf (${meleeLvl}) = ${parryMeleePool}W6</option>
+                     <option value="parryWeapon">Parade (Waffenkampf): GE (${ge}) + Waffenkampf (${weaponCombatLvl}) = ${parryWeaponPool}W6</option>`
+                  : ""
+              }
+              <option value="reaktion">Reaktion: SK (${sk}) + Reaktion (${reaktionLvl}) = ${reaktionPool}W6</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Situationsmodifikator (+/- W6)</label>
+            <input type="number" name="situationalMod" value="0" step="1" />
+          </div>
+          <div class="form-group">
+            <label>Wund- / Schmerzmali (-W6)</label>
+            <input type="number" name="woundPenalty" value="${woundPenalty}" min="0" step="1" />
+          </div>
+        </div>
+      `,
+      parseForm: (form) => ({
+        defenseType: form.elements.defenseType?.value || "dodge",
+        situationalMod: Number(form.elements.situationalMod?.value) || 0,
+        woundPenalty: Math.max(0, Number(form.elements.woundPenalty?.value ?? woundPenalty) || 0)
+      })
+    });
+
+    if (!dialogRes || dialogRes.cancelled) return null;
+
+    let baseDefPool = dodgePool;
+    let defLabel = `Ausweichen (${dodgePool}W6)`;
+    if (dialogRes.defenseType === "parryMelee") {
+      baseDefPool = parryMeleePool;
+      defLabel = `Parade Nahkampf (${parryMeleePool}W6)`;
+    } else if (dialogRes.defenseType === "parryWeapon") {
+      baseDefPool = parryWeaponPool;
+      defLabel = `Parade Waffenkampf (${parryWeaponPool}W6)`;
+    } else if (dialogRes.defenseType === "reaktion") {
+      baseDefPool = reaktionPool;
+      defLabel = `Reaktion (${reaktionPool}W6)`;
+    }
+
+    const totalPool = Math.max(
+      1,
+      baseDefPool + dialogRes.situationalMod - dialogRes.woundPenalty
+    );
+    const normalDice = Math.max(0, totalPool - 1);
+    const formula = normalDice > 0 ? `${normalDice}d6 + 1d6x6` : "1d6x6";
+
+    const defRoll = new Roll(formula);
+    await defRoll.evaluate();
+    const coverMod = Number(attackFlow.coverMod) || 0;
+    const defenseTotal = defRoll.total + coverMod;
+    const attackTotal = Number(attackFlow.attackTotal) || 0;
+    const isHit = attackTotal >= defenseTotal;
+    const margin = attackTotal - defenseTotal;
+    const step = Number(attackFlow.goodHitStep) || 10;
+    const goodHits = isHit && margin >= step ? Math.floor(margin / step) : 0;
+
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(defRoll);
+
+    const content = `
+      <div class="noreturn-chat-card check-card ${isHit ? "failure" : "success"}">
+        <header class="card-header">
+          <h3><i class="fas fa-shield-halved"></i> Verteidigung – ${token?.name || defender.name}</h3>
+          <div class="card-subtitle">${defLabel}${coverMod > 0 ? ` + Deckung (+${coverMod})` : ""} gegen ${attackFlow.weaponName}</div>
+        </header>
+        ${diceSpoilerHtml}
+        <div class="card-outcome">
+          <div class="outcome-numbers">
+            <div class="outcome-box">
+              <span class="lbl">Angriffswert</span>
+              <span class="val">${attackTotal}</span>
+            </div>
+            <div class="outcome-box">
+              <span class="lbl">Verteidigung</span>
+              <span class="val total-val">${defenseTotal}</span>
+            </div>
+            <div class="outcome-box">
+              <span class="lbl">Differenz</span>
+              <span class="val">${margin >= 0 ? `+${margin}` : margin}</span>
+            </div>
+            ${
+              goodHits > 0
+                ? `<div class="outcome-box good-hits-box">
+                     <span class="lbl">Gute Treffer (je ${step})</span>
+                     <span class="val">+${goodHits}W6</span>
+                   </div>`
+                : ""
+            }
+          </div>
+          <div class="outcome-banner">
+            ${
+              isHit
+                ? `<span class="banner-failure"><i class="fas fa-crosshairs"></i> TREFFER! (Angriff ${attackTotal} ≥ Verteidigung ${defenseTotal}${
+                    goodHits > 0 ? `, +${goodHits}W6 Gute Treffer` : ""
+                  })</span>`
+                : `<span class="banner-success"><i class="fas fa-shield-halved"></i> VERFEHLT! (${
+                    token?.name || defender.name
+                  } weicht dem Angriff erfolgreich aus!)</span>`
+            }
+          </div>
+        </div>
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: defender, token }),
+      flavor: `Verteidigung gegen ${attackFlow.weaponName}`,
+      content,
+      rolls: [defRoll]
+    });
+
+    if (isHit) {
+      const updatedFlow = {
+        ...attackFlow,
+        targetActorId: defender.id,
+        targetTokenId: token?.id || attackFlow.targetTokenId || "",
+        targetName: token?.name || defender.name
+      };
+      await this.resolveHitAndDamage(updatedFlow, {
+        margin,
+        goodHits,
+        defenseTotal
+      });
+    }
+
+    return { defRoll, defenseTotal, isHit, margin, goodHits };
+  }
+
+  /**
+   * Punkt 5 – Schritt 3: Trefferzonen-Ermittlung (2W6 bzw. 3×2W6 bei Vollautomatik),
+   * Rüstungs-/MK-Penetrationsprüfung & Schadensberechnung (inkl. Gute Treffer & Munitions-Modifikator).
+   */
+  static async resolveHitAndDamage(
+    attackFlow,
+    { margin = 0, goodHits = 0, defenseTotal = null } = {}
+  ) {
+    if (!attackFlow) return null;
+    const attacker = game?.actors?.get(attackFlow.attackerActorId) || null;
+    const { token: targetToken, actor: targetActor } = this._resolveFlowTarget(attackFlow);
+
+    const isRanged = Boolean(attackFlow.isRanged);
+    const zoneRollsCount = Math.max(1, Number(attackFlow.zoneRollsCount) || 1);
+    const ammoInfo = attackFlow.loadedAmmo || {
+      code: "FMJ",
+      label: "Vollmantel (FMJ)",
+      damageBonus: 0,
+      ignoresMk: [],
+      blockedByMk: []
+    };
+
+    const hits = [];
+    const allRolls = [];
+    const lethalZones = new Set(["12", "8", "7", "6", "2"]);
+
+    for (let i = 0; i < zoneRollsCount; i++) {
+      let zoneCode = attackFlow.calledZone;
+      let zoneRoll = null;
+      if (!zoneCode) {
+        zoneRoll = new Roll("2d6");
+        await zoneRoll.evaluate();
+        allRolls.push(zoneRoll);
+        zoneCode = String(zoneRoll.total);
+      }
+      const zoneLabel = this._i18n(`NORETURN.Health.Zones.${zoneCode}`, `Zone ${zoneCode}`);
+      const isLethal = lethalZones.has(zoneCode);
+      const { rw, mk } = this._getActorZoneArmor(targetActor, zoneCode);
+
+      const isBlockedByMk = isRanged && rw > 0 && (ammoInfo.blockedByMk || []).includes(mk);
+      const isArmorIgnored = isRanged && rw > 0 && (ammoInfo.ignoresMk || []).includes(mk);
+      const effectiveRw = isArmorIgnored ? 0 : rw;
+
+      let damageFormula = "";
+      let damageTotal = 0;
+      let damageRoll = null;
+
+      if (!isBlockedByMk) {
+        if (!isRanged) {
+          const st = Math.max(1, Number(attackFlow.staerke) || 1);
+          const diceCount = st + goodHits;
+          const flat = Number(attackFlow.baseDamage) || 0;
+          damageFormula = flat > 0 ? `${diceCount}d6 + ${flat}` : `${diceCount}d6`;
+        } else {
+          const flat = Number(attackFlow.flatShotDamage) || 0;
+          damageFormula = goodHits > 0 ? `${flat} + ${goodHits}d6` : `${flat}`;
+        }
+        damageRoll = new Roll(damageFormula);
+        await damageRoll.evaluate();
+        allRolls.push(damageRoll);
+        damageTotal = damageRoll.total;
+      }
+
+      hits.push({
+        hitIndex: i,
+        zoneCode,
+        zoneLabel,
+        isLethal,
+        zoneRollFormula: zoneRoll ? `2W6 = ${zoneCode}` : "Gezielt",
+        rw,
+        mk,
+        effectiveRw,
+        isBlockedByMk,
+        isArmorIgnored,
+        damageFormula,
+        damageTotal,
+        damageSpoilerHtml: damageRoll ? this.buildDiceSpoilerHtml(damageRoll) : ""
+      });
+    }
+
+    const hitsHtml = hits
+      .map((h) => {
+        const lethalBadge = h.isLethal
+          ? `<span class="noreturn-badge lethal">${this._i18n("NORETURN.Health.Lethal", "Tödlich")}</span>`
+          : "";
+        if (h.isBlockedByMk) {
+          return `
+            <div class="nr-hit-block" style="padding:8px;margin-top:6px;background:rgba(35,65,45,0.4);border-left:3px solid #4caf50;border-radius:4px;">
+              <div><strong>Trefferzone (${h.zoneRollFormula}):</strong> ${h.zoneLabel} ${lethalBadge} | <strong>Rüstung:</strong> RW ${h.rw} (MK:${h.mk})</div>
+              <div class="card-outcome success" style="margin-top:6px;">
+                <strong><i class="fas fa-shield-virus"></i> Abgeprallt! Die Munition (${ammoInfo.label}) durchdringt die Materialkategorie (MK:${h.mk}) der Panzerung an dieser Zone nicht (0 Schaden).</strong>
+              </div>
+            </div>
+          `;
+        }
+
+        const penNote = h.isArmorIgnored
+          ? `<div style="color:#ff9800;font-size:0.85em;margin-top:2px;"><i class="fas fa-burst"></i> ${ammoInfo.label} durchschlägt / ignoriert MK:${h.mk} komplett (Effektiver RW = 0 statt ${h.rw})!</div>`
+          : `<div style="font-size:0.85em;opacity:0.85;margin-top:2px;">Panzerung an Zone: RW ${h.effectiveRw} (MK:${h.mk})</div>`;
+
+        return `
+          <div class="nr-hit-block" style="padding:8px;margin-top:6px;background:rgba(50,25,25,0.4);border-left:3px solid #e53935;border-radius:4px;">
+            <div><strong>Trefferzone (${h.zoneRollFormula}):</strong> ${h.zoneLabel} ${lethalBadge}</div>
+            ${penNote}
+            <div style="margin-top:4px;"><strong>Gesamtschaden:</strong> <span style="font-size:1.2em;color:#ff6b6b;font-weight:700;">${h.damageTotal} TP</span> (<code>${h.damageFormula}</code>)</div>
+            ${h.damageSpoilerHtml}
+            <div class="card-actions" style="margin-top:6px;">
+              <button type="button" class="noreturn-chat-btn" data-action="roll-target-soak" data-hit-index="${h.hitIndex}">
+                <i class="fas fa-shield-halved"></i> Schadenswiderstand würfeln (KO + Rüstung) – ${h.zoneLabel}
+              </button>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    const damageFlow = {
+      ...attackFlow,
+      targetActorId: targetActor?.id || attackFlow.targetActorId || "",
+      targetTokenId: targetToken?.id || attackFlow.targetTokenId || "",
+      targetName: targetToken?.name || targetActor?.name || attackFlow.targetName || "Ziel",
+      margin,
+      goodHits,
+      defenseTotal,
+      hits: hits.map((h) => ({
+        hitIndex: h.hitIndex,
+        zoneCode: h.zoneCode,
+        zoneLabel: h.zoneLabel,
+        isLethal: h.isLethal,
+        rw: h.rw,
+        mk: h.mk,
+        effectiveRw: h.effectiveRw,
+        isBlockedByMk: h.isBlockedByMk,
+        isArmorIgnored: h.isArmorIgnored,
+        damageFormula: h.damageFormula,
+        damageTotal: h.damageTotal
+      }))
+    };
+
+    const content = `
+      <div class="noreturn-chat-card damage-card">
+        <header class="card-header">
+          <h3><i class="fas fa-burst"></i> ${attackFlow.weaponName} – Treffer &amp; Schaden</h3>
+          <div class="card-subtitle">${attackFlow.modeDisplayLabel} | Ziel: ${damageFlow.targetName}</div>
+        </header>
+        <div class="card-meta">
+          <span>Munition: <strong>${ammoInfo.label}</strong></span>
+          <span>Gute Treffer: <strong>+${goodHits}W6</strong> (Überschuss: ${margin >= 0 ? `+${margin}` : margin})</span>
+        </div>
+        ${hitsHtml}
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: attacker }),
+      flavor: `${attackFlow.weaponName} – Trefferauswertung`,
+      content,
+      rolls: allRolls,
+      flags: {
+        noreturn: {
+          damageFlow
+        }
+      }
+    });
+
+    return damageFlow;
+  }
+
+  /**
+   * Punkt 5 – Schritt 4A: Schadenswiderstand (Soak) des Ziels aus dem Chat würfeln:
+   * Konstitution (W6 inkl. 1 Hazard-Di, niemals Maluswürfel!) + effektiver Rüstungswert (RW) der getroffenen Zone.
+   */
+  static async rollTargetSoak(message, hitIndex = 0) {
+    const damageFlow = message?.flags?.noreturn?.damageFlow;
+    if (!damageFlow) return null;
+    const hit = damageFlow.hits?.[Number(hitIndex)] || damageFlow.hits?.[0];
+    if (!hit || hit.isBlockedByMk) return null;
+
+    const { token, actor: defender } = this._resolveFlowTarget(damageFlow);
+    if (!defender) {
+      ui.notifications?.warn(
+        "Kein Ziel-Charakter für den Schadenswiderstand gefunden! Bitte Token auswählen."
+      );
+      return null;
+    }
+
+    const ko = Math.max(1, getEffectiveActorAttribute(defender, "konstitution") || 1);
+    const { rw, mk } = this._getActorZoneArmor(defender, hit.zoneCode);
+    const ammoInfo = damageFlow.loadedAmmo || { code: "FMJ", label: "FMJ", ignoresMk: [], blockedByMk: [] };
+    const isArmorIgnored = damageFlow.isRanged && rw > 0 && (ammoInfo.ignoresMk || []).includes(mk);
+    const effectiveRw = isArmorIgnored ? 0 : rw;
+
+    // GRW S. 71: Konstitution in W6 (inkl. 1 Hazard-Di, niemals Maluswürfel!) + effektiver RW
+    const normalKo = Math.max(0, ko - 1);
+    const dicePart = normalKo > 0 ? `${normalKo}d6 + 1d6x6` : "1d6x6";
+    const formula = effectiveRw > 0 ? `${dicePart} + ${effectiveRw}` : dicePart;
+
+    const soakRoll = new Roll(formula);
+    await soakRoll.evaluate();
+    const soakTotal = soakRoll.total;
+    const incomingDamage = Number(hit.damageTotal) || 0;
+    const netDamage = Math.max(0, incomingDamage - soakTotal);
+    const diceSpoilerHtml = this.buildDiceSpoilerHtml(soakRoll);
+
+    const soakFlow = {
+      targetActorId: defender.id,
+      targetTokenId: token?.id || damageFlow.targetTokenId || "",
+      targetName: token?.name || defender.name,
+      zoneCode: hit.zoneCode,
+      zoneLabel: hit.zoneLabel,
+      incomingDamage,
+      soakTotal,
+      netDamage
+    };
+
+    const content = `
+      <div class="noreturn-chat-card soak-card ${netDamage === 0 ? "success" : "failure"}">
+        <header class="card-header">
+          <h3><i class="fas fa-shield-halved"></i> Schadenswiderstand – ${soakFlow.targetName} (${hit.zoneLabel})</h3>
+          <span class="card-subtitle">KO (${ko}W6, ohne Wundmali) + Effektiver RW (${effectiveRw}, MK:${mk})</span>
+        </header>
+        ${diceSpoilerHtml}
+        <div class="card-totals-row">
+          <div class="stat-box">
+            <span class="stat-label">Gesamtschaden</span>
+            <span class="stat-value">${incomingDamage} TP</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Widerstand (Soak)</span>
+            <span class="stat-value">${soakTotal} TP</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Erlittener Schaden</span>
+            <span class="stat-value">${netDamage} TP</span>
+          </div>
+        </div>
+        <div class="card-outcome ${netDamage === 0 ? "success" : "failure"}">
+          ${
+            netDamage === 0
+              ? `<strong><i class="fas fa-check-circle"></i> Vollständig absorbiert! (Widerstand ${soakTotal} ≥ Schaden ${incomingDamage} → 0 TP)</strong>`
+              : `<strong><i class="fas fa-droplet"></i> ${soakFlow.targetName} erleidet ${netDamage} TP Schaden an Zone ${hit.zoneLabel}!</strong>`
+          }
+        </div>
+        ${
+          netDamage > 0
+            ? `<div class="card-actions" style="margin-top:8px;">
+                 <button type="button" class="noreturn-chat-btn danger" data-action="apply-zone-damage">
+                   <i class="fas fa-heart-crack"></i> ${netDamage} TP Schaden auf ${hit.zoneLabel} anwenden
+                 </button>
+               </div>`
+            : ""
+        }
+      </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor: defender, token }),
+      flavor: `Schadenswiderstand (${hit.zoneLabel})`,
+      content,
+      rolls: [soakRoll],
+      flags: {
+        noreturn: {
+          soakFlow
+        }
+      }
+    });
+
+    return { soakRoll, soakTotal, incomingDamage, netDamage };
+  }
+
+  /**
+   * Punkt 5 – Schritt 4B: Erlittenen Restschaden aus dem Chat direkt in die getroffene Trefferzone
+   * des Ziels eintragen und Wundstufen / Schmerztoleranz aktualisieren.
+   */
+  static async applyZoneDamage(message) {
+    const soakFlow = message?.flags?.noreturn?.soakFlow;
+    if (!soakFlow) return null;
+    if (soakFlow.applied) {
+      ui.notifications?.info("Dieser Schaden wurde bereits auf die Trefferzone angewendet.");
+      return null;
+    }
+
+    const { token, actor: defender } = this._resolveFlowTarget(soakFlow);
+    if (!defender) {
+      ui.notifications?.warn("Ziel-Charakter konnte nicht aufgelöst werden!");
+      return null;
+    }
+
+    const zoneCode = String(soakFlow.zoneCode || "7");
+    const netDamage = Math.max(0, Number(soakFlow.netDamage) || 0);
+    if (netDamage <= 0) return null;
+
+    if (defender.type === "robot") {
+      const curDmg = Number(defender.system?.zones?.[zoneCode]?.health?.damage) || 0;
+      const maxHp = Number(defender.system?.zones?.[zoneCode]?.health?.max) || 30;
+      const nextDmg = Math.min(maxHp, curDmg + netDamage);
+      await defender.update({
+        [`system.zones.${zoneCode}.health.damage`]: nextDmg
+      });
+    } else {
+      const curDmg = Number(defender.system?.health?.zones?.[zoneCode]?.damage) || 0;
+      const maxHp =
+        Number(defender.system?.health?.zones?.[zoneCode]?.max) ||
+        Number(defender.system?.health?.maxHpTier) ||
+        30;
+      const nextDmg = Math.min(maxHp, curDmg + netDamage);
+      await defender.update({
+        [`system.health.zones.${zoneCode}.damage`]: nextDmg
+      });
+    }
+
+    try {
+      await message.setFlag("noreturn", "soakFlow", { ...soakFlow, applied: true });
+    } catch (_e) {
+      // Non-owner fallback
+    }
+
+    const newMali = Number(defender.system?.health?.gesamteMali) || 0;
+    ui.notifications?.info(
+      `${token?.name || defender.name}: +${netDamage} TP Schaden auf ${soakFlow.zoneLabel} angewendet (Gesamte Wundmali: -${newMali}W6).`
+    );
+    return true;
+  }
+
+  /**
+   * Roll Weapon Damage (Melee ST W6 + flat, or Ranged formula + loaded ammunition bonus + Good Hits) (Punkt 3, 4 & 5).
    */
   static async rollWeaponDamage(actor, weapon, { goodHits = 0, calledZone = null } = {}) {
     const sys = weapon.system || {};
     const isRanged = Boolean(sys.isRanged || sys.weaponType === "ranged");
     const isMelee = !isRanged && sys.weaponType === "melee";
-    const staerke = Number(actor?.system?.attributes?.primary?.staerke?.overall ?? 1);
-    const ammoCode = (sys.loadedAmmoType || "FMJ").toUpperCase();
-    const ammoDef = AMMO_TYPE_DEFINITIONS[ammoCode] || AMMO_TYPE_DEFINITIONS.FMJ;
-    const ammoDmgBonus = isRanged ? ammoDef.damageBonus : 0;
-    const baseFlat = Number(sys.damageFlat) || 0;
-    const effectiveFlat = Number(sys.effectiveDamageFlat ?? baseFlat + ammoDmgBonus);
+    const staerke = Math.max(1, getEffectiveActorAttribute(actor, "staerke") || 1);
+    const loadedAmmo =
+      sys.loadedAmmo || AMMO_TYPE_DEFINITIONS[(sys.loadedAmmoType || "FMJ").toUpperCase()] || AMMO_TYPE_DEFINITIONS.FMJ;
+    const ammoDmgBonus = isRanged ? Number(loadedAmmo.damageBonus) || 0 : 0;
+    const baseFlat = Number(sys.baseWeaponDamage ?? sys.damageFlat) || 0;
+    const bulletDmg = Number(sys.bulletDamage ?? sys.damageBonusPerHit) || 0;
+    const effectiveFlat = Number(sys.effectiveDamageFlat ?? baseFlat + bulletDmg + ammoDmgBonus);
 
     let formula = "";
     if (isMelee) {
       const diceCount = Math.max(1, staerke + goodHits);
       formula = baseFlat > 0 ? `${diceCount}d6 + ${baseFlat}` : `${diceCount}d6`;
     } else {
-      const baseFormula = String(sys.effectiveDamageFormula || sys.damageFormula || "1d6").trim();
+      const baseFormula = String(sys.effectiveDamageFormula || sys.damageFormula || "").trim();
       if (baseFormula.includes("d") || baseFormula.includes("W") || baseFormula.includes("w")) {
         const normalized = baseFormula.replace(/(\d+)\s*[wW]\s*(\d+)/g, "$1d$2").replace(/p\./gi, "");
         formula = goodHits > 0 ? `${normalized} + ${goodHits}d6` : normalized;
@@ -1610,9 +2803,9 @@ export class NoReturnRoll {
     const ammoInfoHtml = isRanged
       ? `<div class="card-meta ammo-meta">
           <span><i class="fas fa-bullets"></i> Munition: <strong>${
-            sys.loadedAmmoName || ammoDef.label
+            sys.loadedAmmoName || loadedAmmo.customName || loadedAmmo.label
           }</strong></span>
-          <span>${ammoDef.summary}</span>
+          <span>${loadedAmmo.summary}</span>
         </div>`
       : "";
 

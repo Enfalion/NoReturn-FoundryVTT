@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.2 (English)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.3 (English)
 
 Official **Foundry Virtual Tabletop (v14)** system implementation for **NoReturn – Post-Apocalyptic Sci-Fi RPG (1st Edition)** by **Enfalion**.
 
@@ -17,7 +17,18 @@ Direct Release Download:
 
 ---
 
-## Key Features in v1.1.2
+## Key Features in v1.1.3
+
+1. **Skill Pool Math Fix & Hazard-Die Logic:**
+   - Exact dice pool calculation `Effective Attribute + Effective Skill + Situational Bonuses - Situational Penalties` (e.g., `Shooting 5 + Dexterity 2 = 7d6`, rolled as `6d6 + 1d6x6`). The exploding Hazard-Die (`1d6x6`) replaces 1 die of the pool and never reduces the total dice count.
+2. **Automatic Weapon Attack & Combat Skill Linking:**
+   - Automatically links all 7 core rulebook weapon categories to their matching combat skill (*Schießen*, *Schwere Waffen*, *Projektilwaffen*, *Wurfwaffen*, *Sprühwaffen*, *Nahkampf*, *Waffenkampf*) + *Geschick*.
+3. **True Inventory Ammunition Management (Load, Swap, Unload & Dynamic Damage):**
+   - **"Load / Swap"** and **"Unload"** buttons on every ranged weapon transfer rounds directly between character inventory items and the weapon magazine (`0/x` to `max`) and dynamically compute damage and penetration from the loaded ammo (`FMJ`, `HS`, `AP`, `AF`, or custom modifiers).
+4. **Fire Modes, Shot Count, Recoil Dampening (RD) & Ammo Consumption (CRB p. 60–61):**
+   - Supports **Single Shot**, **Bolt-Action (Repetier)**, **Semi-Auto** (selectable trigger pulls `1..X`, recoil `pulls - RD`), **Burst** (*Concentrated Fire* `+10 HP` & Good Hits per 5 margin / *Spread Fire* `+2d6` attack, recoil `bursts - RD`), and **Full Auto** (*Regular* `+RD d6` / *Suppressive Fire* `-2d6`, 3 random hit zones via `2d6`).
+5. **Automated Target Combat Flow in Chat:**
+   - Interactive Chat workflow: **Attack Roll** → **Target Defense Roll** → **Hit Zone (`2d6`) & Armor/MC Check** → **Damage Resistance (`KO + effective Armor`)** → **Apply Net Damage to Zone**.
 
 1. **PSI Refinement, Pyramid Validation & Live Pool Calculator:**
    - Renamed the main PSI tab to **"PSI"**; PSI Apps now exclusively use **App Tier** (no Hierarchy Tier field on apps).

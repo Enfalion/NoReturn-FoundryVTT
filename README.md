@@ -1,7 +1,7 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.2
+# NoReturn – Foundry VTT System (v14) — Version 1.1.3
 
 [![Foundry VTT v14](https://img.shields.io/badge/Foundry_VTT-v14-orange)](https://foundryvtt.com/)
-[![Version](https://img.shields.io/badge/Version-1.1.2-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.3-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
 [![Author](https://img.shields.io/badge/Autor-Enfalion-success)](https://github.com/Enfalion/NoReturn-FoundryVTT)
 
 Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für **NoReturn – Das Endzeit-Rollenspiel (1. Edition)**.
@@ -23,7 +23,28 @@ Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für 
 
 ---
 
-## Highlights & Neue Features in Version 1.1.2
+## Highlights & Neue Features in Version 1.1.3
+
+### 1. Korrekte Fertigkeits-Pool-Mathematik & Hazard-Di-Logik
+- **Exakte Pool-Berechnung ohne Off-by-One-Bug:** `Gesamt-Würfel = Attributswert (effektiv) + Fertigkeitswert (effektiv) + situative Boni - situative Mali` (z. B. `Schießen 5 + Geschick 2 = 7W6`, gerollt als `6d6 + 1d6x6`).
+- **Hazard-Di ersetzt 1 Würfel:** Der explodierende Hazard-Di (`1d6x6`) ersetzt exakt einen Würfel des Pools und reduziert niemals die Gesamtanzahl der gewürfelten W6.
+
+### 2. Automatische Verknüpfung von Waffen-Angriffsproben mit Kampffertigkeiten
+- **Vollständige Zuordnung aller 7 GRW-Kampffertigkeiten:** Feuerwaffen (`Schießen + GE`), Schwere Waffen (`Schwere Waffen + GE`), Projektilwaffen (`Projektilwaffen + GE`), Wurfwaffen (`Wurfwaffen + GE`), Sprühwaffen (`Sprühwaffen + GE`), Kurzdistanzwaffen (`Nahkampf + GE`) und Distanzwaffen (`Waffenkampf + GE`).
+- **Live-Pool-Anzeige im Waffentab & Angriffsdialog:** Zeigt den kombinierten Angriffspool direkt in der Waffentabelle und im Angriffs-Dialog an.
+
+### 3. Echtes Inventar-Munitions-Management (Laden, Wechseln, Entladen & Dynamischer Schaden)
+- **Buttons „Laden / Wechseln“ & „Entladen“:** Prüft kompatible Munitions-Items im Charakterinventar anhand des Kalibers, zieht beim Laden die Patronen aus dem Inventar ab und legt beim Entladen oder Munitionswechsel verbleibende Kugeln aus dem Magazin zurück ins Inventar.
+- **Dynamische Schadens- & Durchschlagsberechnung:** Kein Hardcoding auf FMJ mehr – übernimmt dynamisch den geladenen Munitionstyp (`FMJ` +0, `HS` +10 / blockiert ab `MK:B`, `AP` +0 / ignoriert `MK:A`, `AF` +10 / ignoriert `MK:A & B`) sowie benutzerdefinierte Schadensmodifikatoren.
+
+### 4. Feuermodi, Schussanzahl, Rückstoßdämpfung (RD) & Munitionsverbrauch (GRW S. 60–61)
+- **Einzelschuss & Repetier:** 1 Kugel Verbrauch, Rückstoß `max(0, 1 - RD)`, Schaden `Grundschaden + (Kugel × 1) + Munitions-Mod`.
+- **Semiautomatik (`Semi X(Yx)`):** Auswahl der Abzüge `1..Y` (begrenzt durch Magazin), Rückstoß-Malus `max(0, Abzüge - RD)` vom Angriffspool, Schaden `Grundschaden + (Kugel × Abzüge) + Munitions-Mod`.
+- **Burst-Modus (`Burst X(Yx)`):** Auswahl der Bursts `1..Y` sowie **Konzentriertes Feuer** (`+10` Schaden, Gute Treffer je 5 Punkte) oder **Streufeuer** (`+2W6` Angriff, Gute Treffer je 10 Punkte), Rückstoß `max(0, Bursts - RD)`.
+- **Vollautomatik (`Auto X(Yg)`):** Auswahl zwischen **Regulärer Angriff** (`+RD W6` Angriff, 0 Rückstoß) und **Sperrfeuer** (`-2W6` Kampfnachteil), zieht `Y` Kugeln ab und trifft **3 zufällige Trefferzonen (je `2W6`)** mit je `Grundschaden + 10 + (Kugel × 2) + Munitions-Mod` (Gute Treffer je 5 Punkte).
+
+### 5. Automatisierter Target-Kampfablauf direkt aus dem Chat
+- **Angriff → Verteidigung → Trefferzone & MK-Prüfung → Schadenswiderstand (Soak) → Schaden anwenden:** Interaktive Chat-Buttons führen Schritt für Schritt durch den gesamten Kampfablauf gegen ein anvisiertes Ziel (`game.user.targets`), prüfen automatisch Materialkategorie (`MK: A/B/C`) gegen die geladene Munition, würfeln `KO (inkl. 1 Hazard-Di, ohne Wundmali) + effektiver RW` und tragen den Restschaden per Klick direkt in die getroffene Zone ein.
 
 ### 1. PSI-Tab, App-Stufen, Dynamische Sperr-Meldungen & Pyramiden-Validierung
 - **Hauptreiter „PSI“ & Bereinigte PSI-Apps:** Der PSI-Reiter heißt nun schlicht **„PSI“**. PSI-Apps (`psiApp`) besitzen ausschließlich eine **App-Stufe** (`tier`), keine eigene Hierarchiestufe.

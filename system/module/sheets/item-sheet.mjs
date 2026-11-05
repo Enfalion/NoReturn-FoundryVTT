@@ -1,4 +1,5 @@
 import { AMMO_TYPE_DEFINITIONS, isAmmoCompatibleWithWeapon } from "../data/item-data.mjs";
+import { NoReturnRoll } from "../dice/roll.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ItemSheetV2 } = foundry.applications.sheets;
@@ -65,25 +66,36 @@ export class NoReturnItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     if (ammoSelect) {
       ammoSelect.addEventListener("change", async (ev) => {
         ev.stopPropagation();
-        const val = ammoSelect.value || "TYPE:FMJ";
-        if (val.startsWith("TYPE:")) {
-          const code = val.replace("TYPE:", "");
+        const val = String(ammoSelect.value || "").trim();
+        if (!val || val === "unload") {
+          if (this.document.actor) {
+            await NoReturnRoll.unloadWeaponAmmo(this.document.actor, this.document);
+          } else {
+            await this.document.update({
+              "system.ammoCurrent": 0,
+              "system.loadedAmmoId": "",
+              "system.loadedAmmoType": "",
+              "system.loadedAmmoName": "",
+              "system.loadedAmmoDamageMod": 0
+            });
+          }
+          return;
+        }
+        if (val.toLowerCase().startsWith("type:")) {
+          const code = val.slice(5).toUpperCase();
           const def = AMMO_TYPE_DEFINITIONS[code] || AMMO_TYPE_DEFINITIONS.FMJ;
           await this.document.update({
             "system.loadedAmmoId": "",
             "system.loadedAmmoType": def.code,
-            "system.loadedAmmoName": def.label
+            "system.loadedAmmoName": def.label,
+            "system.loadedAmmoDamageMod": def.damageBonus
           });
         } else if (this.document.actor) {
-          const ammoItem = this.document.actor.items.get(val);
-          if (ammoItem) {
-            const code = (ammoItem.system?.ammoType || "FMJ").toUpperCase();
-            await this.document.update({
-              "system.loadedAmmoId": ammoItem.id,
-              "system.loadedAmmoType": code,
-              "system.loadedAmmoName": ammoItem.name
-            });
-          }
+          const itemId = val.toLowerCase().startsWith("item:") ? val.slice(5) : val;
+          await NoReturnRoll.loadWeaponAmmo(this.document.actor, this.document, {
+            ammoItemId: itemId,
+            skipDialog: true
+          });
         }
       });
     }

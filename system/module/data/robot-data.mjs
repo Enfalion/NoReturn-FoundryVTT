@@ -697,5 +697,15 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
     this.isImmobilized =
       this.health.gesamteMali >= this.attributes.primary.schnelligkeit.overall &&
       this.attributes.primary.schnelligkeit.overall > 0;
+
+    // Re-prepare embedded items so skill/weapon/PSI pools reflect final derived attributes & bonuses (Punkt 1 & 2)
+    for (const item of items) {
+      if (
+        item?.system?.prepareDerivedData &&
+        ["skill", "styleskill", "weapon", "psiForce", "psiApp", "gear"].includes(item.type)
+      ) {
+        item.system.prepareDerivedData();
+      }
+    }
   }
 }

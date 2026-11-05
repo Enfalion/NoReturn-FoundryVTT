@@ -192,15 +192,31 @@
         <div class="nr-stat-grid">
           <label>
             <span>{{localize "NORETURN.Combat.Skill"}}</span>
-            <input type="text" name="system.skill" value="{{system.skill}}" />
+            <select name="system.skill">
+              <option value="schiessen" {{#if (or (eq system.skill "schiessen") (eq system.skill "schusswaffen"))}}selected{{/if}}>Schießen (Feuerwaffen)</option>
+              <option value="schwere_waffen" {{#if (eq system.skill "schwere_waffen")}}selected{{/if}}>Schwere Waffen</option>
+              <option value="projektilwaffen" {{#if (eq system.skill "projektilwaffen")}}selected{{/if}}>Projektilwaffen</option>
+              <option value="wurfwaffen" {{#if (eq system.skill "wurfwaffen")}}selected{{/if}}>Wurfwaffen</option>
+              <option value="spruehwaffen" {{#if (eq system.skill "spruehwaffen")}}selected{{/if}}>Sprühwaffen</option>
+              <option value="nahkampf" {{#if (eq system.skill "nahkampf")}}selected{{/if}}>Nahkampf (KW)</option>
+              <option value="waffenkampf" {{#if (eq system.skill "waffenkampf")}}selected{{/if}}>Waffenkampf (DW)</option>
+            </select>
           </label>
           <label>
             <span>{{localize "NORETURN.Combat.AttackBonus"}}</span>
             <input type="number" name="system.attackBonus" value="{{system.attackBonus}}" />
           </label>
           <label>
-            <span>{{localize "NORETURN.Combat.Damage"}}</span>
+            <span>{{localize "NORETURN.Combat.Damage"}} (Formel)</span>
             <input type="text" name="system.damageFormula" value="{{system.damageFormula}}" />
+          </label>
+          <label>
+            <span>Grundschaden (Flat TP)</span>
+            <input type="number" name="system.damageFlat" value="{{system.damageFlat}}" step="1" />
+          </label>
+          <label>
+            <span>Schaden einer Kugel (pro Treffer/Salve)</span>
+            <input type="number" name="system.damageBonusPerHit" value="{{system.damageBonusPerHit}}" min="0" step="1" />
           </label>
           <label>
             <span>{{localize "NORETURN.Combat.Caliber"}}</span>
@@ -221,6 +237,9 @@
           <label>
             <span>{{localize "NORETURN.Combat.AmmoLoaded"}}</span>
             <select class="nr-item-weapon-ammo-select">
+              <option value="unload" {{#if (and (eq system.ammoCurrent 0) (eq system.loadedAmmoId ""))}}selected{{/if}}>
+                – Nicht geladen –
+              </option>
               {{#if compatibleAmmoItems.length}}
                 <optgroup label="Inventar ({{system.caliber}})">
                   {{#each compatibleAmmoItems}}
@@ -232,7 +251,7 @@
               {{/if}}
               <optgroup label="Munitionstyp (Standard)">
                 {{#each ammoTypes}}
-                  <option value="type:{{this.code}}" {{#if (and (eq ../system.loadedAmmoId "") (eq ../system.loadedAmmoType this.code))}}selected{{/if}}>
+                  <option value="type:{{this.code}}" {{#if (and (gt ../system.ammoCurrent 0) (eq ../system.loadedAmmoId "") (eq ../system.loadedAmmoType this.code))}}selected{{/if}}>
                     {{this.label}} ({{this.effect}})
                   </option>
                 {{/each}}
@@ -299,7 +318,7 @@
           </label>
           <label>
             <span>{{localize "NORETURN.Combat.Caliber"}} (falls Munition)</span>
-            <input type="text" name="system.caliber" value="{{system.caliber}}" placeholder="z.B. 9x19mm" />
+            <input type="text" name="system.caliber" value="{{system.caliber}}" placeholder="z.B. 9mm P3" />
           </label>
           <label>
             <span>{{localize "NORETURN.Combat.AmmoLoaded"}} (Typ)</span>
@@ -310,6 +329,10 @@
               <option value="HS" {{#if (eq system.ammoType "HS")}}selected{{/if}}>HS – Hohlspitz (+10 TP vs. MK:A | 0 vs. MK:B+)</option>
               <option value="AF" {{#if (eq system.ammoType "AF")}}selected{{/if}}>AF – Anti-Fahrzeug (+10 TP | ignoriert MK:A &amp; B)</option>
             </select>
+          </label>
+          <label>
+            <span>Schadens-Modifikator (leer = Standard laut Typ)</span>
+            <input type="number" name="system.damageMod" value="{{system.damageMod}}" step="1" placeholder="z.B. 0 oder 10" />
           </label>
           <label class="full-span">
             <span>{{localize "NORETURN.Inventory.Effects"}}</span>

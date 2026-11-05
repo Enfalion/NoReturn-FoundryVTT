@@ -247,6 +247,15 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     };
   }
 
+  prepareBaseData() {
+    for (const attr of Object.values(this.attributes?.primary || {})) {
+      attr.overall = Math.max(0, (Number(attr.base) || 0) + (Number(attr.mod) || 0));
+    }
+    for (const attr of Object.values(this.attributes?.secondary || {})) {
+      attr.total = Math.max(0, (Number(attr.base) || 0) + (Number(attr.mod) || 0));
+    }
+  }
+
   prepareDerivedData() {
     const items = this.parent?.items ?? [];
 
@@ -501,8 +510,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       totalWoundPenalty += zone.penalty;
     }
 
-    this.health.gesamteMali =
-      totalWoundPenalty + (Number(this.health.sonstigeMali) || 0) + this.health.comfortPenalty;
+    this.health.gesamteMali = totalWoundPenalty + (Number(this.health.sonstigeMali) || 0);
 
     this.isUnconscious = this.health.gesamteMali >= konstitution && konstitution > 0;
     this.isImmobilized = this.health.gesamteMali >= schnelligkeit && schnelligkeit > 0;
@@ -543,5 +551,15 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       forceHierarchyWarnings,
       forceHierarchyWarningText: forceHierarchyWarnings.join(" ")
     };
+
+    // 10. Re-prepare embedded items so skill/weapon/PSI pools reflect final derived attributes & bonuses (Punkt 1 & 2)
+    for (const item of items) {
+      if (
+        item?.system?.prepareDerivedData &&
+        ["skill", "styleskill", "weapon", "psiForce", "psiApp", "gear"].includes(item.type)
+      ) {
+        item.system.prepareDerivedData();
+      }
+    }
   }
 }
