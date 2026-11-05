@@ -668,8 +668,11 @@ export class NoReturnRoll {
         await actor.createEmbeddedDocuments("Item", [
           {
             name: loadedName || `${cal} (${def.code})`,
-            type: "gear",
+            type: "ammo",
+            img: "systems/noreturn/assets/icons/ammo.svg",
             system: {
+              category: "munition",
+              isAmmo: true,
               caliber: cal,
               ammoType: def.code,
               damageMod: Number(sys.loadedAmmoDamageMod ?? def.damageBonus) || 0,

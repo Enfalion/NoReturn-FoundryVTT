@@ -2,7 +2,7 @@
   "id": "noreturn",
   "title": "NoReturn – Endzeit Rollenspiel (1st Edition)",
   "description": "Vollständiges Spielsystem für das postapokalyptische Sci-Fi-Rollenspiel NoReturn (Collector's Edition / 1. Edition) für Foundry VTT v14.",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "compatibility": {
     "minimum": "14",
     "verified": "14",
@@ -63,6 +63,9 @@
         "htmlFields": ["description"]
       },
       "armor": {
+        "htmlFields": ["description"]
+      },
+      "ammo": {
         "htmlFields": ["description"]
       },
       "gear": {

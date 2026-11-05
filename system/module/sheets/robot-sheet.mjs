@@ -111,6 +111,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const psiApps = [];
     const weapons = [];
     const armors = [];
+    const ammoItems = [];
     const gear = [];
     const consumables = [];
     const speciesItems = [];
@@ -145,6 +146,8 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
         traits.push(item);
       } else if (item.type === "condition" || item.type === "disease" || item.type === "toxin") {
         conditions.push(item);
+      } else if (item.type === "ammo" || (item.type === "gear" && item.system?.isAmmo)) {
+        ammoItems.push(item);
       } else {
         gear.push(item);
       }
@@ -195,7 +198,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       this.#activeTab = "overview";
     }
 
-    const ammoGearItems = gear.filter((g) => g.system?.isAmmo);
+    const ammoGearItems = ammoItems;
     for (const w of weapons) {
       w.compatibleAmmoItems = ammoGearItems.filter((g) =>
         isAmmoCompatibleWithWeapon(g, w.system?.caliber)
@@ -230,6 +233,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       psiApps,
       weapons,
       armors,
+      ammoItems,
       gear,
       consumables,
       speciesItems,
@@ -387,10 +391,16 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       return created;
     }
 
-    if ((item.type === "gear" || item.type === "consumable") && item.parent?.id !== this.document.id) {
+    if (
+      (item.type === "ammo" || item.type === "gear" || item.type === "consumable") &&
+      item.parent?.id !== this.document.id
+    ) {
+      const isDroppedAmmo = item.type === "ammo" || Boolean(item.system?.isAmmo);
       const existingGear = this.document.items.find(
         (i) =>
-          i.type === item.type &&
+          (isDroppedAmmo
+            ? i.type === "ammo" || (i.type === "gear" && Boolean(i.system?.isAmmo))
+            : i.type === item.type) &&
           i.name === item.name &&
           String(i.system?.caliber || "") === String(item.system?.caliber || "") &&
           String(i.system?.ammoType || "") === String(item.system?.ammoType || "")
@@ -688,7 +698,17 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     event.preventDefault();
     const type = target.dataset.type || "robotModule";
     const name = `${game.i18n.localize(`TYPES.Item.${type}`)}`;
-    await this.document.createEmbeddedDocuments("Item", [{ name, type }]);
+    const itemData = { name, type };
+    if (type === "ammo") {
+      itemData.img = "systems/noreturn/assets/icons/ammo.svg";
+      itemData.system = {
+        category: "munition",
+        isAmmo: true,
+        ammoType: "FMJ",
+        quantity: 10
+      };
+    }
+    await this.document.createEmbeddedDocuments("Item", [itemData]);
   }
 
   static #onEditItem(event, target) {

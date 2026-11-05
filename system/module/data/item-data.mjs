@@ -99,7 +99,8 @@ export function isAmmoCompatibleWithWeapon(ammoItem, weaponCaliber = "") {
   if (!ammoItem?.system) return false;
   const sys = ammoItem.system;
   const isAmmoItem = Boolean(
-    sys.isAmmo ||
+    ammoItem.type === "ammo" ||
+      sys.isAmmo ||
       (sys.category || "").toLowerCase() === "munition" ||
       sys.ammoType ||
       (ammoItem.type === "consumable" && sys.caliber)
@@ -1104,6 +1105,28 @@ export class NoReturnGearData extends foundry.abstract.TypeDataModel {
       const def = AMMO_TYPE_DEFINITIONS[this.ammoType] || AMMO_TYPE_DEFINITIONS.FMJ;
       this.damageMod = def.damageBonus;
     }
+  }
+}
+
+export class NoReturnAmmoData extends NoReturnGearData {
+  static defineSchema() {
+    const schema = super.defineSchema();
+    const fields = foundry.data.fields;
+    return {
+      ...schema,
+      category: new fields.StringField({ required: false, blank: true, initial: "munition" }),
+      ammoType: new fields.StringField({ required: false, blank: true, initial: "FMJ" }),
+      isAmmo: new fields.BooleanField({ required: true, initial: true }),
+      quantity: new fields.NumberField({ required: true, integer: true, min: 0, initial: 10 })
+    };
+  }
+
+  prepareDerivedData() {
+    this.isAmmo = true;
+    if (!this.category || this.category === "allgemein") {
+      this.category = "munition";
+    }
+    super.prepareDerivedData();
   }
 }
 

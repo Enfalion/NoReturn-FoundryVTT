@@ -73,6 +73,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     const psiApps = [];
     const weapons = [];
     const armors = [];
+    const ammoItems = [];
     const gear = [];
     const consumables = [];
     const augmentations = [];
@@ -100,6 +101,8 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
         weapons.push(item);
       } else if (item.type === "armor") {
         armors.push(item);
+      } else if (item.type === "ammo" || (item.type === "gear" && item.system?.isAmmo)) {
+        ammoItems.push(item);
       } else if (item.type === "gear") {
         gear.push(item);
       } else if (item.type === "consumable") {
@@ -197,7 +200,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       this.#activeTab = "overview";
     }
 
-    const ammoGearItems = gear.filter((g) => g.system?.isAmmo);
+    const ammoGearItems = ammoItems;
     for (const w of weapons) {
       w.compatibleAmmoItems = ammoGearItems.filter((g) =>
         isAmmoCompatibleWithWeapon(g, w.system?.caliber)
@@ -230,6 +233,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       psiApps,
       weapons,
       armors,
+      ammoItems,
       gear,
       consumables,
       augmentations,
@@ -424,10 +428,16 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     }
 
     // 7. Gear / Ammunition / Consumable stacking when dropped from Compendium or sidebar
-    if ((item.type === "gear" || item.type === "consumable") && item.parent?.id !== this.document.id) {
+    if (
+      (item.type === "ammo" || item.type === "gear" || item.type === "consumable") &&
+      item.parent?.id !== this.document.id
+    ) {
+      const isDroppedAmmo = item.type === "ammo" || Boolean(item.system?.isAmmo);
       const existingGear = this.document.items.find(
         (i) =>
-          i.type === item.type &&
+          (isDroppedAmmo
+            ? i.type === "ammo" || (i.type === "gear" && Boolean(i.system?.isAmmo))
+            : i.type === item.type) &&
           i.name === item.name &&
           String(i.system?.caliber || "") === String(item.system?.caliber || "") &&
           String(i.system?.ammoType || "") === String(item.system?.ammoType || "")
@@ -686,7 +696,17 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     event.preventDefault();
     const type = target.dataset.type || "gear";
     const name = `${game.i18n.localize(`TYPES.Item.${type}`)}`;
-    await this.document.createEmbeddedDocuments("Item", [{ name, type }]);
+    const itemData = { name, type };
+    if (type === "ammo") {
+      itemData.img = "systems/noreturn/assets/icons/ammo.svg";
+      itemData.system = {
+        category: "munition",
+        isAmmo: true,
+        ammoType: "FMJ",
+        quantity: 10
+      };
+    }
+    await this.document.createEmbeddedDocuments("Item", [itemData]);
   }
 
   static #onEditItem(event, target) {

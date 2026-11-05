@@ -46,7 +46,7 @@ export class NoReturnItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     let compatibleAmmoItems = [];
     if (item.type === "weapon" && item.actor?.items) {
       compatibleAmmoItems = item.actor.items.filter(
-        (g) => g.type === "gear" && isAmmoCompatibleWithWeapon(g, system.caliber)
+        (g) => (g.type === "ammo" || g.type === "gear") && isAmmoCompatibleWithWeapon(g, system.caliber)
       );
     }
 

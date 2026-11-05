@@ -1023,6 +1023,48 @@
             </table>
           </div>
         </div>
+
+        <!-- Ammunition & Projectiles -->
+        <div class="nr-card">
+          <div class="nr-section-header">
+            <h2 class="nr-section-title">{{localize "NORETURN.Inventory.AmmoHeader"}}</h2>
+            <button type="button" class="nr-btn small" data-action="createItem" data-type="ammo">
+              <i class="fas fa-plus"></i> {{localize "NORETURN.Inventory.AddAmmo"}}
+            </button>
+          </div>
+          <table class="nr-table ammo-table">
+            <thead>
+              <tr>
+                <th>{{localize "TYPES.Item.ammo"}}</th>
+                <th>{{localize "NORETURN.Combat.Caliber"}}</th>
+                <th>Typ</th>
+                <th>{{localize "NORETURN.Inventory.Quantity"}}</th>
+                <th>{{localize "NORETURN.Inventory.Effects"}}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each ammoItems}}
+                <tr data-item-id="{{this.id}}">
+                  <td>
+                    <a data-action="editItem" style="display:inline-flex;align-items:center;gap:6px;">
+                      <img src="systems/noreturn/assets/icons/ammo.svg" width="20" height="20" style="border:none;vertical-align:middle;" />
+                      <strong>{{this.name}}</strong>
+                    </a>
+                  </td>
+                  <td class="center">{{this.system.caliber}}</td>
+                  <td class="center"><strong>{{this.system.ammoType}}</strong></td>
+                  <td class="center"><strong>{{this.system.quantity}}</strong></td>
+                  <td>{{this.system.effects}}</td>
+                  <td class="actions-cell">
+                    <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
+                    <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
       </div>
     {{/if}}
 

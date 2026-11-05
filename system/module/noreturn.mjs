@@ -12,6 +12,7 @@ import {
   NoReturnPsiAppData,
   NoReturnWeaponData,
   NoReturnArmorData,
+  NoReturnAmmoData,
   NoReturnGearData,
   NoReturnConsumableData,
   NoReturnCyberwareData,
@@ -37,6 +38,7 @@ export const COMPENDIUM_FOLDER_STRUCTURE = {
     folders: [
       { _id: "NRfldItemsNahkmp", name: "Nahkampfwaffen", sort: 100, color: "#4a2c2a" },
       { _id: "NRfldItemsFernkm", name: "Fernkampfwaffen", sort: 200, color: "#2b3e50" },
+      { _id: "NRfldItemsMuniti", name: "Munition", sort: 250, color: "#5c4028" },
       { _id: "NRfldItemsRuestu", name: "Rüstungen & Schutzkleidung", sort: 300, color: "#3b4d3b" },
       { _id: "NRfldItemsDrogen", name: "Drogen & Pharmazeutika", sort: 400, color: "#4a3556" },
       { _id: "NRfldItemsAusrue", name: "Ausrüstung & Werkzeuge", sort: 500, color: "#524632" },
@@ -105,6 +107,17 @@ export const COMPENDIUM_FOLDER_STRUCTURE = {
  * Determine the target folder name for a Compendium document if not already linked.
  */
 function resolveCompendiumFolderName(packCollection, doc) {
+  const sys = doc.system || {};
+  if (packCollection === "noreturn.items") {
+    if (
+      doc.type === "ammo" ||
+      sys.isAmmo === true ||
+      String(sys.category || "").toLowerCase() === "munition"
+    ) {
+      return "Munition";
+    }
+  }
+
   const flaggedName = doc.flags?.noreturn?.folderName;
   if (flaggedName) {
     if (flaggedName === "PSI Kategorie B (HMO)") return "Kategorie B";
@@ -112,7 +125,6 @@ function resolveCompendiumFolderName(packCollection, doc) {
     return flaggedName;
   }
 
-  const sys = doc.system || {};
   if (packCollection === "noreturn.items") {
     if (doc.type === "weapon") {
       return sys.weaponCategory === "melee" ? "Nahkampfwaffen" : "Fernkampfwaffen";
@@ -210,18 +222,34 @@ async function ensureCompendiumFolders() {
 
       const docs = await pack.getDocuments();
       const needFolderCreation = foldersToCreate.length > 0;
+      const folderNamesSet = new Set(cfg.folders.map((f) => f.name));
 
-      // Check if any documents need folder assignment
+      // Detect category-header duplicate documents (NRfld* or identical name to folder)
+      const duplicateIds = [];
       let needDocUpdates = false;
       for (const doc of docs) {
+        const docId = String(doc.id || "");
+        const docName = String(doc.name || "").trim();
+        if (docId.startsWith("NRfld") || folderNamesSet.has(docName)) {
+          duplicateIds.push(docId);
+          continue;
+        }
         const currentFolderId = typeof doc.folder === "string" ? doc.folder : doc.folder?.id;
-        if (!currentFolderId || !foldersById.has(currentFolderId)) {
+        const targetName = resolveCompendiumFolderName(packCollection, doc);
+        const expectedFolder = targetName ? foldersByName.get(targetName) : null;
+        if (!currentFolderId || !foldersById.has(currentFolderId) || (expectedFolder && currentFolderId !== expectedFolder.id)) {
           needDocUpdates = true;
-          break;
+        }
+        if (
+          packCollection === "noreturn.items" &&
+          (doc.type === "ammo" || doc.system?.isAmmo || String(doc.system?.category || "").toLowerCase() === "munition") &&
+          doc.img !== "systems/noreturn/assets/icons/ammo.svg"
+        ) {
+          needDocUpdates = true;
         }
       }
 
-      if (!needFolderCreation && !needDocUpdates) continue;
+      if (!needFolderCreation && !needDocUpdates && duplicateIds.length === 0) continue;
 
       const wasLocked = pack.locked;
       if (wasLocked) {
@@ -229,6 +257,12 @@ async function ensureCompendiumFolders() {
       }
 
       try {
+        if (duplicateIds.length > 0) {
+          await pack.documentClass.deleteDocuments(duplicateIds, {
+            pack: pack.collection
+          });
+        }
+
         if (foldersToCreate.length > 0) {
           await Folder.createDocuments(foldersToCreate, {
             pack: pack.collection,
@@ -243,17 +277,33 @@ async function ensureCompendiumFolders() {
 
         const docUpdates = [];
         for (const doc of docs) {
+          const docId = String(doc.id || "");
+          if (duplicateIds.includes(docId)) continue;
           const currentFolderId = typeof doc.folder === "string" ? doc.folder : doc.folder?.id;
           const targetName = resolveCompendiumFolderName(packCollection, doc);
           const targetFolder =
             (targetName && finalByName.get(targetName)) ||
             (doc.flags?.noreturn?.folderId && finalById.get(doc.flags.noreturn.folderId));
 
+          const updateObj = { _id: doc.id };
+          let changed = false;
+
           if (targetFolder && currentFolderId !== targetFolder.id) {
-            docUpdates.push({
-              _id: doc.id,
-              folder: targetFolder.id
-            });
+            updateObj.folder = targetFolder.id;
+            changed = true;
+          }
+
+          if (
+            packCollection === "noreturn.items" &&
+            (doc.type === "ammo" || doc.system?.isAmmo || String(doc.system?.category || "").toLowerCase() === "munition") &&
+            doc.img !== "systems/noreturn/assets/icons/ammo.svg"
+          ) {
+            updateObj.img = "systems/noreturn/assets/icons/ammo.svg";
+            changed = true;
+          }
+
+          if (changed) {
+            docUpdates.push(updateObj);
           }
         }
 
@@ -274,7 +324,7 @@ async function ensureCompendiumFolders() {
 }
 
 Hooks.once("init", () => {
-  console.log("NoReturn | Initializing NoReturn RPG System v1.1.5 (Foundry VTT v14)");
+  console.log("NoReturn | Initializing NoReturn RPG System v1.1.6 (Foundry VTT v14)");
 
   // Register System Settings: GM Override for PSI Force Hierarchy Tiers (Punkt 4.3)
   game.settings.register("noreturn", "psiHierarchyOverrides", {
@@ -339,6 +389,7 @@ Hooks.once("init", () => {
     psiApp: NoReturnPsiAppData,
     weapon: NoReturnWeaponData,
     armor: NoReturnArmorData,
+    ammo: NoReturnAmmoData,
     gear: NoReturnGearData,
     consumable: NoReturnConsumableData,
     cyberware: NoReturnCyberwareData,
@@ -380,6 +431,7 @@ Hooks.once("init", () => {
       "psiApp",
       "weapon",
       "armor",
+      "ammo",
       "gear",
       "consumable",
       "cyberware",
@@ -394,6 +446,28 @@ Hooks.once("init", () => {
     makeDefault: true,
     label: "NORETURN.Sheet.ItemTitle"
   });
+});
+
+// Automatically assign ammo.svg as the default icon for ammunition items (Punkt 2)
+Hooks.on("preCreateItem", (item, data) => {
+  const isAmmo =
+    item.type === "ammo" ||
+    data?.type === "ammo" ||
+    Boolean(item.system?.isAmmo) ||
+    Boolean(data?.system?.isAmmo) ||
+    String(item.system?.category || data?.system?.category || "").toLowerCase() === "munition";
+  if (!isAmmo) return;
+
+  const defaultIcons = new Set([
+    "",
+    "icons/svg/item-bag.svg",
+    "icons/svg/chest.svg",
+    "icons/svg/mystery-man.svg"
+  ]);
+  const curImg = String(data?.img || item.img || "").trim();
+  if (!curImg || defaultIcons.has(curImg)) {
+    item.updateSource({ img: "systems/noreturn/assets/icons/ammo.svg" });
+  }
 });
 
 // Ensure Compendium Folders exist when the World is ready

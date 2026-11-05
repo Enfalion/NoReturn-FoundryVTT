@@ -13,6 +13,7 @@
       "psiApp": "PSI App (Application)",
       "weapon": "Weapon",
       "armor": "Armor / Clothing",
+      "ammo": "Ammunition",
       "gear": "Gear / Tool",
       "consumable": "Drug / Pharmaceutical",
       "cyberware": "Cyberware / Biomechanics",
@@ -345,6 +346,8 @@
       "SituationalModifier": "Situational Modifiers (+/- d6)"
     },
     "Inventory": {
+      "AmmoHeader": "Ammunition & Projectiles",
+      "AddAmmo": "Add Ammunition",
       "GearHeader": "Everyday Equipment, Tools & Goods",
       "CyberwareHeader": "Cyberware, Biomechanics & Robotics Modules",
       "Installed": "Installed",

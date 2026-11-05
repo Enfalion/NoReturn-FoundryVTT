@@ -298,7 +298,7 @@
         </div>
       {{/if}}
 
-      {{#if (eq itemType "gear")}}
+      {{#if (or (eq itemType "gear") (eq itemType "ammo"))}}
         <div class="nr-stat-grid">
           <label>
             <span>{{localize "NORETURN.Inventory.Quantity"}}</span>

@@ -1,7 +1,7 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.5
+# NoReturn – Foundry VTT System (v14) — Version 1.1.6
 
 [![Foundry VTT v14](https://img.shields.io/badge/Foundry_VTT-v14-orange)](https://foundryvtt.com/)
-[![Version](https://img.shields.io/badge/Version-1.1.5-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.6-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
 [![Author](https://img.shields.io/badge/Autor-Enfalion-success)](https://github.com/Enfalion/NoReturn-FoundryVTT)
 
 Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für **NoReturn – Das Endzeit-Rollenspiel (1. Edition)**.
@@ -20,6 +20,21 @@ Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für 
    https://raw.githubusercontent.com/Enfalion/NoReturn-FoundryVTT/main/system/system.json
    ```
 4. Klicke auf **Install (Installieren)**. Foundry VTT lädt automatisch das aktuelle Release-Paket (`noreturn.zip`) herunter und richtet das System ein.
+
+---
+
+## Highlights & Neue Features in Version 1.1.6
+
+### 1. Asset-Ordnerstruktur & Custom Munitions-Icon (`ammo.svg`)
+- Neue Ordnerstruktur unter `system/assets/icons/`, `system/assets/fonts/` und `system/assets/images/` für System-Grafiken und Fonts.
+- Neues Standard-Munitions-Icon (`systems/noreturn/assets/icons/ammo.svg`), das allen Munitions-Items (`type: "ammo"`) im Kompendium und bei Neuerstellung automatisch zugewiesen wird.
+
+### 2. Kompendien-Bereinigung (Kategorie-Dubletten restlos entfernt)
+- Alle `.db`-Kompendien (`items.db`, `skills.db`, `psi.db`, `robotics.db`, `bestiary.db`, `species.db`) sowie die Laufzeit-Initialisierung (`ensureCompendiumFolders`) wurden von Dummy-Dokumenten bereinigt, die denselben Namen wie die jeweilige Kategorie/Ordner trugen.
+
+### 3. Eigene Kategorie, Item-Typ (`ammo`) & Ordner „Munition“
+- Eigener Ordner **„Munition“** im Kompendium *Waffen, Rüstungen & Ausrüstung* (`items.db`) für alle 32 Munitions- und Projektil-Einträge.
+- Eigener Item-Typ `ammo` (*Munition*) inklusive dedizierter Sektion **„Munition & Projektile“** im Inventar-Tab des Charakter- und Robotikbogens.
 
 ---
 
