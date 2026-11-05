@@ -14,8 +14,8 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     classes: ["noreturn", "sheet", "actor", "robot-sheet"],
     tag: "form",
     position: {
-      width: 1020,
-      height: 880
+      width: 1080,
+      height: 860
     },
     window: {
       resizable: true
@@ -25,6 +25,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       closeOnSubmit: false
     },
     actions: {
+      editImage: NoReturnRobotSheet.#onEditImage,
       switchTab: NoReturnRobotSheet.#onSwitchTab,
       switchSkillSubtab: NoReturnRobotSheet.#onSwitchSkillSubtab,
       rollAttribute: NoReturnRobotSheet.#onRollAttribute,
@@ -236,6 +237,13 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const root = this.element;
     if (!root) return;
 
+    const profileImg = root.querySelector(".profile-img[data-edit]");
+    if (profileImg && !profileImg.dataset.action) {
+      profileImg.addEventListener("click", (ev) => {
+        NoReturnRobotSheet.#onEditImage.call(this, ev, profileImg);
+      });
+    }
+
     const speciesSelect = root.querySelector('select[name="system.personal.spezies"]');
     if (speciesSelect) {
       speciesSelect.addEventListener("change", async (ev) => {
@@ -378,6 +386,26 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     return super._onDropItem
       ? super._onDropItem(event, data)
       : this.document.createEmbeddedDocuments("Item", [item.toObject()]);
+  }
+
+  static async #onEditImage(event, target) {
+    event.preventDefault();
+    if (!this.isEditable) return;
+    const attr = target?.dataset?.edit || "img";
+    const current = foundry.utils.getProperty(this.document, attr);
+    const FP =
+      foundry?.applications?.apps?.FilePicker?.implementation ||
+      foundry?.applications?.apps?.FilePicker ||
+      globalThis.FilePicker;
+    if (!FP) return;
+    const fp = new FP({
+      type: "image",
+      current,
+      callback: async (path) => {
+        await this.document.update({ [attr]: path });
+      }
+    });
+    return fp.browse();
   }
 
   static #onSwitchTab(event, target) {

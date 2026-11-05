@@ -24,6 +24,10 @@
   font-family: "Signika", "Segoe UI", Roboto, sans-serif;
 }
 
+.noreturn.sheet.actor {
+  min-width: 960px;
+}
+
 .noreturn-sheet {
   display: flex;
   flex-direction: column;
@@ -103,6 +107,33 @@
   gap: 2px;
 }
 
+.noreturn-sheet .nr-stat-grid label > span {
+  white-space: nowrap;
+}
+
+.noreturn-sheet .nr-species-select-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.noreturn-sheet .nr-species-select,
+.noreturn-sheet select[name="system.personal.spezies"] {
+  min-width: 135px;
+  flex: 1;
+}
+
+.noreturn-sheet .nr-species-apply-btn,
+.noreturn-sheet [data-action="applySpeciesPreset"] {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex: 0 0 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .noreturn-sheet input[type="text"],
 .noreturn-sheet input[type="number"],
 .noreturn-sheet select,
@@ -118,13 +149,17 @@
 /* Tabs */
 .noreturn-sheet .sheet-tabs {
   display: flex;
+  flex-wrap: nowrap;
   gap: 4px;
   border-bottom: 2px solid var(--nr-accent);
   padding-bottom: 4px;
 }
 
 .noreturn-sheet .sheet-tabs .item {
-  padding: 6px 12px;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  text-align: center;
+  padding: 6px 8px;
   background: var(--nr-bg-panel);
   color: var(--nr-text-muted);
   border: 1px solid var(--nr-border);
@@ -213,6 +248,7 @@
   padding: 5px 6px;
   border-bottom: 1px solid var(--nr-border);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .nr-table td {
@@ -633,4 +669,80 @@
   border-radius: 3px;
   font-size: 0.78rem;
 }
+
+/* Hit Zones Compact Armor (RW) Field & Tooltip */
+.nr-armor-rw-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.nr-armor-rw-input,
+.noreturn-sheet input.nr-armor-rw-input[type="number"] {
+  width: 50px !important;
+  display: inline-block;
+  text-align: center;
+  padding: 2px 4px;
+}
+
+.nr-armor-rw-total {
+  cursor: help;
+  border-bottom: 1px dotted #ef4444;
+  color: #e6edf3;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+/* Weapon Fire Mode Indented Sub-Controls in Attack Dialog */
+.nr-firemode-subbox {
+  margin: 4px 0 8px 10px;
+  padding: 6px 10px;
+  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Chat Card Action Buttons (High-Contrast Red/Bright Text on Dark Background) */
+.noreturn-chat-btn,
+.noreturn-chat-card button.noreturn-chat-btn,
+.chat-message .noreturn-chat-card button.noreturn-chat-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: #14171c !important;
+  color: #f87171 !important;
+  border: 1px solid #ef4444 !important;
+  border-radius: 4px;
+  font-weight: 700 !important;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  transition: all 0.15s ease;
+}
+
+.noreturn-chat-btn i,
+.noreturn-chat-card button.noreturn-chat-btn i {
+  color: #f87171 !important;
+}
+
+.noreturn-chat-btn:hover,
+.noreturn-chat-card button.noreturn-chat-btn:hover,
+.chat-message .noreturn-chat-card button.noreturn-chat-btn:hover {
+  background: #7f1d1d !important;
+  color: #ffffff !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.noreturn-chat-btn:hover i,
+.noreturn-chat-card button.noreturn-chat-btn:hover i {
+  color: #ffffff !important;
+}
+
 

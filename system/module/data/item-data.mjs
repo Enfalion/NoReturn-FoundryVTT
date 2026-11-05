@@ -290,31 +290,33 @@ export function parseWeaponFireModes(fireModesStr = "", weaponSys = {}) {
   );
 
   const modes = {
-    single: { supported: false, key: "single", label: "Einzelschuss (E)", bulletsPerShot: 1, maxShots: 1 },
-    repetier: { supported: false, key: "repetier", label: "Repetier (R)", bulletsPerShot: 1, maxShots: 1 },
-    semi: { supported: false, key: "semi", label: "Semiautomatik (S)", bulletsPerTrigger: 1, maxTriggers: 1 },
-    burst: { supported: false, key: "burst", label: "Burst-Modus (B)", bulletsPerBurst: 3, maxBursts: 1 },
-    auto: { supported: false, key: "auto", label: "Vollautomatik (A)", listedDamage: 0, bulletsConsumed: 10 }
+    single: { supported: false, key: "single", label: "Einzelschuss (1 Kugel)", bulletsPerShot: 1, maxShots: 1 },
+    repetier: { supported: false, key: "repetier", label: "Repetier (1 Kugel)", bulletsPerShot: 1, maxShots: 1 },
+    semi: { supported: false, key: "semi", label: "Semi 1 (bis 1x)", bulletsPerTrigger: 1, maxTriggers: 1 },
+    burst: { supported: false, key: "burst", label: "Burst 3 (bis 1x)", bulletsPerBurst: 3, maxBursts: 1 },
+    auto: { supported: false, key: "auto", label: "Vollautomatik (10 Kugeln)", listedDamage: 0, bulletsConsumed: 10 }
   };
 
   if (!isRanged || /nahkampf/i.test(raw)) {
     modes.single.supported = true;
     modes.single.label = "Einzelangriff (Nahkampf)";
-    return { ...modes, availableModes: [modes.single] };
+    return { ...modes, availableModes: [modes.single], supportedList: [modes.single] };
   }
 
   const singleMatch = raw.match(/Single\s*(\d+)?\s*(?:\(\s*(\d+)\s*x\s*\))?/i);
-  if (singleMatch || /einzel/i.test(raw)) {
+  if (singleMatch || /\b(einzel|e)\b/i.test(raw)) {
     modes.single.supported = true;
     modes.single.bulletsPerShot = Number(singleMatch?.[1]) || 1;
     modes.single.maxShots = Number(singleMatch?.[2]) || 1;
+    modes.single.label = `Einzelschuss (${modes.single.bulletsPerShot} Kugel)`;
   }
 
   const repMatch = raw.match(/Repetier\s*(\d+)?\s*(?:\(\s*(\d+)\s*x\s*\))?/i);
-  if (repMatch) {
+  if (repMatch || /\br\b/i.test(raw)) {
     modes.repetier.supported = true;
-    modes.repetier.bulletsPerShot = Number(repMatch[1]) || 1;
-    modes.repetier.maxShots = Number(repMatch[2]) || 1;
+    modes.repetier.bulletsPerShot = Number(repMatch?.[1]) || 1;
+    modes.repetier.maxShots = Number(repMatch?.[2]) || 1;
+    modes.repetier.label = `Repetier (${modes.repetier.bulletsPerShot} Kugel)`;
   }
 
   const semiMatch = raw.match(/Semi\s*(\d+)?\s*(?:\(\s*(\d+)\s*x?\s*\))?/i);
@@ -329,6 +331,7 @@ export function parseWeaponFireModes(fireModesStr = "", weaponSys = {}) {
       modes.semi.bulletsPerTrigger = 1;
       modes.semi.maxTriggers = Math.max(1, n1);
     }
+    modes.semi.label = `Semi ${modes.semi.bulletsPerTrigger} (bis ${modes.semi.maxTriggers}x)`;
   }
 
   const burstMatch = raw.match(/Burst\s*(\d+)?\s*(?:\(\s*(\d+)\s*x?\s*\))?/i);
@@ -336,13 +339,18 @@ export function parseWeaponFireModes(fireModesStr = "", weaponSys = {}) {
     modes.burst.supported = true;
     modes.burst.bulletsPerBurst = Number(burstMatch[1]) || 3;
     modes.burst.maxBursts = Number(burstMatch[2]) || 2;
+    modes.burst.label = `Burst ${modes.burst.bulletsPerBurst} (bis ${modes.burst.maxBursts}x)`;
   }
 
-  const autoMatch = raw.match(/Auto\s*(\d+)?\s*(?:\(\s*(\d+)\s*g\s*\))?/i);
+  const autoMatch = raw.match(/Auto\s*(\d+)?\s*(?:\(\s*(\d+)\s*g?\s*\))?/i);
   if (autoMatch) {
     modes.auto.supported = true;
     modes.auto.listedDamage = Number(autoMatch[1]) || 0;
     modes.auto.bulletsConsumed = Number(autoMatch[2]) || 10;
+    modes.auto.label =
+      modes.auto.listedDamage > 0
+        ? `Vollautomatik ${modes.auto.listedDamage} (${modes.auto.bulletsConsumed} Kugeln)`
+        : `Vollautomatik (${modes.auto.bulletsConsumed} Kugeln)`;
   }
 
   // Always allow single shot on ranged weapons if no explicit single/repetier was parsed
@@ -357,7 +365,7 @@ export function parseWeaponFireModes(fireModesStr = "", weaponSys = {}) {
   if (modes.burst.supported) availableModes.push(modes.burst);
   if (modes.auto.supported) availableModes.push(modes.auto);
 
-  return { ...modes, availableModes };
+  return { ...modes, availableModes, supportedList: availableModes };
 }
 
 export function parseMagazineCapacity(magazineStr, explicitCap = 0) {
@@ -877,6 +885,12 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
     this.combatSkillInfo = resolveWeaponCombatSkill(actor, this.parent);
     this.attackPool = this.combatSkillInfo.baseAttackPool;
     this.parsedFireModes = parseWeaponFireModes(this.fireModes, this);
+    this.kugelnProAbzug = this.parsedFireModes.semi?.bulletsPerTrigger || 1;
+    this.maxAbdruecken = this.parsedFireModes.semi?.maxTriggers || 1;
+    this.kugelnProBurst = this.parsedFireModes.burst?.bulletsPerBurst || 3;
+    this.maxBursts = this.parsedFireModes.burst?.maxBursts || 1;
+    this.autoSchaden = this.parsedFireModes.auto?.listedDamage || 0;
+    this.autoKugeln = this.parsedFireModes.auto?.bulletsConsumed || 10;
 
     // Dynamically resolve currently loaded ammunition from inventory (Punkt 3)
     const curRounds = Math.max(0, Number(this.ammoCurrent) || 0);
@@ -938,6 +952,18 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
       resolvedAmmoType && AMMO_TYPE_DEFINITIONS[resolvedAmmoType]
         ? AMMO_TYPE_DEFINITIONS[resolvedAmmoType].summary
         : "";
+    this.loadedAmmo = {
+      code: resolvedAmmoType || "FMJ",
+      label:
+        resolvedAmmoName ||
+        (resolvedAmmoType && AMMO_TYPE_DEFINITIONS[resolvedAmmoType]?.label) ||
+        "Vollmantel (FMJ)",
+      customName: resolvedAmmoName || "",
+      damageBonus: this.ammoDamageBonus,
+      ignoresMk,
+      blockedByMk,
+      summary: this.ammoSummary
+    };
 
     // Parse base weapon damage & dice
     const rawFormula = String(this.damageFormula || "").trim();

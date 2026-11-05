@@ -1,7 +1,7 @@
 <div class="noreturn-sheet robot-sheet-root">
   <!-- Hybrid Robotics & Character Sheet Header -->
   <header class="sheet-header robot-header">
-    <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" />
+    <img class="profile-img" src="{{actor.img}}" data-edit="img" data-action="editImage" title="{{actor.name}}" />
     <div class="header-fields">
       <div class="header-top-row">
         <h1 class="charname">
@@ -20,13 +20,13 @@
       <div class="personal-grid">
         <label>
           <span>{{localize "NORETURN.Personal.Spezies"}}</span>
-          <div class="flexrow">
-            <select name="system.personal.spezies">
+          <div class="flexrow nr-species-select-row">
+            <select name="system.personal.spezies" class="nr-species-select">
               {{#each speciesOptions}}
                 <option value="{{this}}" {{#if (eq ../system.personal.spezies this)}}selected{{/if}}>{{this}}</option>
               {{/each}}
             </select>
-            <button type="button" class="nr-icon-btn" data-action="applySpeciesPreset" title="{{localize 'NORETURN.Species.ApplyPreset'}}">
+            <button type="button" class="nr-icon-btn nr-species-apply-btn" data-action="applySpeciesPreset" title="{{localize 'NORETURN.Species.ApplyPreset'}}">
               <i class="fas fa-dna"></i>
             </button>
           </div>

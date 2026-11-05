@@ -999,13 +999,17 @@ export class NoReturnRoll {
           repetier: { supported: false },
           semi: { supported: false, bulletsPerTrigger: 1, maxTriggers: 1 },
           burst: { supported: false, bulletsPerBurst: 3, maxBursts: 1 },
-          auto: { supported: false, totalBurstScore: 0, bulletsConsumed: 10 },
+          auto: { supported: false, listedDamage: 0, bulletsConsumed: 10 },
+          availableModes: [{ supported: true, key: "single", label: "Nahkampfangriff" }],
           supportedList: [{ supported: true, key: "single", label: "Nahkampfangriff" }]
         };
 
-    const supportedModes = parsedModes.supportedList?.length
+    const modeArray = parsedModes.availableModes?.length
+      ? parsedModes.availableModes
+      : parsedModes.supportedList?.length
       ? parsedModes.supportedList
       : [{ supported: true, key: "single", label: "Einzelschuss (1 Kugel)" }];
+    const supportedModes = modeArray;
 
     // Target detection (Punkt 5 Schritt 1)
     const targetToken = game?.user?.targets?.first?.() || null;
@@ -1095,33 +1099,37 @@ export class NoReturnRoll {
               isRanged
                 ? `<div class="form-group">
                      <label>${this._i18n("NORETURN.Combat.FireModes", "Feuermodus")} (${sys.fireModes || "Einzel"})</label>
-                     <select name="fireMode">
+                     <select name="fireMode" onchange="window.NoReturnRoll?.updateWeaponDialogLive?.(this)">
                        ${modeOptionsHtml}
                      </select>
                    </div>
-                   <div class="form-group" data-mode-group="semi" style="display:none;">
-                     <label>Anzahl Abdrücken (1 bis ${maxSemiTriggers}, je ${parsedModes.semi?.bulletsPerTrigger || 1} Kugel)</label>
-                     <input type="number" name="triggerCount" value="1" min="1" max="${maxSemiTriggers}" step="1" />
-                   </div>
-                   <div data-mode-group="burst" style="display:none;">
+                   <div class="nr-firemode-subbox" data-mode-group="semi" style="display:none;">
                      <div class="form-group">
-                       <label>Anzahl Bursts (1 bis ${maxBurstCount}, je ${parsedModes.burst?.bulletsPerBurst || 3} Kugeln)</label>
-                       <input type="number" name="burstCount" value="1" min="1" max="${maxBurstCount}" step="1" />
+                       <label>Anzahl Schüsse (1 bis ${maxSemiTriggers})</label>
+                       <input type="number" name="triggerCount" value="1" min="1" max="${maxSemiTriggers}" step="1" oninput="window.NoReturnRoll?.updateWeaponDialogLive?.(this)" onchange="window.NoReturnRoll?.updateWeaponDialogLive?.(this)" />
+                     </div>
+                   </div>
+                   <div class="nr-firemode-subbox" data-mode-group="burst" style="display:none;">
+                     <div class="form-group">
+                       <label>Anzahl Bursts (1 bis ${maxBurstCount})</label>
+                       <input type="number" name="burstCount" value="1" min="1" max="${maxBurstCount}" step="1" oninput="window.NoReturnRoll?.updateWeaponDialogLive?.(this)" onchange="window.NoReturnRoll?.updateWeaponDialogLive?.(this)" />
                      </div>
                      <div class="form-group">
                        <label>Burst-Art (GRW S. 60)</label>
-                       <select name="burstSubmode">
-                         <option value="concentrated">Konzentriertes Feuer (+10 Schaden, Gute Treffer je 5 Punkte)</option>
-                         <option value="spread">Streufeuer (+2W6 Angriffsbonus, Gute Treffer je 10 Punkte)</option>
+                       <select name="burstSubmode" onchange="window.NoReturnRoll?.updateWeaponDialogLive?.(this)">
+                         <option value="concentrated">Konzentriertes Feuer (+10 Schaden, Gute Treffer ab 5)</option>
+                         <option value="spread">Streufeuer (+2W6 Angriff)</option>
                        </select>
                      </div>
                    </div>
-                   <div class="form-group" data-mode-group="auto" style="display:none;">
-                     <label>Vollautomatik-Modus (Verbrauch: ${parsedModes.auto?.bulletsConsumed || 10} Kugeln, 3 Zufallszonen)</label>
-                     <select name="autoSubmode">
-                       <option value="regular">Regulärer Angriff (+${rd}W6 durch RD, 0 Rückstoß)</option>
-                       <option value="suppressive">Sperrfeuer (-2W6 Kampfnachteil)</option>
-                     </select>
+                   <div class="nr-firemode-subbox" data-mode-group="auto" style="display:none;">
+                     <div class="form-group">
+                       <label>Vollautomatik-Modus (Verbrauch: ${parsedModes.auto?.bulletsConsumed || 15} Kugeln, 3 Zufallszonen)</label>
+                       <select name="autoSubmode" onchange="window.NoReturnRoll?.updateWeaponDialogLive?.(this)">
+                         <option value="regular">Regulärer Vollautomatik-Angriff (+${rd}W6 Bonus)</option>
+                         <option value="suppressive">Sperrfeuer (-2W6 Kampfnachteil)</option>
+                       </select>
+                     </div>
                    </div>`
                 : ""
             }

@@ -455,9 +455,14 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     let maxArmorComfort = 0;
     const zoneBonusArmor = {};
     const zoneMaterial = {};
+    const zoneArmorSources = {};
     for (const z of HIT_ZONES) {
       zoneBonusArmor[z.code] = mutationArmorBonus;
       zoneMaterial[z.code] = mutationArmorBonus > 0 ? mutationArmorMk : "A";
+      zoneArmorSources[z.code] = [];
+      if (mutationArmorBonus > 0) {
+        zoneArmorSources[z.code].push(`Mutationen: +${mutationArmorBonus}`);
+      }
     }
 
     for (const item of items) {
@@ -473,6 +478,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
           const zCode = String(zNum);
           if (zCode in zoneBonusArmor) {
             zoneBonusArmor[zCode] += rw;
+            zoneArmorSources[zCode].push(`${item.name}: +${rw}`);
             if (mk > zoneMaterial[zCode]) zoneMaterial[zCode] = mk;
           }
         }
@@ -496,7 +502,10 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       if (!zone) continue;
       zone.max = tierMax;
       zone.lethal = z.lethal;
-      zone.equippedArmor = (zone.armor || 0) + (zoneBonusArmor[z.code] || 0);
+      const baseArmor = Number(zone.armor) || 0;
+      zone.equippedArmor = baseArmor + (zoneBonusArmor[z.code] || 0);
+      const breakdownParts = [`Basis: ${baseArmor}`, ...(zoneArmorSources[z.code] || [])];
+      zone.armorBreakdown = `${breakdownParts.join(" + ")} = ${zone.equippedArmor} RW`;
       if (zoneMaterial[z.code] > (zone.materialCategory || "A")) {
         zone.materialCategory = zoneMaterial[z.code];
       }

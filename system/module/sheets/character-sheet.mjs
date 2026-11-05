@@ -13,8 +13,8 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     classes: ["noreturn", "sheet", "actor", "character-sheet"],
     tag: "form",
     position: {
-      width: 980,
-      height: 880
+      width: 1080,
+      height: 860
     },
     window: {
       resizable: true
@@ -24,6 +24,7 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
       closeOnSubmit: false
     },
     actions: {
+      editImage: NoReturnCharacterSheet.#onEditImage,
       switchTab: NoReturnCharacterSheet.#onSwitchTab,
       switchSkillSubtab: NoReturnCharacterSheet.#onSwitchSkillSubtab,
       rollAttribute: NoReturnCharacterSheet.#onRollAttribute,
@@ -138,14 +139,17 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
 
     const hitZones = HIT_ZONES.map((z) => {
       const zData = system.health.zones[z.code] || {};
+      const baseArmor = zData.armor ?? 0;
+      const eqArmor = zData.equippedArmor ?? baseArmor;
       return {
         code: z.code,
         labelKey: z.labelKey,
         lethal: z.lethal,
         damage: zData.damage ?? 0,
         max: zData.max ?? system.health.maxHpTier,
-        armor: zData.armor ?? 0,
-        equippedArmor: zData.equippedArmor ?? zData.armor ?? 0,
+        armor: baseArmor,
+        equippedArmor: eqArmor,
+        armorBreakdown: zData.armorBreakdown || `Basis: ${baseArmor} = ${eqArmor} RW`,
         materialCategory: zData.materialCategory ?? "A",
         penalty: zData.penalty ?? 0
       };
@@ -233,6 +237,13 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     super._onRender?.(context, options);
     const root = this.element;
     if (!root) return;
+
+    const profileImg = root.querySelector(".profile-img[data-edit]");
+    if (profileImg && !profileImg.dataset.action) {
+      profileImg.addEventListener("click", (ev) => {
+        NoReturnCharacterSheet.#onEditImage.call(this, ev, profileImg);
+      });
+    }
 
     const speciesSelect = root.querySelector('select[name="system.personal.spezies"]');
     if (speciesSelect) {
@@ -412,6 +423,26 @@ export class NoReturnCharacterSheet extends HandlebarsApplicationMixin(ActorShee
     return super._onDropItem
       ? super._onDropItem(event, data)
       : this.document.createEmbeddedDocuments("Item", [item.toObject()]);
+  }
+
+  static async #onEditImage(event, target) {
+    event.preventDefault();
+    if (!this.isEditable) return;
+    const attr = target?.dataset?.edit || "img";
+    const current = foundry.utils.getProperty(this.document, attr);
+    const FP =
+      foundry?.applications?.apps?.FilePicker?.implementation ||
+      foundry?.applications?.apps?.FilePicker ||
+      globalThis.FilePicker;
+    if (!FP) return;
+    const fp = new FP({
+      type: "image",
+      current,
+      callback: async (path) => {
+        await this.document.update({ [attr]: path });
+      }
+    });
+    return fp.browse();
   }
 
   static #onSwitchTab(event, target) {

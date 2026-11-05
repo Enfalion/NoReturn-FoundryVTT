@@ -21,6 +21,9 @@ export class NoReturnItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     form: {
       submitOnChange: true,
       closeOnSubmit: false
+    },
+    actions: {
+      editImage: NoReturnItemSheet.#onEditImage
     }
   };
 
@@ -62,6 +65,14 @@ export class NoReturnItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
     super._onRender?.(context, options);
     const root = this.element;
     if (!root) return;
+
+    const profileImg = root.querySelector(".profile-img[data-edit]");
+    if (profileImg && !profileImg.dataset.action) {
+      profileImg.addEventListener("click", (ev) => {
+        NoReturnItemSheet.#onEditImage.call(this, ev, profileImg);
+      });
+    }
+
     const ammoSelect = root.querySelector(".nr-item-weapon-ammo-select");
     if (ammoSelect) {
       ammoSelect.addEventListener("change", async (ev) => {
@@ -99,5 +110,25 @@ export class NoReturnItemSheet extends HandlebarsApplicationMixin(ItemSheetV2) {
         }
       });
     }
+  }
+
+  static async #onEditImage(event, target) {
+    event.preventDefault();
+    if (!this.isEditable) return;
+    const attr = target?.dataset?.edit || "img";
+    const current = foundry.utils.getProperty(this.document, attr);
+    const FP =
+      foundry?.applications?.apps?.FilePicker?.implementation ||
+      foundry?.applications?.apps?.FilePicker ||
+      globalThis.FilePicker;
+    if (!FP) return;
+    const fp = new FP({
+      type: "image",
+      current,
+      callback: async (path) => {
+        await this.document.update({ [attr]: path });
+      }
+    });
+    return fp.browse();
   }
 }

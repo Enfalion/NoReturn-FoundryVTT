@@ -1,7 +1,7 @@
 <div class="noreturn-sheet character-sheet-root">
   <!-- Sheet Header -->
   <header class="sheet-header">
-    <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}" />
+    <img class="profile-img" src="{{actor.img}}" data-edit="img" data-action="editImage" title="{{actor.name}}" />
     <div class="header-fields">
       <div class="header-top-row">
         <h1 class="charname">
@@ -21,13 +21,13 @@
       <div class="personal-grid">
         <label>
           <span>{{localize "NORETURN.Personal.Spezies"}}</span>
-          <div class="flexrow">
-            <select name="system.personal.spezies">
+          <div class="flexrow nr-species-select-row">
+            <select name="system.personal.spezies" class="nr-species-select">
               {{#each speciesOptions}}
                 <option value="{{this}}" {{#if (eq ../system.personal.spezies this)}}selected{{/if}}>{{this}}</option>
               {{/each}}
             </select>
-            <button type="button" class="nr-icon-btn" data-action="applySpeciesPreset" title="{{localize 'NORETURN.Species.ApplyPreset'}}">
+            <button type="button" class="nr-icon-btn nr-species-apply-btn" data-action="applySpeciesPreset" title="{{localize 'NORETURN.Species.ApplyPreset'}}">
               <i class="fas fa-dna"></i>
             </button>
           </div>
@@ -741,9 +741,11 @@
                     <input type="number" name="system.health.zones.{{this.code}}.damage" value="{{this.damage}}" min="0" max="{{this.max}}" />
                   </td>
                   <td class="center">{{this.max}}</td>
-                  <td>
-                    <input type="number" name="system.health.zones.{{this.code}}.armor" value="{{this.armor}}" min="0" />
-                    <span class="muted">({{this.equippedArmor}})</span>
+                  <td class="nr-armor-rw-cell">
+                    <div class="nr-armor-rw-wrap">
+                      <input type="number" class="nr-armor-rw-input" name="system.health.zones.{{this.code}}.armor" value="{{this.armor}}" min="0" />
+                      <span class="nr-armor-rw-total" data-tooltip="{{this.armorBreakdown}}" title="{{this.armorBreakdown}}">({{this.equippedArmor}})</span>
+                    </div>
                   </td>
                   <td>
                     <select name="system.health.zones.{{this.code}}.materialCategory">

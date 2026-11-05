@@ -1,7 +1,7 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.3
+# NoReturn – Foundry VTT System (v14) — Version 1.1.4
 
 [![Foundry VTT v14](https://img.shields.io/badge/Foundry_VTT-v14-orange)](https://foundryvtt.com/)
-[![Version](https://img.shields.io/badge/Version-1.1.3-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.4-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
 [![Author](https://img.shields.io/badge/Autor-Enfalion-success)](https://github.com/Enfalion/NoReturn-FoundryVTT)
 
 Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für **NoReturn – Das Endzeit-Rollenspiel (1. Edition)**.
@@ -23,7 +23,26 @@ Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für 
 
 ---
 
-## Highlights & Neue Features in Version 1.1.3
+## Highlights & Neue Features in Version 1.1.4
+
+### 1. Breiteres Bogen-Layout, Einzeilige Haupt-Tabs & Kompaktes Spezies-Feld
+- **Standardgröße 1080 × 860 px** (`min-width: 960px`) für Charakter- und Robotikbogen – alle 7 Haupt-Tabs (*Attribute & Status*, *Fertigkeiten*, *PSI & Bionik*, *Kampf & Trefferzonen*, *Ausrüstung*, *Cyberware / Bio*, *Biografie & Notizen*) bleiben garantiert in einer einzigen Zeile (`flex-wrap: nowrap`).
+- **Spezies-Dropdown** mit `min-width: 135px` und kompaktem 28×28 px Button, sodass z. B. `Nuker` oder `Halb-Kybernetiker` vollständig lesbar sind; kein Zeilenumbruch mehr bei `OA / Gesamt`, `Alpha-Bio` oder `Natürliche Regeneration (Geschwindigkeit)`.
+
+### 2. Kompaktes Panzerungsfeld (RW) mit Aufschlüsselungs-Tooltip
+- Im Reiter **„Kampf & Trefferzonen“** stehen das schmale Basis-Eingabefeld (`50px`) und der effektive Gesamtwert `(RW)` direkt nebeneinander in einer Zeile.
+- Ein Mouseover-Tooltip auf `(RW)` schlüsselt exakt auf, wie sich der Rüstungswert zusammensetzt (z. B. `Basis: 0 + Bristol-Schutzweste (leicht): +30 = 30 RW`).
+
+### 3. Dynamische Waffen-Feuermodi & Eingerückte Schuss-/Burst-Auswahl im Dialog
+- Automatisches Auslesen aller unterstützten Feuermodi einer Waffe (`Einzelschuss (1 Kugel)`, `Semi A (bis Bx)`, `Burst A (bis Bx)`, `Vollautomatik X (Y Kugeln)`) inklusive dynamischer Unter-Optionen (`.nr-firemode-subbox`) für Schussanzahl (`1..B`), Burst-Anzahl (`1..B`), Burst-Art (*Konzentriertes Feuer* vs. *Streufeuer*) und Vollautomatik-Art (*Regulär* vs. *Sperrfeuer*).
+
+### 4. Kontraststarke Chat-Card-Buttons & Avatar-Picker (Foundry VTT v14 FilePicker)
+- Alle interaktiven Chat-Buttons (`.noreturn-chat-btn`) nutzen leuchtend rote/weiße Schrift auf dunklem Grund (`#f87171` auf `#14171c` mit `#ef4444` Rahmen).
+- Klick auf das Profilbild in Charakter-, Roboter- und Item-Bögen öffnet zuverlässig den Foundry VTT v14 `FilePicker`.
+
+---
+
+## Highlights aus Version 1.1.3
 
 ### 1. Korrekte Fertigkeits-Pool-Mathematik & Hazard-Di-Logik
 - **Exakte Pool-Berechnung ohne Off-by-One-Bug:** `Gesamt-Würfel = Attributswert (effektiv) + Fertigkeitswert (effektiv) + situative Boni - situative Mali` (z. B. `Schießen 5 + Geschick 2 = 7W6`, gerollt als `6d6 + 1d6x6`).
