@@ -1,7 +1,7 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.4
+# NoReturn – Foundry VTT System (v14) — Version 1.1.5
 
 [![Foundry VTT v14](https://img.shields.io/badge/Foundry_VTT-v14-orange)](https://foundryvtt.com/)
-[![Version](https://img.shields.io/badge/Version-1.1.4-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.5-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
 [![Author](https://img.shields.io/badge/Autor-Enfalion-success)](https://github.com/Enfalion/NoReturn-FoundryVTT)
 
 Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für **NoReturn – Das Endzeit-Rollenspiel (1. Edition)**.
@@ -20,6 +20,18 @@ Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für 
    https://raw.githubusercontent.com/Enfalion/NoReturn-FoundryVTT/main/system/system.json
    ```
 4. Klicke auf **Install (Installieren)**. Foundry VTT lädt automatisch das aktuelle Release-Paket (`noreturn.zip`) herunter und richtet das System ein.
+
+---
+
+## Highlights & Neue Features in Version 1.1.5
+
+### 1. Standardbreite 1254 × 880 px & Dynamischer Tab-Umbruch
+- **Optimale Standardgröße:** Charakter- und Robotikbogen öffnen standardmäßig mit `1254 × 880 px` (`min-width: 720px`), sodass ab `1254px` alle 7 Haupt-Tabs in einer einzigen Reihe stehen und das Fenster bei Bedarf flexibel verkleinert werden kann.
+- **Responsives Tab-Wrapping:** Unterhalb von `1254px` brechen die Haupt-Tabs (`nav.sheet-tabs`) automatisch und symmetrisch in eine zweite Zeile um (`flex-wrap: wrap; flex: 1 1 auto;`), ohne dass Tabs rechts abgeschnitten werden.
+
+### 2. Header-Fixes: Spezies-Button & Dynamisches Ausblenden des PSI-Tabs
+- **Spezies-Dropdown & Button:** Der Anwenden-Button (`applySpeciesPreset`) bleibt durch `flex-wrap: nowrap` in einer gemeinsamen Flex-Zeile immer kompakt rechts neben dem Spezies-Dropdown.
+- **Dynamischer PSI-Tab:** Ist als Spezies `Adivasi`, `Evo` oder `Mutant` gewählt, wird der Haupt-Tab `PSI & Bionik` (`[data-tab="psi"]`) automatisch ausgeblendet (`isPsiCapable`).
 
 ---
 

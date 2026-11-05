@@ -25,10 +25,15 @@
 }
 
 .noreturn.sheet.actor {
-  min-width: 960px;
+  min-width: 720px;
+}
+
+.noreturn.sheet .window-content {
+  container-type: inline-size;
 }
 
 .noreturn-sheet {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -94,7 +99,7 @@
 
 .noreturn-sheet .personal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
   gap: 6px;
 }
 
@@ -112,21 +117,26 @@
 }
 
 .noreturn-sheet .nr-species-select-row {
-  display: flex;
-  gap: 4px;
-  align-items: center;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-wrap: nowrap !important;
+  width: 100%;
 }
 
 .noreturn-sheet .nr-species-select,
 .noreturn-sheet select[name="system.personal.spezies"] {
-  min-width: 135px;
-  flex: 1;
+  min-width: 0;
+  width: 100%;
+  flex: 1 1 auto;
 }
 
 .noreturn-sheet .nr-species-apply-btn,
 .noreturn-sheet [data-action="applySpeciesPreset"] {
   width: 28px;
   height: 28px;
+  min-width: 28px;
   padding: 0;
   flex: 0 0 28px;
   display: inline-flex;
@@ -147,18 +157,28 @@
 }
 
 /* Tabs */
+nav.sheet-tabs,
 .noreturn-sheet .sheet-tabs {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
   border-bottom: 2px solid var(--nr-accent);
   padding-bottom: 4px;
 }
 
+nav.sheet-tabs [data-tab],
+nav.sheet-tabs .item,
+.noreturn-sheet .sheet-tabs [data-tab],
 .noreturn-sheet .sheet-tabs .item {
-  white-space: nowrap;
   flex: 1 1 auto;
+  white-space: nowrap;
   text-align: center;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 6px 8px;
   background: var(--nr-bg-panel);
   color: var(--nr-text-muted);
@@ -171,6 +191,7 @@
   text-decoration: none;
 }
 
+nav.sheet-tabs .item.active,
 .noreturn-sheet .sheet-tabs .item.active {
   background: var(--nr-accent);
   color: #fff;

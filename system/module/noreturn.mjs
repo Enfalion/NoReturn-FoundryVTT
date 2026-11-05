@@ -274,7 +274,7 @@ async function ensureCompendiumFolders() {
 }
 
 Hooks.once("init", () => {
-  console.log("NoReturn | Initializing NoReturn RPG System v1.1.4 (Foundry VTT v14)");
+  console.log("NoReturn | Initializing NoReturn RPG System v1.1.5 (Foundry VTT v14)");
 
   // Register System Settings: GM Override for PSI Force Hierarchy Tiers (Punkt 4.3)
   game.settings.register("noreturn", "psiHierarchyOverrides", {

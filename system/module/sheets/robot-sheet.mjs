@@ -14,8 +14,8 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     classes: ["noreturn", "sheet", "actor", "robot-sheet"],
     tag: "form",
     position: {
-      width: 1080,
-      height: 860
+      width: 1254,
+      height: 880
     },
     window: {
       resizable: true
@@ -180,8 +180,18 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     const t3Forces = psiForces.filter((f) => (Number(f.system.hierarchyTier) || 1) === 3).length;
     const maxHierarchyTier = t1Forces >= 2 && t2Forces >= 2 ? 3 : t1Forces >= 2 ? 2 : 1;
 
-    const isPsiAllowed = Boolean(system.isPsiAllowed !== false);
-    if (!isPsiAllowed && this.#activeTab === "psi") {
+    const selectedSpecies = String(
+      system.personal?.spezies || system.species || speciesItems[0]?.name || "Mensch"
+    ).trim();
+    const nonPsiSpecies = ["adivasi", "evo", "mutant"];
+    const isNonPsiSpecies = nonPsiSpecies.includes(selectedSpecies.toLowerCase());
+    const presetPsiAllowed = PLAYABLE_SPECIES_PRESETS[selectedSpecies]?.psiAllowed;
+    const isPsiCapable =
+      !isNonPsiSpecies &&
+      presetPsiAllowed !== false &&
+      Boolean(system.isPsiAllowed !== false);
+    const isPsiAllowed = isPsiCapable;
+    if (!isPsiCapable && this.#activeTab === "psi") {
       this.#activeTab = "overview";
     }
 
@@ -199,6 +209,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       activeTab: this.#activeTab,
       activeSkillSubtab: this.#activeSkillSubtab,
       isPsiAllowed,
+      isPsiCapable,
       ammoTypes: Object.values(AMMO_TYPE_DEFINITIONS),
       speciesOptions: Object.keys(PLAYABLE_SPECIES_PRESETS),
       activeSpeciesItem: speciesItems[0] || null,
@@ -246,8 +257,17 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
 
     const speciesSelect = root.querySelector('select[name="system.personal.spezies"]');
     if (speciesSelect) {
+      const checkPsiTabVisibility = (val) => {
+        const isBlocked = ["adivasi", "evo", "mutant"].includes(String(val || "").trim().toLowerCase());
+        const psiTab = root.querySelector('[data-tab="psi"]');
+        if (psiTab) {
+          psiTab.style.display = isBlocked ? "none" : "";
+        }
+      };
+      checkPsiTabVisibility(speciesSelect.value);
       speciesSelect.addEventListener("change", async (ev) => {
         ev.stopPropagation();
+        checkPsiTabVisibility(ev.currentTarget.value);
         await this._applySpeciesSelection(ev.currentTarget.value);
       });
     }

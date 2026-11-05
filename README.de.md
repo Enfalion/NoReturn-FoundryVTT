@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.4 (Deutsch)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.5 (Deutsch)
 
 Offizielle Systemimplementierung des postapokalyptischen Sci-Fi-Rollenspiels **NoReturn (1. Edition)** für **Foundry Virtual Tabletop v14** von **Enfalion**.
 

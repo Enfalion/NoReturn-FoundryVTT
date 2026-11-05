@@ -21,7 +21,7 @@
       <div class="personal-grid">
         <label>
           <span>{{localize "NORETURN.Personal.Spezies"}}</span>
-          <div class="flexrow nr-species-select-row">
+          <div class="nr-species-select-row">
             <select name="system.personal.spezies" class="nr-species-select">
               {{#each speciesOptions}}
                 <option value="{{this}}" {{#if (eq ../system.personal.spezies this)}}selected{{/if}}>{{this}}</option>
@@ -96,7 +96,7 @@
     <a class="item {{#if (eq activeTab 'skills')}}active{{/if}}" data-action="switchTab" data-tab="skills">
       <i class="fas fa-dice-d6"></i> {{localize "NORETURN.Sheet.Tabs.Skills"}}
     </a>
-    {{#if isPsiAllowed}}
+    {{#if isPsiCapable}}
       <a class="item {{#if (eq activeTab 'psi')}}active{{/if}}" data-action="switchTab" data-tab="psi">
         <i class="fas fa-brain"></i> {{localize "NORETURN.Sheet.Tabs.Psi"}}
       </a>
