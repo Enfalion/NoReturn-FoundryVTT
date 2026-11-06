@@ -408,13 +408,10 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
           item.system.prepareDerivedData();
         }
         const rw = Number(item.system.armorValue || 0);
-        const coveredZones =
-          Array.isArray(item.system.coveredZones) && item.system.coveredZones.length > 0
-            ? item.system.coveredZones
-            : Array.isArray(item.system.zones)
-            ? item.system.zones
-            : [];
-        for (const zNum of coveredZones) {
+        const activeZones = item.system.isSelectableZone
+          ? [Number(item.system.selectedZone ?? item.system.coveredZones?.[0] ?? 6)]
+          : (item.system.coveredZones || item.system.zones || []).map(Number);
+        for (const zNum of activeZones) {
           const zCode = String(zNum);
           zoneBonusArmor[zCode] = (zoneBonusArmor[zCode] || 0) + rw;
         }

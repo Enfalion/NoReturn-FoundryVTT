@@ -535,13 +535,10 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
         if (comfort > maxArmorComfort) maxArmorComfort = comfort;
         const rw = Number(item.system.armorValue || 0);
         const mk = String(item.system.materialCategory || "A").toUpperCase();
-        const coveredZones =
-          Array.isArray(item.system.coveredZones) && item.system.coveredZones.length > 0
-            ? item.system.coveredZones
-            : Array.isArray(item.system.zones)
-            ? item.system.zones
-            : [];
-        for (const zNum of coveredZones) {
+        const activeZones = item.system.isSelectableZone
+          ? [Number(item.system.selectedZone ?? item.system.coveredZones?.[0] ?? 6)]
+          : (item.system.coveredZones || item.system.zones || []).map(Number);
+        for (const zNum of activeZones) {
           const zCode = String(zNum);
           if (zCode in zoneBonusArmor) {
             zoneBonusArmor[zCode] += rw;

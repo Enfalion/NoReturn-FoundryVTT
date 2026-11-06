@@ -147,6 +147,7 @@
       "MaxHP": "Max TP",
       "Armor": "Panzerung (RW)",
       "MaterialCategory": "MK",
+      "MaterialCategoryLong": "Materialkategorie (MK)",
       "Penalty": "Malus (-W6)",
       "Lethal": "Tödlich",
       "RollHitZone": "Trefferzone auswürfeln (2W6)",

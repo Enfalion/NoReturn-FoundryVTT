@@ -147,6 +147,7 @@
       "MaxHP": "Max HP",
       "Armor": "Armor (AV)",
       "MaterialCategory": "MC",
+      "MaterialCategoryLong": "Material Category (MC)",
       "Penalty": "Penalty (-d6)",
       "Lethal": "Vital",
       "RollHitZone": "Roll Hit Zone (2d6)",

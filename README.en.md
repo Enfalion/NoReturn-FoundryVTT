@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.7 (English)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.8 (English)
 
 Official **Foundry Virtual Tabletop (v14)** system implementation for **NoReturn – Post-Apocalyptic Sci-Fi RPG (1st Edition)** by **Enfalion**.
 
@@ -17,7 +17,22 @@ Direct Release Download:
 
 ---
 
-## Key Highlights in v1.1.7
+## Key Highlights in v1.1.8
+
+1. **Clean Column Alignment for Skills & Style Skills:**
+   - Fixed column widths and uniform CSS classes for both header (`<th>`) and body (`<td>`) cells.
+   - Steppers (`[-][Input][+]`) for `Level` and `Mod.` as well as dice pools are centered beneath their headers.
+2. **Strict Hit Zone Isolation & Armor Value (AV) Calculation per Item:**
+   - Separate array instances for `coveredZones` in DataModel prevent shared reference mutation across items.
+   - Sheet zone dropdowns and item sheet checkboxes strictly target the exact item via `itemId`.
+   - Selectable-zone armor items (*Partielle Panzerungsglieder*) protect exclusively the selected single zone (`selectedZone`).
+   - Each armor item applies its Armor Value (AV) and Material Category (MC) strictly to its own active zones.
+3. **Clean Armor Sheet Labels:**
+   - Redundant label suffixes removed; labels now cleanly display `Panzerung (RW)` / `Armor (AV)` and `Materialkategorie (MK)` / `Material Category (MC)`.
+
+---
+
+## Key Highlights from v1.1.7
 
 1. **Horizontal Action Buttons:**
    - Roll, edit, and delete buttons across all table rows (Skills, Styleskills, Conditions, Weapons, Armor, Gear) are arranged horizontally in a single row with compact `28px × 28px` buttons.

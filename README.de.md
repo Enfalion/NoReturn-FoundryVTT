@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.7 (Deutsch)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.8 (Deutsch)
 
 Offizielle Systemimplementierung des postapokalyptischen Sci-Fi-Rollenspiels **NoReturn (1. Edition)** für **Foundry Virtual Tabletop v14** von **Enfalion**.
 
@@ -17,7 +17,22 @@ Direkter Release-Download:
 
 ---
 
-## Highlights & Neuerungen in v1.1.7
+## Highlights & Neuerungen in v1.1.8
+
+1. **Saubere Spalten-Ausrichtung bei Fertigkeiten & Styleskills:**
+   - Feste Breiten und konsistente CSS-Klassen für Tabellenheader und -zellen.
+   - Stepper (`[-][Input][+]`) für `Stufe` und `Mod.` sowie die Würfelpools stehen exakt zentriert unter ihren Spaltenüberschriften.
+2. **Strikte Isolierung der Trefferzonen & RW-Berechnung je Rüstungs-Item:**
+   - Unabhängige Array-Instanzen für `coveredZones` im DataModel verhindern ungewollte Referenzteilungen.
+   - Dropdown-Änderungen auf dem Bogen und Checkbox-Klicks im Item-Sheet greifen strikt über die jeweilige `itemId` zu.
+   - Wahlzonen-Rüstungen (*Partielle Panzerungsglieder*) schützen ausschließlich die gewählte Einzelzone (`selectedZone`).
+   - Jede Rüstung addiert ihren Rüstungswert (RW) und ihre Materialkategorie (MK) ausschließlich auf ihre eigenen Zonen.
+3. **Bereinigte Rüstungs-Labels:**
+   - Doppelte Bezeichnungen im Item-Sheet bereinigt auf `Panzerung (RW)` und `Materialkategorie (MK)`.
+
+---
+
+## Highlights aus Version 1.1.7
 
 1. **Horizontale Action-Buttons:**
    - Würfel-, Bearbeiten- und Löschen-Buttons sind in allen Tabellenzeilen (Fertigkeiten, Styleskills, Krankheiten, Waffen, Rüstungen, Ausrüstung) horizontal nebeneinander als kompakte `28px × 28px` Buttons angeordnet.

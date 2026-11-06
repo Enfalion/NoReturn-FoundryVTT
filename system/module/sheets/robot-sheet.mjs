@@ -64,7 +64,8 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       stepItemNumeric: NoReturnRobotSheet.#onStepItemNumeric,
       toggleEquipped: NoReturnRobotSheet.#onToggleEquipped,
       toggleActive: NoReturnRobotSheet.#onToggleActive,
-      toggleInstalled: NoReturnRobotSheet.#onToggleInstalled
+      toggleInstalled: NoReturnRobotSheet.#onToggleInstalled,
+      changeArmorZone: NoReturnRobotSheet.#onChangeArmorZone
     }
   };
 
@@ -355,13 +356,15 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       sel.addEventListener("change", async (ev) => {
         ev.stopPropagation();
         const itemId = sel.dataset.itemId || sel.closest("[data-item-id]")?.dataset.itemId;
+        if (!itemId) return;
         const armor = this.document.items.get(itemId);
         if (!armor) return;
         const zNum = Number(sel.value) || 6;
         await armor.update({
+          "system.selectedZone": zNum,
           "system.coveredZones": [zNum],
           "system.zones": [zNum],
-          "system.zonesLabel": formatArmorZonesLabel([zNum], true)
+          "system.zonesLabel": `Zone ${zNum}`
         });
       });
     });
@@ -970,5 +973,20 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
     if (item && "installed" in item.system) {
       await item.update({ "system.installed": !item.system.installed });
     }
+  }
+
+  static async #onChangeArmorZone(event, target) {
+    event.stopPropagation();
+    const itemId = target.dataset.itemId || target.closest("[data-item-id]")?.dataset.itemId;
+    if (!itemId) return;
+    const armor = this.document.items.get(itemId);
+    if (!armor) return;
+    const zNum = Number(target.value) || 6;
+    await armor.update({
+      "system.selectedZone": zNum,
+      "system.coveredZones": [zNum],
+      "system.zones": [zNum],
+      "system.zonesLabel": `Zone ${zNum}`
+    });
   }
 }

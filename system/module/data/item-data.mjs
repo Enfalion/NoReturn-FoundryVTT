@@ -1258,13 +1258,14 @@ export class NoReturnArmorData extends foundry.abstract.TypeDataModel {
       armorValue: new fields.NumberField({ required: true, integer: true, min: 0, initial: 15 }),
       materialCategory: new fields.StringField({ required: false, blank: true, initial: "A" }),
       comfort: new fields.NumberField({ required: true, integer: true, min: 0, initial: 1 }),
+      selectedZone: new fields.NumberField({ required: false, integer: true, nullable: true, initial: null }),
       zones: new fields.ArrayField(new fields.NumberField({ integer: true }), {
         required: true,
-        initial: [6, 7, 8]
+        initial: () => [6, 7, 8]
       }),
       coveredZones: new fields.ArrayField(new fields.NumberField({ integer: true }), {
         required: true,
-        initial: [6, 7, 8]
+        initial: () => [6, 7, 8]
       }),
       isSelectableZone: new fields.BooleanField({ required: true, initial: false }),
       zonesLabel: new fields.StringField({ required: false, blank: true, initial: "6 bis 8" }),
@@ -1277,20 +1278,18 @@ export class NoReturnArmorData extends foundry.abstract.TypeDataModel {
   }
 
   prepareDerivedData() {
-    const nameAndLabel = `${this.parent?.name || ""} ${this.zonesLabel || ""}`.toLowerCase();
-    if (
-      this.isSelectableZone ||
-      nameAndLabel.includes("je zone") ||
-      nameAndLabel.includes("partielle panzerungsglieder")
-    ) {
-      this.isSelectableZone = true;
+    if (this.isSelectableZone === undefined || this._source?.isSelectableZone === undefined) {
+      const nameAndLabel = `${this.parent?.name || ""} ${this.zonesLabel || ""}`.toLowerCase();
+      if (nameAndLabel.includes("je zone") || nameAndLabel.includes("partielle panzerungsglieder")) {
+        this.isSelectableZone = true;
+      }
     }
 
     let rawZones = [];
     if (Array.isArray(this.coveredZones) && this.coveredZones.length > 0) {
-      rawZones = this.coveredZones;
+      rawZones = [...this.coveredZones];
     } else if (Array.isArray(this.zones) && this.zones.length > 0) {
-      rawZones = this.zones;
+      rawZones = [...this.zones];
     } else if (this.zonesLabel) {
       rawZones = parseArmorZonesString(this.zonesLabel);
     }
@@ -1303,13 +1302,20 @@ export class NoReturnArmorData extends foundry.abstract.TypeDataModel {
       )
     ).sort((a, b) => a - b);
 
-    if (normalizedZones.length === 0 && this.isSelectableZone) {
-      normalizedZones.push(6);
+    if (this.isSelectableZone) {
+      const activeZone = Number(this.selectedZone ?? normalizedZones[0] ?? 6);
+      this.selectedZone = activeZone;
+      this.coveredZones = [activeZone];
+      this.zones = [activeZone];
+      this.zonesLabel = formatArmorZonesLabel([activeZone], true);
+    } else {
+      if (normalizedZones.length === 0) {
+        normalizedZones.push(6, 7, 8);
+      }
+      this.coveredZones = [...normalizedZones];
+      this.zones = [...normalizedZones];
+      this.zonesLabel = formatArmorZonesLabel(normalizedZones, false);
     }
-
-    this.coveredZones = normalizedZones;
-    this.zones = [...normalizedZones];
-    this.zonesLabel = formatArmorZonesLabel(normalizedZones, this.isSelectableZone);
   }
 }
 

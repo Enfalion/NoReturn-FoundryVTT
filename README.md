@@ -1,7 +1,7 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.7
+# NoReturn – Foundry VTT System (v14) — Version 1.1.8
 
 [![Foundry VTT v14](https://img.shields.io/badge/Foundry_VTT-v14-orange)](https://foundryvtt.com/)
-[![Version](https://img.shields.io/badge/Version-1.1.7-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.8-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
 [![Author](https://img.shields.io/badge/Autor-Enfalion-success)](https://github.com/Enfalion/NoReturn-FoundryVTT)
 
 Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für **NoReturn – Das Endzeit-Rollenspiel (1. Edition)**.
@@ -23,10 +23,27 @@ Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für 
 
 ---
 
-## Highlights & Neue Features in Version 1.1.7
+## Highlights & Neue Features in Version 1.1.8
+
+### 1. Saubere Spalten-Ausrichtung bei Fertigkeiten & Styleskills
+- Feste Spaltenbreiten und identische CSS-Klassen für Tabellenkopf (`<th>`) und Tabellenzeilen (`<td>`).
+- Die Stepper (`[-][Input][+]`) für `Stufe` und `Mod.` sowie die gelben `Pool (W6)`-Werte stehen exakt zentriert unter ihren Spaltenüberschriften.
+
+### 2. Strikte Isolierung der Trefferzonen & RW-Berechnung je Rüstungs-Item
+- Unabhängige Array-Instanzen für `coveredZones` im DataModel verhindern geteilte Referenzen zwischen Gegenständen.
+- Dropdowns auf dem Charakter- und Robotikbogen sowie Zonen-Checkboxen im Item-Sheet greifen strikt über die eindeutige `itemId` auf das spezifische Item zu.
+- Wahl-Einzelzonen-Rüstungen (*Partielle Panzerungsglieder*) schützen ausschließlich die gewählte Einzelzone (`selectedZone`).
+- Jedes Rüstungs-Item vererbt seinen Rüstungswert (RW) und seine Materialkategorie (MK) ausschließlich auf seine eigenen aktiven Zonen.
+
+### 3. Bereinigung der Labels im Rüstungs-Sheet
+- Doppelte Klammerzusätze bereinigt: Labels lauten nun sauber `Panzerung (RW)` und `Materialkategorie (MK)`.
+
+---
+
+## Highlights aus Version 1.1.7
 
 ### 1. Horizontale Action-Buttons (Würfel-, Edit- & Löschen nebeneinander)
-- Alle Tabellenzeilen (Fertigkeiten, Styleskills, Krankheiten, Waffen, Rüstungen, Ausrüstung usw.) besitzen nun eine horizontale Flex-Anordnung (`flex-direction: row !important; white-space: nowrap;`) mit kompakten `28px × 28px` Action-Buttons.
+- Alle Tabellenzeilen (Fertigkeiten, Styleskills, Krankheiten, Waffen, Rüstungen, Ausrüstung usw.) besitzen eine horizontale Flex-Anordnung (`flex-direction: row !important; white-space: nowrap;`) mit kompakten `28px × 28px` Action-Buttons.
 
 ### 2. Rüstungen & Kleidung mit echter Trefferzonen-Auswahl 2 bis 12 & Item-Sheet Bereinigung
 - Im Item-Sheet von Rüstungen können geschützte Trefferzonen (2 bis 12) per Klick auf übersichtliche Checkbox-Chips frei an- und abgewählt werden.

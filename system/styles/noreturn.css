@@ -947,5 +947,106 @@ nav.sheet-tabs .item.active,
   border-bottom: 1px dotted rgba(217, 155, 38, 0.65);
 }
 
+/* ============================================================================
+ * v1.1.8: Saubere Spalten-Ausrichtung bei Fertigkeiten (Punkt 1)
+ * ========================================================================== */
+.skills-table th.col-skill-name,
+.skills-table td.col-skill-name {
+  text-align: left;
+  width: 22%;
+}
+
+.skills-table th.col-skill-attr,
+.skills-table td.col-skill-attr {
+  text-align: left;
+  width: 16%;
+}
+
+.skills-table th.col-skill-zone,
+.skills-table td.col-skill-zone {
+  text-align: left;
+  width: 14%;
+}
+
+.skills-table th.col-skill-level,
+.skills-table td.col-skill-level,
+.styleskills-table th.col-skill-level,
+.styleskills-table td.col-skill-level,
+.skills-table th.skill-level,
+.skills-table td.skill-level,
+.styleskills-table th.skill-level,
+.styleskills-table td.skill-level,
+th.col-skill-level,
+td.col-skill-level,
+th.skill-level,
+td.skill-level {
+  text-align: center;
+  width: 140px;
+}
+
+.skills-table th.col-skill-mod,
+.skills-table td.col-skill-mod,
+.skills-table th.skill-mod,
+.skills-table td.skill-mod,
+th.col-skill-mod,
+td.col-skill-mod,
+th.skill-mod,
+td.skill-mod {
+  text-align: center;
+  width: 160px;
+}
+
+.skills-table th.col-skill-pool,
+.skills-table td.col-skill-pool,
+.styleskills-table th.col-skill-pool,
+.styleskills-table td.col-skill-pool,
+.skills-table th.skill-pool,
+.skills-table td.skill-pool,
+.styleskills-table th.skill-pool,
+.styleskills-table td.skill-pool,
+th.col-skill-pool,
+td.col-skill-pool,
+th.skill-pool,
+td.skill-pool {
+  text-align: center;
+  width: 100px;
+}
+
+.skills-table th.col-skill-actions,
+.skills-table td.col-skill-actions,
+.styleskills-table th.col-skill-actions,
+.styleskills-table td.col-skill-actions,
+.skills-table th.skill-actions,
+.skills-table td.skill-actions,
+.styleskills-table th.skill-actions,
+.styleskills-table td.skill-actions,
+th.col-skill-actions,
+td.col-skill-actions,
+th.skill-actions,
+td.skill-actions {
+  text-align: right;
+  width: 110px;
+}
+
+td.skill-level,
+td.skill-mod,
+td.col-skill-level,
+td.col-skill-mod {
+  text-align: center;
+}
+
+td.skill-level .nr-inline-stepper,
+td.skill-mod .nr-inline-stepper,
+td.col-skill-level .nr-inline-stepper,
+td.col-skill-mod .nr-inline-stepper,
+.skills-table td.nr-stepper-cell .nr-inline-stepper,
+.styleskills-table td.nr-stepper-cell .nr-inline-stepper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+
 
 

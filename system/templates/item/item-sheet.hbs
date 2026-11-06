@@ -326,11 +326,11 @@
       {{#if (eq itemType "armor")}}
         <div class="nr-stat-grid">
           <label>
-            <span>{{localize "NORETURN.Health.Armor"}} (RW)</span>
+            <span>{{localize "NORETURN.Health.Armor"}}</span>
             <input type="number" name="system.armorValue" value="{{system.armorValue}}" min="0" />
           </label>
           <label>
-            <span>{{localize "NORETURN.Health.MaterialCategory"}} (MK)</span>
+            <span>{{localize "NORETURN.Health.MaterialCategoryLong"}}</span>
             <select name="system.materialCategory">
               <option value="A" {{#if (eq system.materialCategory "A")}}selected{{/if}}>A</option>
               <option value="B" {{#if (eq system.materialCategory "B")}}selected{{/if}}>B</option>
