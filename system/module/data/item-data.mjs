@@ -164,15 +164,131 @@ export function normalizeSkillKey(raw = "") {
     .replace(/[\s-]+/g, "_");
 }
 
+export const ATTRIBUTE_LABELS_DE = {
+  geschick: "Geschick",
+  staerke: "Stärke",
+  konstitution: "Konstitution",
+  schnelligkeit: "Schnelligkeit",
+  wissen: "Wissen",
+  wahrnehmung: "Wahrnehmung",
+  charisma: "Charisma",
+  logik: "Logik",
+  fahrzeuge: "Fahrzeuge",
+  schmerztoleranz: "Schmerztoleranz",
+  adrenalin: "Adrenalin"
+};
+
+export const HIT_ZONE_SHORT_LABELS = {
+  12: "12 (Kopf)",
+  11: "11 (l. US)",
+  10: "10 (l. OS)",
+  9: "9 (l. Arm)",
+  8: "8 (l. Brust)",
+  7: "7 (Bauch)",
+  6: "6 (r. Brust)",
+  5: "5 (r. Arm)",
+  4: "4 (r. OS)",
+  3: "3 (r. US)",
+  2: "2 (Becken)"
+};
+
 /**
- * Resolve the matching combat skill and attack dice pool for a weapon on an actor (Punkt 2).
+ * Strip raw HTML tags (such as <p>...</p>) for clean display inside plain <textarea> elements (Punkt 2).
+ */
+export function stripHtmlTags(html = "") {
+  if (!html) return "";
+  return String(html)
+    .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(p|div|span|strong|em|b|i|ul|ol|li)[^>]*>/gi, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .trim();
+}
+
+/**
+ * Parse a German hit-zone string (e.g. "6 bis 8", "2, 4 bis 10", "2 bis 12", "12", "je Zone")
+ * into a sorted array of valid zone numbers (2..12).
+ */
+export function parseArmorZonesString(raw = "") {
+  const str = String(raw || "").trim();
+  if (!str) return [];
+  const zones = new Set();
+  const rangeRegex = /(\d{1,2})\s*(?:bis|[-–])\s*(\d{1,2})/gi;
+  let match;
+  let remaining = str;
+  while ((match = rangeRegex.exec(str)) !== null) {
+    const a = parseInt(match[1], 10);
+    const b = parseInt(match[2], 10);
+    const min = Math.max(2, Math.min(a, b));
+    const max = Math.min(12, Math.max(a, b));
+    for (let z = min; z <= max; z++) zones.add(z);
+    remaining = remaining.replace(match[0], " ");
+  }
+  const singleMatches = remaining.match(/\b(\d{1,2})\b/g) || [];
+  for (const s of singleMatches) {
+    const n = parseInt(s, 10);
+    if (n >= 2 && n <= 12) zones.add(n);
+  }
+  return Array.from(zones).sort((a, b) => a - b);
+}
+
+/**
+ * Format an array of zone numbers (2..12) into a concise human-readable label (e.g. "6 bis 8", "2, 4 bis 10", "Zone 6").
+ */
+export function formatArmorZonesLabel(zones = [], isSelectableZone = false) {
+  const sorted = Array.from(
+    new Set(
+      (Array.isArray(zones) ? zones : [])
+        .map((n) => Number(n))
+        .filter((n) => Number.isInteger(n) && n >= 2 && n <= 12)
+    )
+  ).sort((a, b) => a - b);
+
+  if (sorted.length === 0) return isSelectableZone ? "je Zone (frei wählbar)" : "–";
+  if (isSelectableZone && sorted.length === 1) {
+    return `Zone ${sorted[0]} (je Zone)`;
+  }
+  if (sorted.length === 11) return "2 bis 12";
+  if (sorted.length === 1) return sorted[0] === 12 ? "12 (Kopf)" : `Zone ${sorted[0]}`;
+
+  // Group consecutive runs
+  const runs = [];
+  let start = sorted[0];
+  let prev = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const cur = sorted[i];
+    if (cur === prev + 1) {
+      prev = cur;
+    } else {
+      runs.push([start, prev]);
+      start = cur;
+      prev = cur;
+    }
+  }
+  runs.push([start, prev]);
+
+  return runs
+    .map(([a, b]) => {
+      if (a === b) return `${a}`;
+      if (b === a + 1) return `${a}, ${b}`;
+      return `${a} bis ${b}`;
+    })
+    .join(", ");
+}
+
+/**
+ * Resolve the matching combat skill and attack dice pool for a weapon on an actor (Punkt 2 & Punkt 6).
  * Maps weapon subtypes/categories/skills to GRW combat skills:
  *  - Feuerwaffen (Pistolen, Gewehre, SMGs, Schrotflinten): Schießen + Geschick
  *  - Schwere Waffen: Schwere Waffen + Geschick
  *  - Projektilwaffen (Bögen, Armbrüste): Projektilwaffen + Geschick
  *  - Wurfwaffen / Granaten: Wurfwaffen + Geschick
  *  - Sprühwaffen / Flammenwerfer: Sprühwaffen + Geschick
- *  - Kurzdistanzwaffen (KW / Messer / waffenlos): Nahkampf + Geschick
+ *  - Kurzdistanzwaffen (KW / Messer / waffenlos / Natürliche Waffe): Nahkampf + Geschick
  *  - Distanzwaffen (DW / Schwerter / Stangenwaffen): Waffenkampf + Geschick
  */
 export function resolveWeaponCombatSkill(actor, weapon) {
@@ -228,7 +344,10 @@ export function resolveWeaponCombatSkill(actor, weapon) {
   } else if (
     rawSkill === "nahkampf" ||
     rawCat.includes("kurzdistanz") ||
+    rawCat.includes("natural") ||
+    rawCat.includes("natuerlich") ||
     rawRange.includes("kurzdistanz") ||
+    rawRange.includes("natuerlich") ||
     sys.weaponType === "melee"
   ) {
     canonicalId = "nahkampf";
@@ -264,6 +383,29 @@ export function resolveWeaponCombatSkill(actor, weapon) {
     attrDice + (skillLevel > 0 ? skillLevel + skillMod : 0) + weaponAttackBonus
   );
 
+  const alphaBio = Boolean(actor?.system?.attributes?.primary?.geschick?.alphaBio);
+  const betaBio = Boolean(skillItem?.system?.betaBio);
+  let hazardCount = 1;
+  if (alphaBio && betaBio) {
+    hazardCount = Math.min(baseAttackPool, Math.max(1, attrDice + skillLevel));
+  } else if (alphaBio) {
+    hazardCount = Math.min(baseAttackPool, Math.max(1, attrDice));
+  } else if (betaBio && skillLevel > 0) {
+    hazardCount = Math.min(baseAttackPool, Math.max(1, skillLevel + 1));
+  }
+
+  const skillPart =
+    skillLevel > 0
+      ? `Fertigkeit ${canonicalLabel} (Stufe ${skillLevel})${
+          skillMod !== 0 ? ` + Modifikator (${skillMod > 0 ? `+${skillMod}` : skillMod}W6)` : ""
+        }`
+      : `Fertigkeit ${canonicalLabel} (ungelernt: 0W6)`;
+  const wpnBonusPart =
+    weaponAttackBonus !== 0
+      ? ` + Waffenbonus (${weaponAttackBonus > 0 ? `+${weaponAttackBonus}` : weaponAttackBonus}W6)`
+      : "";
+  const poolTooltip = `Attribut Geschick (${attrDice}W6) + ${skillPart}${wpnBonusPart} = ${baseAttackPool}W6 (davon ${hazardCount} Hazard-Di)`;
+
   return {
     canonicalId,
     canonicalLabel,
@@ -274,7 +416,9 @@ export function resolveWeaponCombatSkill(actor, weapon) {
     attrLabel: "Geschick",
     attrDice,
     weaponAttackBonus,
-    baseAttackPool
+    baseAttackPool,
+    hazardCount,
+    poolTooltip
   };
 }
 
@@ -525,6 +669,7 @@ export class NoReturnSkillData extends foundry.abstract.TypeDataModel {
     const actor = this.parent?.parent;
     let attrVal = 0;
     let itemBonusMod = 0;
+    let bonusSourceList = [];
 
     if (actor) {
       if (this.attribute) {
@@ -532,24 +677,61 @@ export class NoReturnSkillData extends foundry.abstract.TypeDataModel {
       }
 
       const skillBonuses = actor.system?.skillBonuses || {};
+      const skillBonusSources = actor.system?.skillBonusSources || {};
       const idKey = (this.skillId || "").toLowerCase();
       const nameKey = (this.parent?.name || "").toLowerCase();
       const normNameKey = normalizeSkillKey(this.parent?.name || "");
+      let matchedKey = "";
       if (idKey && skillBonuses[idKey]) {
         itemBonusMod += Number(skillBonuses[idKey]) || 0;
+        matchedKey = idKey;
       } else if (nameKey && skillBonuses[nameKey]) {
         itemBonusMod += Number(skillBonuses[nameKey]) || 0;
+        matchedKey = nameKey;
       } else if (normNameKey && skillBonuses[normNameKey]) {
         itemBonusMod += Number(skillBonuses[normNameKey]) || 0;
+        matchedKey = normNameKey;
+      }
+      if (matchedKey && Array.isArray(skillBonusSources[matchedKey])) {
+        bonusSourceList = skillBonusSources[matchedKey];
       }
     }
 
+    const manualMod = Number(this.mod) || 0;
     this.attributeValue = attrVal;
     this.itemBonusMod = itemBonusMod;
-    this.effectiveMod = (Number(this.mod) || 0) + itemBonusMod;
+    this.effectiveMod = manualMod + itemBonusMod;
     const lvl = Math.max(0, Number(this.level) || 0);
     // GRW rule: Pool = Attributswert (aktuell/effektiv) + Fertigkeitswert (aktuell/effektiv) + Modifikatoren
     this.pool = Math.max(0, attrVal + lvl + this.effectiveMod);
+
+    const attrKey = String(this.attribute || "").toLowerCase();
+    const attrLabel = ATTRIBUTE_LABELS_DE[attrKey] || this.attribute || "Attribut";
+    const skillName = this.parent?.name || this.skillId || "Fertigkeit";
+    const alphaBio = Boolean(actor?.system?.attributes?.primary?.[attrKey]?.alphaBio);
+    const betaBio = Boolean(this.betaBio);
+    let hazardCount = this.pool > 0 ? 1 : 0;
+    if (alphaBio && betaBio) {
+      hazardCount = Math.min(this.pool, Math.max(1, attrVal + lvl));
+    } else if (alphaBio) {
+      hazardCount = Math.min(this.pool, Math.max(1, attrVal));
+    } else if (betaBio && lvl > 0) {
+      hazardCount = Math.min(this.pool, Math.max(1, lvl + (attrVal > 0 ? 1 : 0)));
+    }
+
+    const modSign = this.effectiveMod >= 0 ? `+${this.effectiveMod}` : `${this.effectiveMod}`;
+    const modBreakdownParts = [];
+    if (manualMod !== 0 || itemBonusMod !== 0) {
+      modBreakdownParts.push(`Manuell ${manualMod >= 0 ? `+${manualMod}` : manualMod}`);
+      if (itemBonusMod !== 0) {
+        const srcText = bonusSourceList.length ? ` [${bonusSourceList.join(", ")}]` : "";
+        modBreakdownParts.push(`Spezies/Items ${itemBonusMod >= 0 ? `+${itemBonusMod}` : itemBonusMod}${srcText}`);
+      }
+    }
+    const modDetail = modBreakdownParts.length ? ` (${modBreakdownParts.join(", ")})` : "";
+    const woundMalus = Number(actor?.system?.health?.gesamteMali) || 0;
+    const malusNote = woundMalus > 0 ? ` | Aktuelle Wundmali im Wurf: -${woundMalus}W6` : "";
+    this.poolTooltip = `Attribut ${attrLabel} (${attrVal}W6) + Fertigkeit ${skillName} (Stufe ${lvl}) + Modifikator (${modSign}W6)${modDetail} = ${this.pool}W6 (davon ${hazardCount} Hazard-Di${betaBio ? ", Beta-Bio aktiv" : ""})${malusNote}`;
   }
 }
 
@@ -593,9 +775,16 @@ export class NoReturnStyleSkillData extends foundry.abstract.TypeDataModel {
     if (actor && this.attribute) {
       attrVal = getEffectiveActorAttribute(actor, this.attribute);
     }
+    const lvl = Math.max(0, Number(this.level) || 0);
     this.attributeValue = attrVal;
     this.effectiveMod = Number(this.mod) || 0;
-    this.pool = Math.max(0, attrVal + (Number(this.level) || 0) + this.effectiveMod);
+    this.pool = Math.max(0, attrVal + lvl + this.effectiveMod);
+
+    const attrKey = String(this.attribute || "").toLowerCase();
+    const attrLabel = ATTRIBUTE_LABELS_DE[attrKey] || this.attribute || "Attribut";
+    const styleName = this.parent?.name || this.styleSkillId || "Styleskill";
+    const modSign = this.effectiveMod >= 0 ? `+${this.effectiveMod}` : `${this.effectiveMod}`;
+    this.poolTooltip = `Attribut ${attrLabel} (${attrVal}W6) + Styleskill ${styleName} (Stufe ${lvl}) + Modifikator (${modSign}W6) = ${this.pool}W6 (davon ${this.pool > 0 ? 1 : 0} Hazard-Di)`;
   }
 }
 
@@ -824,6 +1013,8 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
       skill: new fields.StringField({ required: false, blank: true, initial: "schiessen" }),
       attackBonus: new fields.NumberField({ required: true, integer: true, initial: 0 }),
       parryBonus: new fields.NumberField({ required: true, integer: true, initial: 0 }),
+      parryAllowed: new fields.BooleanField({ required: true, initial: false }),
+      useStrengthDamage: new fields.BooleanField({ required: true, initial: false }),
       damageFormula: new fields.StringField({ required: false, blank: true, initial: "20" }),
       damageDice: new fields.NumberField({ required: true, integer: true, min: 0, initial: 0 }),
       damageFlat: new fields.NumberField({ required: true, integer: true, initial: 20 }),
@@ -854,9 +1045,25 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
     const normCal = normalizeCaliber(this.caliber);
     const derivedMagCap = parseMagazineCapacity(this.magazine, this.magazineCapacity);
     this.magazineCapacity = derivedMagCap;
+    const normCat = normalizeSkillKey(this.category || "");
+    const normRange = normalizeSkillKey(this.range || "");
+    const normSkill = normalizeSkillKey(this.skill || "");
+
+    const isMeleeCat =
+      normCat === "kurzdistanz" ||
+      normCat === "kurzdistanzwaffe" ||
+      normCat === "distanzwaffe" ||
+      normCat === "natural" ||
+      normCat === "natuerliche_waffe" ||
+      normCat === "nahkampfwaffe" ||
+      normRange.includes("kurzdistanz") ||
+      normRange.includes("distanzwaffe") ||
+      normRange.includes("natuerlich");
+
     const isMeleeExplicit =
       this.weaponType === "melee" ||
-      ["nahkampf", "waffenkampf"].includes(normalizeSkillKey(this.skill)) ||
+      isMeleeCat ||
+      ["nahkampf", "waffenkampf"].includes(normSkill) ||
       /nahkampf/i.test(this.fireModes || "");
     this.isRanged =
       !isMeleeExplicit &&
@@ -873,8 +1080,28 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
             "wurfwaffen",
             "spruehwaffen",
             "energiewaffen"
-          ].includes(normalizeSkillKey(this.skill))
+          ].includes(normSkill)
       );
+
+    if (!this.isRanged) {
+      this.weaponType = "melee";
+      if (normCat.includes("distanz") || normRange.includes("distanz") || normSkill === "waffenkampf") {
+        this.meleeCategory = "distanzwaffe";
+        this.meleeCategoryLabel = "Distanzwaffe (DW)";
+        this.parryAllowed = true;
+      } else if (normCat.includes("natural") || normCat.includes("natuerlich") || normRange.includes("natuerlich")) {
+        this.meleeCategory = "natural";
+        this.meleeCategoryLabel = "Natürliche Waffe";
+      } else {
+        this.meleeCategory = "kurzdistanz";
+        this.meleeCategoryLabel = "Kurzdistanzwaffe (KW)";
+      }
+      this.useStrengthDamage = true;
+    } else {
+      this.weaponType = "ranged";
+      this.meleeCategory = "";
+      this.meleeCategoryLabel = "Fernkampfwaffe";
+    }
 
     // Expose magazine object alias `{ value, max }` alongside `ammoCurrent` / `magazineCapacity`
     this.magazineObj = {
@@ -885,6 +1112,7 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
     const actor = this.parent?.parent;
     this.combatSkillInfo = resolveWeaponCombatSkill(actor, this.parent);
     this.attackPool = this.combatSkillInfo.baseAttackPool;
+    this.poolTooltip = this.combatSkillInfo.poolTooltip;
     this.parsedFireModes = parseWeaponFireModes(this.fireModes, this);
     this.kugelnProAbzug = this.parsedFireModes.semi?.bulletsPerTrigger || 1;
     this.maxAbdruecken = this.parsedFireModes.semi?.maxTriggers || 1;
@@ -1005,11 +1233,19 @@ export class NoReturnWeaponData extends foundry.abstract.TypeDataModel {
         this.effectiveDamageDisplay = `${singleShotFlat} TP (${parts.join(" ")})`;
       }
     } else {
-      // Melee weapon: @staerke W6 + baseFlat
-      const st = actor ? Math.max(1, getEffectiveActorAttribute(actor, "staerke") || 1) : 1;
+      // Melee weapon: @staerke (or @konstitution) W6 inkl. Hazard-Di + baseFlat
+      const usesKo = /\bko\b/i.test(rawFormula);
+      const dmgAttrKey = usesKo ? "konstitution" : "staerke";
+      const dmgAttrAbbr = usesKo ? "KO" : "ST";
+      const attrDice = actor ? Math.max(1, getEffectiveActorAttribute(actor, dmgAttrKey) || 1) : 1;
+      const normalAttrDice = Math.max(0, attrDice - 1);
+      const dicePart = normalAttrDice > 0 ? `${normalAttrDice}d6 + 1d6x6` : "1d6x6";
+      this.meleeDamageAttrKey = dmgAttrKey;
+      this.meleeDamageAttrAbbr = dmgAttrAbbr;
       this.effectiveDamageFlat = baseFlat;
-      this.effectiveDamageFormula = baseFlat > 0 ? `${st}d6 + ${baseFlat}` : `${st}d6`;
-      this.effectiveDamageDisplay = baseFlat > 0 ? `${st}W6 + ${baseFlat} TP` : `${st}W6 TP`;
+      this.effectiveDamageFormula = baseFlat > 0 ? `${dicePart} + ${baseFlat}` : dicePart;
+      this.effectiveDamageDisplay =
+        baseFlat > 0 ? `${attrDice}W6 + ${baseFlat} TP (${dmgAttrAbbr}+${baseFlat}p.)` : `${attrDice}W6 TP (${dmgAttrAbbr})`;
     }
   }
 }
@@ -1026,6 +1262,11 @@ export class NoReturnArmorData extends foundry.abstract.TypeDataModel {
         required: true,
         initial: [6, 7, 8]
       }),
+      coveredZones: new fields.ArrayField(new fields.NumberField({ integer: true }), {
+        required: true,
+        initial: [6, 7, 8]
+      }),
+      isSelectableZone: new fields.BooleanField({ required: true, initial: false }),
       zonesLabel: new fields.StringField({ required: false, blank: true, initial: "6 bis 8" }),
       price: new fields.NumberField({ required: true, min: 0, initial: 400 }),
       techLevel: new fields.StringField({ required: false, blank: true, initial: "II" }),
@@ -1033,6 +1274,42 @@ export class NoReturnArmorData extends foundry.abstract.TypeDataModel {
       features: new fields.StringField({ required: false, blank: true, initial: "" }),
       description: new fields.HTMLField({ required: false, blank: true, initial: "" })
     };
+  }
+
+  prepareDerivedData() {
+    const nameAndLabel = `${this.parent?.name || ""} ${this.zonesLabel || ""}`.toLowerCase();
+    if (
+      this.isSelectableZone ||
+      nameAndLabel.includes("je zone") ||
+      nameAndLabel.includes("partielle panzerungsglieder")
+    ) {
+      this.isSelectableZone = true;
+    }
+
+    let rawZones = [];
+    if (Array.isArray(this.coveredZones) && this.coveredZones.length > 0) {
+      rawZones = this.coveredZones;
+    } else if (Array.isArray(this.zones) && this.zones.length > 0) {
+      rawZones = this.zones;
+    } else if (this.zonesLabel) {
+      rawZones = parseArmorZonesString(this.zonesLabel);
+    }
+
+    const normalizedZones = Array.from(
+      new Set(
+        rawZones
+          .map((n) => Number(n))
+          .filter((n) => Number.isInteger(n) && n >= 2 && n <= 12)
+      )
+    ).sort((a, b) => a - b);
+
+    if (normalizedZones.length === 0 && this.isSelectableZone) {
+      normalizedZones.push(6);
+    }
+
+    this.coveredZones = normalizedZones;
+    this.zones = [...normalizedZones];
+    this.zonesLabel = formatArmorZonesLabel(normalizedZones, this.isSelectableZone);
   }
 }
 
@@ -1170,6 +1447,8 @@ export class NoReturnCyberwareData extends foundry.abstract.TypeDataModel {
       price: new fields.NumberField({ required: true, min: 0, initial: 2500 }),
       techLevel: new fields.StringField({ required: false, blank: true, initial: "IV" }),
       design: new fields.StringField({ required: false, blank: true, initial: "" }),
+      attributeModifiers: createAttributeModifierSchema(fields),
+      skillModifiers: new fields.StringField({ required: false, blank: true, initial: "" }),
       effects: new fields.StringField({ required: false, blank: true, initial: "" }),
       description: new fields.HTMLField({ required: false, blank: true, initial: "" })
     };
@@ -1200,6 +1479,8 @@ export class NoReturnRobotModuleData extends foundry.abstract.TypeDataModel {
       price: new fields.NumberField({ required: true, min: 0, initial: 2500 }),
       techLevel: new fields.StringField({ required: false, blank: true, initial: "III" }),
       design: new fields.StringField({ required: false, blank: true, initial: "" }),
+      attributeModifiers: createAttributeModifierSchema(fields),
+      skillModifiers: new fields.StringField({ required: false, blank: true, initial: "" }),
       stats: new fields.SchemaField({
         geschick: new fields.NumberField({ required: true, integer: true, initial: 0 }),
         staerke: new fields.NumberField({ required: true, integer: true, initial: 0 }),

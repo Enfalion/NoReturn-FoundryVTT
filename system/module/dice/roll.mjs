@@ -992,8 +992,11 @@ export class NoReturnRoll {
     const bulletDamage = Number(sys.bulletDamage ?? sys.damageBonusPerHit) || 0;
     const loadedAmmo = sys.loadedAmmo || AMMO_TYPE_DEFINITIONS[sys.loadedAmmoType] || AMMO_TYPE_DEFINITIONS.FMJ;
     const ammoMod = isRanged ? Number(loadedAmmo.damageBonus) || 0 : 0;
-    const staerke = Math.max(1, getEffectiveActorAttribute(actor, "staerke") || 1);
-    const meleeDamagePreview = `${staerke}W6${baseDamage > 0 ? ` + ${baseDamage}` : ""} TP`;
+    const meleeDmgAttrKey =
+      sys.meleeDamageAttrKey ||
+      (/KO\s*\+/i.test(String(sys.damageFormula || "")) ? "konstitution" : "staerke");
+    const staerke = Math.max(1, getEffectiveActorAttribute(actor, meleeDmgAttrKey) || 1);
+    const meleeDamagePreview = `${staerke}W6 (inkl. HD)${baseDamage > 0 ? ` + ${baseDamage}` : ""} TP`;
 
     const parsedModes = isRanged
       ? parseWeaponFireModes(sys.fireModes, sys)
@@ -2497,9 +2500,11 @@ export class NoReturnRoll {
       if (!isBlockedByMk) {
         if (!isRanged) {
           const st = Math.max(1, Number(attackFlow.staerke) || 1);
-          const diceCount = st + goodHits;
+          const diceCount = Math.max(1, st + goodHits);
+          const normalDice = Math.max(0, diceCount - 1);
+          const diceExpr = normalDice > 0 ? `${normalDice}d6 + 1d6x6` : `1d6x6`;
           const flat = Number(attackFlow.baseDamage) || 0;
-          damageFormula = flat > 0 ? `${diceCount}d6 + ${flat}` : `${diceCount}d6`;
+          damageFormula = flat > 0 ? `${diceExpr} + ${flat}` : diceExpr;
         } else {
           const flat = Number(attackFlow.flatShotDamage) || 0;
           damageFormula = goodHits > 0 ? `${flat} + ${goodHits}d6` : `${flat}`;
@@ -2778,7 +2783,10 @@ export class NoReturnRoll {
     const sys = weapon.system || {};
     const isRanged = Boolean(sys.isRanged || sys.weaponType === "ranged");
     const isMelee = !isRanged && sys.weaponType === "melee";
-    const staerke = Math.max(1, getEffectiveActorAttribute(actor, "staerke") || 1);
+    const meleeDmgAttrKey =
+      sys.meleeDamageAttrKey ||
+      (/KO\s*\+/i.test(String(sys.damageFormula || "")) ? "konstitution" : "staerke");
+    const staerke = Math.max(1, getEffectiveActorAttribute(actor, meleeDmgAttrKey) || 1);
     const loadedAmmo =
       sys.loadedAmmo || AMMO_TYPE_DEFINITIONS[(sys.loadedAmmoType || "FMJ").toUpperCase()] || AMMO_TYPE_DEFINITIONS.FMJ;
     const ammoDmgBonus = isRanged ? Number(loadedAmmo.damageBonus) || 0 : 0;
@@ -2789,7 +2797,9 @@ export class NoReturnRoll {
     let formula = "";
     if (isMelee) {
       const diceCount = Math.max(1, staerke + goodHits);
-      formula = baseFlat > 0 ? `${diceCount}d6 + ${baseFlat}` : `${diceCount}d6`;
+      const normalDice = Math.max(0, diceCount - 1);
+      const diceExpr = normalDice > 0 ? `${normalDice}d6 + 1d6x6` : `1d6x6`;
+      formula = baseFlat > 0 ? `${diceExpr} + ${baseFlat}` : diceExpr;
     } else {
       const baseFormula = String(sys.effectiveDamageFormula || sys.damageFormula || "").trim();
       if (baseFormula.includes("d") || baseFormula.includes("W") || baseFormula.includes("w")) {

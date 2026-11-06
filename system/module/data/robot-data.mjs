@@ -363,6 +363,7 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
       adrenalin: 0
     };
     const skillBonuses = {};
+    const skillBonusSources = {};
     let activeSpeciesItem = null;
 
     const addAttrMods = (modsObj, multiplier = 1) => {
@@ -373,10 +374,15 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
       }
     };
 
-    const addSkillMods = (modStr, multiplier = 1) => {
+    const addSkillMods = (modStr, multiplier = 1, sourceName = "") => {
       const parsed = parseSkillModifiers(modStr);
       for (const [k, v] of Object.entries(parsed)) {
-        skillBonuses[k] = (skillBonuses[k] || 0) + v * multiplier;
+        const delta = v * multiplier;
+        skillBonuses[k] = (skillBonuses[k] || 0) + delta;
+        if (sourceName && delta !== 0) {
+          if (!skillBonusSources[k]) skillBonusSources[k] = [];
+          skillBonusSources[k].push({ label: sourceName, value: delta });
+        }
       }
     };
 
@@ -398,8 +404,16 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
         }
         moduleOrgLoss += orgCost;
       } else if (item.type === "armor" && item.system.equipped) {
+        if (item.system.prepareDerivedData) {
+          item.system.prepareDerivedData();
+        }
         const rw = Number(item.system.armorValue || 0);
-        const coveredZones = Array.isArray(item.system.zones) ? item.system.zones : [];
+        const coveredZones =
+          Array.isArray(item.system.coveredZones) && item.system.coveredZones.length > 0
+            ? item.system.coveredZones
+            : Array.isArray(item.system.zones)
+            ? item.system.zones
+            : [];
         for (const zNum of coveredZones) {
           const zCode = String(zNum);
           zoneBonusArmor[zCode] = (zoneBonusArmor[zCode] || 0) + rw;
@@ -443,6 +457,7 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
         : true;
 
     this.skillBonuses = skillBonuses;
+    this.skillBonusSources = skillBonusSources;
     this.itemAttrMods = itemAttrMods;
 
     const painTolerance =
@@ -635,12 +650,24 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
     };
 
     // Hybrid Primary & Secondary Attributes (combining All-Over / Base + Mod + Item Modifiers)
+    const primaryNamesDe = {
+      geschick: "Geschick (GE)",
+      staerke: "Stärke (ST)",
+      konstitution: "Konstitution (KO)",
+      schnelligkeit: "Schnelligkeit (SK)",
+      wissen: "Wissen (WI)",
+      wahrnehmung: "Wahrnehmung (WA)"
+    };
     const physicalKeys = ["geschick", "staerke", "konstitution", "schnelligkeit"];
     for (const k of physicalKeys) {
       const pAttr = this.attributes.primary[k];
       pAttr.base = this.allOver[k];
       pAttr.itemMod = itemAttrMods[k] || 0;
       pAttr.overall = Math.max(0, this.allOver[k] + (Number(pAttr.mod) || 0) + pAttr.itemMod);
+      const parts = [`All-Over (${pAttr.base})`];
+      if (Number(pAttr.mod)) parts.push(`Mod. (${pAttr.mod > 0 ? `+${pAttr.mod}` : pAttr.mod})`);
+      if (pAttr.itemMod) parts.push(`Module/Items (${pAttr.itemMod > 0 ? `+${pAttr.itemMod}` : pAttr.itemMod})`);
+      pAttr.poolTooltip = `${primaryNamesDe[k]}: ${parts.join(" + ").replace(/\+ -/g, "- ")} = ${pAttr.overall}W6`;
     }
 
     // Wissen & Wahrnehmung
@@ -655,6 +682,13 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
       wissenBase + (Number(this.attributes.primary.wissen.mod) || 0) + (itemAttrMods.wissen || 0)
     );
     this.secondary.wissen = this.attributes.primary.wissen.overall;
+    {
+      const pAttr = this.attributes.primary.wissen;
+      const parts = [`Basis (${pAttr.base})`];
+      if (Number(pAttr.mod)) parts.push(`Mod. (${pAttr.mod > 0 ? `+${pAttr.mod}` : pAttr.mod})`);
+      if (pAttr.itemMod) parts.push(`Module/Items (${pAttr.itemMod > 0 ? `+${pAttr.itemMod}` : pAttr.itemMod})`);
+      pAttr.poolTooltip = `${primaryNamesDe.wissen}: ${parts.join(" + ").replace(/\+ -/g, "- ")} = ${pAttr.overall}W6`;
+    }
 
     this.attributes.primary.wahrnehmung.base = this.wahrnehmung.allOverWahrnehmung;
     this.attributes.primary.wahrnehmung.itemMod = itemAttrMods.wahrnehmung || 0;
@@ -664,8 +698,21 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
         (Number(this.attributes.primary.wahrnehmung.mod) || 0) +
         (itemAttrMods.wahrnehmung || 0)
     );
+    {
+      const pAttr = this.attributes.primary.wahrnehmung;
+      const parts = [`Sinne All-Over (${pAttr.base})`];
+      if (Number(pAttr.mod)) parts.push(`Mod. (${pAttr.mod > 0 ? `+${pAttr.mod}` : pAttr.mod})`);
+      if (pAttr.itemMod) parts.push(`Module/Items (${pAttr.itemMod > 0 ? `+${pAttr.itemMod}` : pAttr.itemMod})`);
+      pAttr.poolTooltip = `${primaryNamesDe.wahrnehmung}: ${parts.join(" + ").replace(/\+ -/g, "- ")} = ${pAttr.overall}W6`;
+    }
 
     // Secondary Attributes (Charisma, Logik, Fahrzeuge, Schmerztoleranz)
+    const secNamesDe = {
+      charisma: "Charisma",
+      logik: "Logik",
+      fahrzeuge: "Fahrzeuge",
+      schmerztoleranz: "Schmerztoleranz"
+    };
     const secKeys = ["charisma", "logik", "fahrzeuge", "schmerztoleranz"];
     for (const k of secKeys) {
       const sAttr = this.attributes.secondary[k];
@@ -674,6 +721,10 @@ export class NoReturnRobotData extends foundry.abstract.TypeDataModel {
       sAttr.itemMod = itemAttrMods[k] || 0;
       sAttr.total = Math.max(0, (Number(sAttr.base) || 0) + (Number(sAttr.mod) || 0) + sAttr.itemMod);
       this.secondary[k] = sAttr.total;
+      const parts = [`Basis (${sAttr.base})`];
+      if (Number(sAttr.mod)) parts.push(`Mod. (${sAttr.mod > 0 ? `+${sAttr.mod}` : sAttr.mod})`);
+      if (sAttr.itemMod) parts.push(`Module/Items (${sAttr.itemMod > 0 ? `+${sAttr.itemMod}` : sAttr.itemMod})`);
+      sAttr.poolTooltip = `${secNamesDe[k]}: ${parts.join(" + ").replace(/\+ -/g, "- ")} = ${sAttr.total}${k === "schmerztoleranz" ? "" : "W6"}`;
     }
 
     // Special Attribute: Adrenalin

@@ -148,7 +148,7 @@
                     <td>
                       <input type="number" name="system.attributes.primary.{{this.key}}.mod" value="{{this.mod}}" />
                     </td>
-                    <td class="pool-cell"><strong>{{this.overall}}W6</strong></td>
+                    <td class="pool-cell" data-tooltip="{{this.poolTooltip}}" title="{{this.poolTooltip}}"><strong>{{this.overall}}W6</strong></td>
                     <td class="center">
                       <input type="checkbox" name="system.attributes.primary.{{this.key}}.alphaBio" {{checked this.alphaBio}} />
                     </td>
@@ -186,7 +186,7 @@
                     <td>
                       <input type="number" name="system.attributes.secondary.{{this.key}}.mod" value="{{this.mod}}" />
                     </td>
-                    <td class="pool-cell"><strong>{{this.total}}</strong></td>
+                    <td class="pool-cell" data-tooltip="{{this.poolTooltip}}" title="{{this.poolTooltip}}"><strong>{{this.total}}</strong></td>
                     <td class="center">
                       {{#if this.rollable}}
                         <button type="button" class="nr-roll-btn" data-action="rollAttribute" data-attribute="{{this.key}}">
@@ -368,9 +368,24 @@
                       {{/if}}
                     </td>
                     <td>{{this.system.zoneReference}}</td>
-                    <td>{{this.system.level}}</td>
-                    <td>{{this.system.effectiveMod}}</td>
-                    <td class="pool-cell"><strong>{{this.system.pool}}W6</strong></td>
+                    <td class="center nr-stepper-cell">
+                      <div class="nr-inline-stepper">
+                        <button type="button" class="nr-step-btn" data-action="stepItemNumeric" data-field="system.level" data-step="-1" title="-1 Stufe">−</button>
+                        <input type="number" class="nr-inline-item-input" data-item-id="{{this.id}}" data-field="system.level" value="{{this.system.level}}" min="0" />
+                        <button type="button" class="nr-step-btn" data-action="stepItemNumeric" data-field="system.level" data-step="1" title="+1 Stufe">+</button>
+                      </div>
+                    </td>
+                    <td class="center nr-stepper-cell">
+                      <div class="nr-inline-stepper">
+                        <button type="button" class="nr-step-btn" data-action="stepItemNumeric" data-field="system.mod" data-step="-1" title="-1 Mod.">−</button>
+                        <input type="number" class="nr-inline-item-input" data-item-id="{{this.id}}" data-field="system.mod" value="{{this.system.mod}}" />
+                        <button type="button" class="nr-step-btn" data-action="stepItemNumeric" data-field="system.mod" data-step="1" title="+1 Mod.">+</button>
+                      </div>
+                      {{#if this.system.itemBonusMod}}
+                        <small class="nr-item-mod-badge" title="Automatischer Bonus aus Spezies/Mutation/Styleskills/Drogen">({{#if (gt this.system.itemBonusMod 0)}}+{{/if}}{{this.system.itemBonusMod}})</small>
+                      {{/if}}
+                    </td>
+                    <td class="pool-cell" data-tooltip="{{this.system.poolTooltip}}" title="{{this.system.poolTooltip}}"><strong>{{this.system.pool}}W6</strong></td>
                     <td class="actions-cell">
                       <button type="button" class="nr-roll-btn" data-action="rollSkill">
                         <i class="fas fa-dice-d6"></i>
@@ -423,10 +438,17 @@
                         –
                       {{/if}}
                     </td>
-                    <td class="center">{{this.system.level}} / {{this.system.maxLevel}}</td>
+                    <td class="center nr-stepper-cell">
+                      <div class="nr-inline-stepper">
+                        <button type="button" class="nr-step-btn" data-action="stepItemNumeric" data-field="system.level" data-step="-1" title="-1 Stufe">−</button>
+                        <input type="number" class="nr-inline-item-input" data-item-id="{{this.id}}" data-field="system.level" value="{{this.system.level}}" min="1" max="{{this.system.maxLevel}}" />
+                        <button type="button" class="nr-step-btn" data-action="stepItemNumeric" data-field="system.level" data-step="1" title="+1 Stufe">+</button>
+                      </div>
+                      <small class="muted">/ {{this.system.maxLevel}}</small>
+                    </td>
                     <td>{{this.system.passiveBonus}}</td>
                     <td>{{this.system.skillModifiers}}</td>
-                    <td class="pool-cell"><strong>{{this.system.pool}}W6</strong></td>
+                    <td class="pool-cell" data-tooltip="{{this.system.poolTooltip}}" title="{{this.system.poolTooltip}}"><strong>{{this.system.pool}}W6</strong></td>
                     <td class="actions-cell">
                       <button type="button" class="nr-roll-btn" data-action="rollSkill" title="{{localize 'NORETURN.StyleSkills.RollStyleSkill'}}">
                         <i class="fas fa-dice-d6"></i>
@@ -485,7 +507,7 @@
                     <td>{{this.system.damagePerStage}} {{#if this.system.penaltiesPerStage}}({{this.system.penaltiesPerStage}}){{/if}}</td>
                     <td class="actions-cell">
                       <button type="button" class="nr-roll-btn" data-action="rollCondition" title="{{localize 'NORETURN.Conditions.RollResistance'}}">
-                        <i class="fas fa-biohazard"></i> {{localize "NORETURN.Conditions.RollBtn"}}
+                        <i class="fas fa-dice-d6"></i>
                       </button>
                       <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
                       <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>
@@ -798,7 +820,7 @@
                     <a data-action="editItem"><strong>{{this.name}}</strong></a>
                     <div class="muted" style="font-size:0.78em;">{{this.system.combatSkillInfo.canonicalLabel}}</div>
                   </td>
-                  <td class="pool-cell center">
+                  <td class="pool-cell center" data-tooltip="{{this.system.poolTooltip}}" title="{{this.system.poolTooltip}}">
                     <strong>{{this.system.attackPool}}W6</strong>
                   </td>
                   <td>{{this.system.caliber}}</td>
@@ -897,7 +919,19 @@
                   <td><a data-action="editItem"><strong>{{this.name}}</strong></a></td>
                   <td class="center">{{this.system.armorValue}}</td>
                   <td class="center">{{this.system.materialCategory}}</td>
-                  <td>{{this.system.zonesLabel}}</td>
+                  <td>
+                    {{#if this.system.isSelectableZone}}
+                      <select class="nr-armor-single-zone-select" data-item-id="{{this.id}}" title="Einzelzone für diese Panzerung wählen">
+                        {{#each ../selectableArmorZones}}
+                          <option value="{{this.num}}" {{#if (eq ../this.system.coveredZones.[0] this.num)}}selected{{/if}}>
+                            {{this.label}}
+                          </option>
+                        {{/each}}
+                      </select>
+                    {{else}}
+                      <span title="{{this.system.zonesLabel}}">{{this.system.zonesLabel}}</span>
+                    {{/if}}
+                  </td>
                   <td class="actions-cell">
                     <button type="button" class="nr-icon-btn" data-action="editItem"><i class="fas fa-edit"></i></button>
                     <button type="button" class="nr-icon-btn danger" data-action="deleteItem"><i class="fas fa-trash"></i></button>

@@ -260,20 +260,34 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     const items = this.parent?.items ?? [];
 
     // 1. Collect dynamic modifiers from Species, Mutations, Traits, StyleSkills, Cyberware, and Active Consumables
-    const itemAttrMods = {
-      geschick: 0,
-      staerke: 0,
-      konstitution: 0,
-      schnelligkeit: 0,
-      wissen: 0,
-      wahrnehmung: 0,
-      charisma: 0,
-      logik: 0,
-      fahrzeuge: 0,
-      schmerztoleranz: 0,
-      adrenalin: 0
-    };
+    const attrKeys = [
+      "geschick",
+      "staerke",
+      "konstitution",
+      "schnelligkeit",
+      "wissen",
+      "wahrnehmung",
+      "charisma",
+      "logik",
+      "fahrzeuge",
+      "schmerztoleranz",
+      "adrenalin"
+    ];
+    const itemAttrMods = {};
+    const speciesAttrMods = {};
+    const cyberAttrMods = {};
+    const otherItemAttrMods = {};
+    const attrModSources = {};
+    for (const k of attrKeys) {
+      itemAttrMods[k] = 0;
+      speciesAttrMods[k] = 0;
+      cyberAttrMods[k] = 0;
+      otherItemAttrMods[k] = 0;
+      attrModSources[k] = [];
+    }
+
     const skillBonuses = {};
+    const skillBonusSources = {};
     let mutationArmorBonus = 0;
     let mutationArmorMk = "A";
     let mutationMaxHpOverride = 0;
@@ -284,18 +298,32 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     let hasParcourStyle = false;
     let akrobatikLevel = 0;
 
-    const addAttrMods = (modsObj, multiplier = 1) => {
+    const addAttrMods = (modsObj, multiplier = 1, bucket = "other", sourceLabel = "") => {
       if (!modsObj) return;
-      for (const k of Object.keys(itemAttrMods)) {
+      for (const k of attrKeys) {
         const v = Number(modsObj[k] || 0) * multiplier;
-        if (v) itemAttrMods[k] += v;
+        if (v) {
+          itemAttrMods[k] += v;
+          if (bucket === "species") speciesAttrMods[k] += v;
+          else if (bucket === "cyber") cyberAttrMods[k] += v;
+          else otherItemAttrMods[k] += v;
+          if (sourceLabel) {
+            attrModSources[k].push(`${sourceLabel}: ${v >= 0 ? `+${v}` : v}`);
+          }
+        }
       }
     };
 
-    const addSkillMods = (modStr, multiplier = 1) => {
+    const addSkillMods = (modStr, multiplier = 1, sourceLabel = "") => {
       const parsed = parseSkillModifiers(modStr);
       for (const [k, v] of Object.entries(parsed)) {
-        skillBonuses[k] = (skillBonuses[k] || 0) + v * multiplier;
+        const delta = v * multiplier;
+        if (!delta) continue;
+        skillBonuses[k] = (skillBonuses[k] || 0) + delta;
+        if (!skillBonusSources[k]) skillBonusSources[k] = [];
+        if (sourceLabel) {
+          skillBonusSources[k].push(`${sourceLabel} ${delta >= 0 ? `+${delta}` : delta}`);
+        }
       }
     };
 
@@ -314,8 +342,8 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
           hasPsionicAbnormality = true;
         }
         const lvl = Math.max(1, Number(item.system.level) || 1);
-        addAttrMods(item.system.attributeModifiers, lvl);
-        addSkillMods(item.system.skillModifiers, lvl);
+        addAttrMods(item.system.attributeModifiers, lvl, "other", item.name);
+        addSkillMods(item.system.skillModifiers, lvl, item.name);
         const cb = item.system.combatBonuses;
         if (cb) {
           if (cb.armorBonus > mutationArmorBonus) {
@@ -333,12 +361,12 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
           }
         }
       } else if (item.type === "trait") {
-        addAttrMods(item.system.attributeModifiers, 1);
-        addSkillMods(item.system.skillModifiers, 1);
+        addAttrMods(item.system.attributeModifiers, 1, "other", item.name);
+        addSkillMods(item.system.skillModifiers, 1, item.name);
       } else if (item.type === "styleskill" && item.system.active !== false) {
         const lvl = Math.max(1, Number(item.system.level) || 1);
-        addAttrMods(item.system.attributeModifiers, lvl);
-        addSkillMods(item.system.skillModifiers, lvl);
+        addAttrMods(item.system.attributeModifiers, lvl, "other", item.name);
+        addSkillMods(item.system.skillModifiers, lvl, item.name);
         if (
           item.system.styleSkillId === "style_parcour" ||
           item.name.toLowerCase().includes("parcour")
@@ -346,14 +374,19 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
           hasParcourStyle = true;
         }
       } else if (item.type === "consumable" && item.system.active) {
-        addAttrMods(item.system.attributeModifiers, 1);
-        addSkillMods(item.system.skillModifiers, 1);
+        addAttrMods(item.system.attributeModifiers, 1, "other", item.name);
+        addSkillMods(item.system.skillModifiers, 1, item.name);
       } else if ((item.type === "cyberware" || item.type === "robotModule") && item.system.installed !== false) {
         const orgCost = Math.max(
           Number(item.system.organismCost) || 0,
           Number(item.system.organismusCost) || 0
         );
         cyberwareOrganismCost += orgCost;
+        addAttrMods(item.system.attributeModifiers, 1, "cyber", item.name);
+        if (item.system.stats) {
+          addAttrMods(item.system.stats, 1, "cyber", item.name);
+        }
+        addSkillMods(item.system.skillModifiers, 1, item.name);
       } else if (item.type === "skill") {
         if (item.system.skillId === "akrobatik" || item.name.toLowerCase() === "akrobatik") {
           akrobatikLevel = Math.max(akrobatikLevel, Number(item.system.level) || 0);
@@ -365,20 +398,24 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     if (hasParcourStyle && akrobatikLevel > 0) {
       skillBonuses["klettern"] = (skillBonuses["klettern"] || 0) + akrobatikLevel;
       skillBonuses["springen"] = (skillBonuses["springen"] || 0) + akrobatikLevel;
+      if (!skillBonusSources["klettern"]) skillBonusSources["klettern"] = [];
+      if (!skillBonusSources["springen"]) skillBonusSources["springen"] = [];
+      skillBonusSources["klettern"].push(`Parcour +${akrobatikLevel}`);
+      skillBonusSources["springen"].push(`Parcour +${akrobatikLevel}`);
     }
 
     // Dynamically apply species modifiers & limits based on selected species (or matching embedded species item)
     if (activeSpeciesItem && (!selectedPreset || activeSpeciesItem.name === selectedSpeciesKey)) {
-      addAttrMods(activeSpeciesItem.system.attributeModifiers, 1);
-      addSkillMods(activeSpeciesItem.system.skillModifiers, 1);
+      addAttrMods(activeSpeciesItem.system.attributeModifiers, 1, "species", activeSpeciesItem.name);
+      addSkillMods(activeSpeciesItem.system.skillModifiers, 1, activeSpeciesItem.name);
       this.speciesSummary = activeSpeciesItem.system;
     } else if (selectedPreset) {
-      addAttrMods(selectedPreset.attributeModifiers, 1);
-      addSkillMods(selectedPreset.skillModifiers, 1);
+      addAttrMods(selectedPreset.attributeModifiers, 1, "species", selectedPreset.name);
+      addSkillMods(selectedPreset.skillModifiers, 1, selectedPreset.name);
       this.speciesSummary = selectedPreset;
     } else if (activeSpeciesItem) {
-      addAttrMods(activeSpeciesItem.system.attributeModifiers, 1);
-      addSkillMods(activeSpeciesItem.system.skillModifiers, 1);
+      addAttrMods(activeSpeciesItem.system.attributeModifiers, 1, "species", activeSpeciesItem.name);
+      addSkillMods(activeSpeciesItem.system.skillModifiers, 1, activeSpeciesItem.name);
       this.speciesSummary = activeSpeciesItem.system;
     }
 
@@ -392,6 +429,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     const secondaryMaxDefault = Number(this.speciesSummary?.attributeLimits?.secondaryMax) || 4;
 
     this.skillBonuses = skillBonuses;
+    this.skillBonusSources = skillBonusSources;
     this.itemAttrMods = itemAttrMods;
 
     // 2. Dynamic Organismus calculation (Punkt 3):
@@ -411,24 +449,45 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     };
     this.isOrganismCritical = orgCurrent <= 0;
 
-    // 3. Primary Attributes (base + manual mod + item modifier) + species limits
+    // 3. Primary Attributes (base + manual mod + item modifier) + species limits + Pool Tooltips (Punkt 6)
     for (const [key, attr] of Object.entries(this.attributes.primary)) {
       const dynMod = itemAttrMods[key] || 0;
+      const spMod = speciesAttrMods[key] || 0;
+      const cybMod = cyberAttrMods[key] || 0;
+      const othMod = otherItemAttrMods[key] || 0;
       attr.itemMod = dynMod;
       if (selectedSpeciesKey === "Evo" && key !== "konstitution") {
         attr.maxLimit = 4;
       } else {
         attr.maxLimit = primaryMaxDefault;
       }
-      attr.overall = Math.max(0, (attr.base || 0) + (attr.mod || 0) + dynMod);
+      const baseVal = Number(attr.base) || 0;
+      const manMod = Number(attr.mod) || 0;
+      attr.overall = Math.max(0, baseVal + manMod + dynMod);
+      const hazardCount = attr.overall > 0 ? (attr.alphaBio ? attr.overall : 1) : 0;
+      const srcDetails = attrModSources[key]?.length ? ` [${attrModSources[key].join(", ")}]` : "";
+      const othPart = othMod !== 0 ? ` + Mutationen/Merkmale/Drogen: ${othMod >= 0 ? `+${othMod}` : othMod}` : "";
+      attr.poolTooltip = `Basis-Stufe: ${baseVal} + Modifikator: ${manMod >= 0 ? `+${manMod}` : manMod} + Spezies-Bonus: ${spMod >= 0 ? `+${spMod}` : spMod} + Cyberware/Biomechanik: ${cybMod >= 0 ? `+${cybMod}` : cybMod}${othPart}${srcDetails} = ${attr.overall}W6 (davon ${hazardCount} Hazard-Di${attr.alphaBio ? ", Alpha-Bio aktiv" : ""})`;
     }
 
-    // 4. Secondary Attributes (base + manual mod + item modifier) + species limits
+    // 4. Secondary Attributes (base + manual mod + item modifier) + species limits + Pool Tooltips (Punkt 6)
     for (const [key, attr] of Object.entries(this.attributes.secondary)) {
       const dynMod = itemAttrMods[key] || 0;
+      const spMod = speciesAttrMods[key] || 0;
+      const cybMod = cyberAttrMods[key] || 0;
+      const othMod = otherItemAttrMods[key] || 0;
       attr.itemMod = dynMod;
       attr.maxLimit = secondaryMaxDefault;
-      attr.total = Math.max(0, (attr.base || 0) + (attr.mod || 0) + dynMod);
+      const baseVal = Number(attr.base) || 0;
+      const manMod = Number(attr.mod) || 0;
+      attr.total = Math.max(0, baseVal + manMod + dynMod);
+      const srcDetails = attrModSources[key]?.length ? ` [${attrModSources[key].join(", ")}]` : "";
+      const othPart = othMod !== 0 ? ` + Mutationen/Merkmale/Drogen: ${othMod >= 0 ? `+${othMod}` : othMod}` : "";
+      if (key === "schmerztoleranz") {
+        attr.poolTooltip = `Basis-Stufe: ${baseVal} + Modifikator: ${manMod >= 0 ? `+${manMod}` : manMod} + Spezies-Bonus: ${spMod >= 0 ? `+${spMod}` : spMod} + Cyberware/Biomechanik: ${cybMod >= 0 ? `+${cybMod}` : cybMod}${othPart}${srcDetails} = ${attr.total} (reduziert Wundmali je Zone)`;
+      } else {
+        attr.poolTooltip = `Basis-Stufe: ${baseVal} + Modifikator: ${manMod >= 0 ? `+${manMod}` : manMod} + Spezies-Bonus: ${spMod >= 0 ? `+${spMod}` : spMod} + Cyberware/Biomechanik: ${cybMod >= 0 ? `+${cybMod}` : cybMod}${othPart}${srcDetails} = ${attr.total}W6 (davon ${attr.total > 0 ? 1 : 0} Hazard-Di)`;
+      }
     }
 
     // Adrenaline effective level
@@ -450,7 +509,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
     const schnelligkeit = this.attributes.primary.schnelligkeit.overall;
     const staerke = this.attributes.primary.staerke.overall;
 
-    // 5. Aggregate equipped armor & stemmen skill from parent Actor's items
+    // 5. Aggregate equipped armor & stemmen skill from parent Actor's items (Punkt 2: Zonen-Rüstung 2 bis 12)
     let stemmenLevel = 0;
     let maxArmorComfort = 0;
     const zoneBonusArmor = {};
@@ -461,7 +520,7 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       zoneMaterial[z.code] = mutationArmorBonus > 0 ? mutationArmorMk : "A";
       zoneArmorSources[z.code] = [];
       if (mutationArmorBonus > 0) {
-        zoneArmorSources[z.code].push(`Mutationen: +${mutationArmorBonus}`);
+        zoneArmorSources[z.code].push(`Mutationen: +${mutationArmorBonus} (MK:${mutationArmorMk})`);
       }
     }
 
@@ -469,16 +528,24 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       if (item.type === "skill" && (item.system.skillId === "stemmen" || item.name.toLowerCase() === "stemmen")) {
         stemmenLevel = Math.max(stemmenLevel, Number(item.system.level || 0));
       } else if (item.type === "armor" && item.system.equipped) {
+        if (item.system.prepareDerivedData) {
+          item.system.prepareDerivedData();
+        }
         const comfort = Number(item.system.comfort || 0);
         if (comfort > maxArmorComfort) maxArmorComfort = comfort;
         const rw = Number(item.system.armorValue || 0);
-        const mk = item.system.materialCategory || "A";
-        const coveredZones = Array.isArray(item.system.zones) ? item.system.zones : [];
+        const mk = String(item.system.materialCategory || "A").toUpperCase();
+        const coveredZones =
+          Array.isArray(item.system.coveredZones) && item.system.coveredZones.length > 0
+            ? item.system.coveredZones
+            : Array.isArray(item.system.zones)
+            ? item.system.zones
+            : [];
         for (const zNum of coveredZones) {
           const zCode = String(zNum);
           if (zCode in zoneBonusArmor) {
             zoneBonusArmor[zCode] += rw;
-            zoneArmorSources[zCode].push(`${item.name}: +${rw}`);
+            zoneArmorSources[zCode].push(`${item.name}: +${rw} (MK:${mk})`);
             if (mk > zoneMaterial[zCode]) zoneMaterial[zCode] = mk;
           }
         }
@@ -504,11 +571,11 @@ export class NoReturnCharacterData extends foundry.abstract.TypeDataModel {
       zone.lethal = z.lethal;
       const baseArmor = Number(zone.armor) || 0;
       zone.equippedArmor = baseArmor + (zoneBonusArmor[z.code] || 0);
-      const breakdownParts = [`Basis: ${baseArmor}`, ...(zoneArmorSources[z.code] || [])];
-      zone.armorBreakdown = `${breakdownParts.join(" + ")} = ${zone.equippedArmor} RW`;
       if (zoneMaterial[z.code] > (zone.materialCategory || "A")) {
         zone.materialCategory = zoneMaterial[z.code];
       }
+      const breakdownParts = [`Basis: ${baseArmor}`, ...(zoneArmorSources[z.code] || [])];
+      zone.armorBreakdown = `${breakdownParts.join(" + ")} = ${zone.equippedArmor} RW (MK:${zone.materialCategory || "A"})`;
       const dmg = Math.max(0, Number(zone.damage) || 0);
       if (dmg > 0) {
         const woundStage = Math.ceil(dmg / stageSize);

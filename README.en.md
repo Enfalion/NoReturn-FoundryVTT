@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.6 (English)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.7 (English)
 
 Official **Foundry Virtual Tabletop (v14)** system implementation for **NoReturn – Post-Apocalyptic Sci-Fi RPG (1st Edition)** by **Enfalion**.
 
@@ -14,6 +14,28 @@ https://raw.githubusercontent.com/Enfalion/NoReturn-FoundryVTT/main/system/syste
 
 Direct Release Download:
 `https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest/download/noreturn.zip`
+
+---
+
+## Key Highlights in v1.1.7
+
+1. **Horizontal Action Buttons:**
+   - Roll, edit, and delete buttons across all table rows (Skills, Styleskills, Conditions, Weapons, Armor, Gear) are arranged horizontally in a single row with compact `28px × 28px` buttons.
+2. **Armor Hit Zones 2 to 12 & Clean Description:**
+   - Clickable checkbox chips for Hit Zones 2–12 in the armor sheet.
+   - All 22 armor items pre-configured according to CRB pp. 232–235 (including Comfort rating).
+   - Inline zone selector in the sheet's armor table for single-zone armors (*Partielle Panzerungsglieder*).
+   - Clean description field without raw `<p>` HTML tags.
+3. **Melee Weapons, Natural Weapons & Weapon Creation Dialog:**
+   - Clicking **"+ Add Weapon"** opens a dialog to select weapon type (*Ranged*, *Melee Short-Distance KW*, *Melee Long-Distance DW*, *Natural Weapon / Bioweapon*).
+   - Strength damage formula (including Hazard-Die) and automatic hiding of ranged-only fields.
+   - All melee and biological weapons from CRB pp. 64–73, 168–177, and 235–236 added to the compendium.
+4. **Complete Equipment Sync with CRB pp. 221–261:**
+   - New compendium folders & items for *Explosives*, *Weapon Add-Ons*, *Construction & Crafting*, *Hideout Equipment*, *Games & Entertainment*, *Erotica*, *Cosmetics & Hygiene*, *Robotic Companions* (6 playable companion models in items & bestiary), and *Vehicles* (18 models).
+5. **Inline Steppers for Skills & Style Skills:**
+   - Adjust skill levels and modifiers directly on the sheet using `-` / `+` buttons or direct input fields.
+6. **Hover Tooltips for All Dice Pools:**
+   - Transparent tooltips on all primary, secondary attributes, skills, and weapons detailing the exact dice pool breakdown.
 
 ---
 

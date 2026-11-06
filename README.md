@@ -1,7 +1,7 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.6
+# NoReturn – Foundry VTT System (v14) — Version 1.1.7
 
 [![Foundry VTT v14](https://img.shields.io/badge/Foundry_VTT-v14-orange)](https://foundryvtt.com/)
-[![Version](https://img.shields.io/badge/Version-1.1.6-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
+[![Version](https://img.shields.io/badge/Version-1.1.7-blue)](https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest)
 [![Author](https://img.shields.io/badge/Autor-Enfalion-success)](https://github.com/Enfalion/NoReturn-FoundryVTT)
 
 Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für **NoReturn – Das Endzeit-Rollenspiel (1. Edition)**.
@@ -20,6 +20,40 @@ Offizielle **Foundry Virtual Tabletop (Version 14)** Systemimplementierung für 
    https://raw.githubusercontent.com/Enfalion/NoReturn-FoundryVTT/main/system/system.json
    ```
 4. Klicke auf **Install (Installieren)**. Foundry VTT lädt automatisch das aktuelle Release-Paket (`noreturn.zip`) herunter und richtet das System ein.
+
+---
+
+## Highlights & Neue Features in Version 1.1.7
+
+### 1. Horizontale Action-Buttons (Würfel-, Edit- & Löschen nebeneinander)
+- Alle Tabellenzeilen (Fertigkeiten, Styleskills, Krankheiten, Waffen, Rüstungen, Ausrüstung usw.) besitzen nun eine horizontale Flex-Anordnung (`flex-direction: row !important; white-space: nowrap;`) mit kompakten `28px × 28px` Action-Buttons.
+
+### 2. Rüstungen & Kleidung mit echter Trefferzonen-Auswahl 2 bis 12 & Item-Sheet Bereinigung
+- Im Item-Sheet von Rüstungen können geschützte Trefferzonen (2 bis 12) per Klick auf übersichtliche Checkbox-Chips frei an- und abgewählt werden.
+- Alle 22 Schutzkleidungen und Rüstungen im Kompendium wurden exakt nach GRW S. 232–235 vorkonfiguriert (inkl. Komfort-Wert).
+- Für Teilrüstungen mit variabler Zone (*Partielle Panzerungsglieder*) steht direkt in der Tabelle des Charakter- und Robotikbogens ein Inline-Dropdown zur Verfügung, um die geschützte Zone ad hoc anzupassen.
+- Beschreibungsfelder im Item-Sheet bereinigt: Beschriftung lautet „Beschreibung & Regeleffekte“ und rohe `<p>` HTML-Tags werden im Textarea entfernt.
+
+### 3. Nahkampfwaffen (KW & DW), Natürliche Waffen & Neuer Waffendialog
+- Klick auf **„+ Waffe hinzufügen“** öffnet einen Dialog zur Auswahl der Waffenart: *Fernkampfwaffe*, *Kurzdistanzwaffe (KW)*, *Distanzwaffe (DW)* oder *Natürliche Waffe / Biowaffe*.
+- Das Waffen-Sheet blendet fernkampfspezifische Felder (Magazin, Kaliber, RD) bei Nahkampfwaffen automatisch aus und zeigt Nahkampf-Parameter (Fertigkeit Nahkampf/Waffenkampf, Paradebonus, Stärke-Schadensberechnung inkl. Hazard-Di).
+- Kompendium um alle Nahkampf- und Mutations-Biowaffen nach GRW S. 64–65, 73, 168–177 und 235–236 erweitert (*Beißen*, *Kratzen*, *Krallen*, *Scharfe Zähne*, *Zermalmender Kiefer*, *Hörner*, *Stacheln*, *Bajonett*, *Peitsche* etc.).
+
+### 4. Kompletter Ausrüstungsabgleich nach GRW S. 221–261 & Neue Kompendium-Ordner
+- Umfangreiche neue Kategorien und Ordnerstruktur im Ausrüstungs-Kompendium:
+  - **Sprengstoffe:** Dynamit, TNT, C4, C12, Schneidladung, Gravitationsbomben Stufe 1–3, Mikrowellenbomben, Splitter- & Rauchgranaten.
+  - **Waffen Add-Ons:** Bajonett, Dreibein, Holster, Tarnholster, Waffenlampe, Lasermarkierer, Schalldämpfer, Speedloader, Vordergriff, Zielfernrohr, Zweibein.
+  - **Konstruktion & Crafting:** Kettensäge, Klebstoff, Mini-Schweißgerät, NATO-Draht, Planen, Säure, Seile, Thermit-Brennstäbe, Laborantenkiste, Laborstation, Werkzeugkisten sowie Konstruktionsmaterialien TS I–V.
+  - **Hort-Ausstattung:** Hort- und Nahrungs-Qualitätsstufen 1–3, Kamerasystem, Tarnnetz, Zugangskartenleser, Computer, Laserdrucker, Radarstation, Heizung, ZEUS-Zellen (geladen/entladen), Funkgeräte, Mobiliar und Werkstatt.
+  - **Spiel & Unterhaltung, Erotika, Kosmetik & Hygiene:** Sportbälle, Billardtisch, Darts, Handheld-Konsole, Spieluhren, Erotikartikel, Desinfektionsmittel, Handwaschpaste „Unschuld“, Wasseraufbereitungstabletten etc.
+  - **Robotische Gefährten:** Die 6 Modelle *Brutus*, *Boy*, *R2*, *Kitty*, *Copter* und *Fury* sowohl als Gegenstände im Ausrüstungskatalog als auch als vollständig spielbare Akteure im Kreaturen-Kompendium.
+  - **Fahrzeuge (Motorräder & Autos):** Alle 7 Motorräder und 11 Automobile nach GRW S. 256–261 mit vollständigem Fahrzeugprofil (`BE`, `TS`, `BR`, `SY`, `HA`, `AB`, `Motor`, `ZK`, `VB`, Baukomponenten).
+
+### 5. Inline-Stepper für Fertigkeiten & Styleskills
+- Stufen und Modifikatoren können direkt in der Tabelle des Charakter- und Robotikbogens über intuitive `−` / `+` Buttons oder per direktem Eingabefeld angepasst werden.
+
+### 6. Mouseover-Tooltips für alle Würfelpools
+- Alle gelben Würfelpools (Primär- und Sekundär-Attribute, Fertigkeiten, Styleskills und Waffen) verfügen über detaillierte Hover-Tooltips, die die genaue Zusammensetzung (Basis, Modifikator, Ausrüstungsboni, Abzüge) transparent aufschlüsseln.
 
 ---
 

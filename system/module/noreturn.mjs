@@ -39,10 +39,19 @@ export const COMPENDIUM_FOLDER_STRUCTURE = {
       { _id: "NRfldItemsNahkmp", name: "Nahkampfwaffen", sort: 100, color: "#4a2c2a" },
       { _id: "NRfldItemsFernkm", name: "Fernkampfwaffen", sort: 200, color: "#2b3e50" },
       { _id: "NRfldItemsMuniti", name: "Munition", sort: 250, color: "#5c4028" },
+      { _id: "NRfldItemsSpreng", name: "Sprengstoffe", sort: 270, color: "#6e2c22" },
+      { _id: "NRfldItemsAddOns", name: "Waffen Add-Ons", sort: 290, color: "#3d4852" },
       { _id: "NRfldItemsRuestu", name: "Rüstungen & Schutzkleidung", sort: 300, color: "#3b4d3b" },
       { _id: "NRfldItemsDrogen", name: "Drogen & Pharmazeutika", sort: 400, color: "#4a3556" },
       { _id: "NRfldItemsAusrue", name: "Ausrüstung & Werkzeuge", sort: 500, color: "#524632" },
-      { _id: "NRfldItemsCyberw", name: "Cyberware & Implantate", sort: 600, color: "#23494d" }
+      { _id: "NRfldItemsKonstr", name: "Konstruktion & Crafting", sort: 520, color: "#4e4328" },
+      { _id: "NRfldItemsHortAu", name: "Hort-Ausstattung", sort: 540, color: "#2e4d3b" },
+      { _id: "NRfldItemsSpielU", name: "Spiel & Unterhaltung", sort: 560, color: "#3b3e5a" },
+      { _id: "NRfldItemsErotik", name: "Erotika", sort: 580, color: "#5a2b44" },
+      { _id: "NRfldItemsKosmet", name: "Kosmetik & Hygiene", sort: 600, color: "#2b525a" },
+      { _id: "NRfldItemsRobGef", name: "Robotische Gefährten", sort: 620, color: "#23494d" },
+      { _id: "NRfldItemsFahrze", name: "Fahrzeuge (Motorräder & Autos)", sort: 640, color: "#3d3528" },
+      { _id: "NRfldItemsCyberw", name: "Cyberware & Implantate", sort: 700, color: "#23494d" }
     ]
   },
   "noreturn.skills": {
@@ -127,7 +136,7 @@ function resolveCompendiumFolderName(packCollection, doc) {
 
   if (packCollection === "noreturn.items") {
     if (doc.type === "weapon") {
-      return sys.weaponCategory === "melee" ? "Nahkampfwaffen" : "Fernkampfwaffen";
+      return sys.weaponCategory === "melee" || sys.weaponType === "melee" ? "Nahkampfwaffen" : "Fernkampfwaffen";
     }
     if (doc.type === "armor") return "Rüstungen & Schutzkleidung";
     if (doc.type === "consumable") return "Drogen & Pharmazeutika";
@@ -324,7 +333,7 @@ async function ensureCompendiumFolders() {
 }
 
 Hooks.once("init", () => {
-  console.log("NoReturn | Initializing NoReturn RPG System v1.1.6 (Foundry VTT v14)");
+  console.log("NoReturn | Initializing NoReturn RPG System v1.1.7 (Foundry VTT v14)");
 
   // Register System Settings: GM Override for PSI Force Hierarchy Tiers (Punkt 4.3)
   game.settings.register("noreturn", "psiHierarchyOverrides", {

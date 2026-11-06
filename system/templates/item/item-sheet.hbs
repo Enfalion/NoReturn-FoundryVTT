@@ -190,97 +190,147 @@
 
       {{#if (eq itemType "weapon")}}
         <div class="nr-stat-grid">
-          <label>
-            <span>{{localize "NORETURN.Combat.Skill"}}</span>
-            <select name="system.skill">
-              <option value="schiessen" {{#if (or (eq system.skill "schiessen") (eq system.skill "schusswaffen"))}}selected{{/if}}>Schießen (Feuerwaffen)</option>
-              <option value="schwere_waffen" {{#if (eq system.skill "schwere_waffen")}}selected{{/if}}>Schwere Waffen</option>
-              <option value="projektilwaffen" {{#if (eq system.skill "projektilwaffen")}}selected{{/if}}>Projektilwaffen</option>
-              <option value="wurfwaffen" {{#if (eq system.skill "wurfwaffen")}}selected{{/if}}>Wurfwaffen</option>
-              <option value="spruehwaffen" {{#if (eq system.skill "spruehwaffen")}}selected{{/if}}>Sprühwaffen</option>
-              <option value="nahkampf" {{#if (eq system.skill "nahkampf")}}selected{{/if}}>Nahkampf (KW)</option>
-              <option value="waffenkampf" {{#if (eq system.skill "waffenkampf")}}selected{{/if}}>Waffenkampf (DW)</option>
+          <label class="full-span">
+            <span>{{localize "NORETURN.Combat.WeaponCategory"}}</span>
+            <select class="nr-weapon-mode-select">
+              <option value="ranged" {{#if (eq weaponModeGroup "ranged")}}selected{{/if}}>Fernkampfwaffe (Schießen / Schwere Waffen / Wurfwaffen)</option>
+              <option value="kurzdistanz" {{#if (eq weaponModeGroup "kurzdistanz")}}selected{{/if}}>Kurzdistanzwaffe (KW) – Nahkampf (GRW S. 64 &amp; 235)</option>
+              <option value="distanzwaffe" {{#if (eq weaponModeGroup "distanzwaffe")}}selected{{/if}}>Distanzwaffe (DW) – Waffenkampf &amp; Parade (GRW S. 65 &amp; 235)</option>
+              <option value="natural" {{#if (eq weaponModeGroup "natural")}}selected{{/if}}>Natürliche Waffe / Biowaffe – Nahkampf (GRW S. 73 &amp; 168)</option>
             </select>
           </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.AttackBonus"}}</span>
-            <input type="number" name="system.attackBonus" value="{{system.attackBonus}}" />
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.Damage"}} (Formel)</span>
-            <input type="text" name="system.damageFormula" value="{{system.damageFormula}}" />
-          </label>
-          <label>
-            <span>Grundschaden (Flat TP)</span>
-            <input type="number" name="system.damageFlat" value="{{system.damageFlat}}" step="1" />
-          </label>
-          <label>
-            <span>Schaden einer Kugel (pro Treffer/Salve)</span>
-            <input type="number" name="system.damageBonusPerHit" value="{{system.damageBonusPerHit}}" min="0" step="1" />
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.Caliber"}}</span>
-            <input type="text" name="system.caliber" value="{{system.caliber}}" />
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.Magazine"}} (Text)</span>
-            <input type="text" name="system.magazine" value="{{system.magazine}}" />
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.MagazineCapacity"}} (Schuss)</span>
-            <input type="number" name="system.magazineCapacity" value="{{system.magazineCapacity}}" min="0" step="1" />
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.AmmoCurrent"}} (Geladen)</span>
-            <input type="number" name="system.ammoCurrent" value="{{system.ammoCurrent}}" min="0" step="1" />
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.AmmoLoaded"}}</span>
-            <select class="nr-item-weapon-ammo-select">
-              <option value="unload" {{#if (and (eq system.ammoCurrent 0) (eq system.loadedAmmoId ""))}}selected{{/if}}>
-                – Nicht geladen –
-              </option>
-              {{#if compatibleAmmoItems.length}}
-                <optgroup label="Inventar ({{system.caliber}})">
-                  {{#each compatibleAmmoItems}}
-                    <option value="item:{{this.id}}" {{#if (eq ../system.loadedAmmoId this.id)}}selected{{/if}}>
-                      {{this.name}} [{{this.system.ammoType}}] ({{this.system.quantity}}x)
+
+          {{#if system.isRanged}}
+            <label>
+              <span>{{localize "NORETURN.Combat.Skill"}}</span>
+              <select name="system.skill">
+                <option value="schiessen" {{#if (or (eq system.skill "schiessen") (eq system.skill "schusswaffen"))}}selected{{/if}}>Schießen (Feuerwaffen)</option>
+                <option value="schwere_waffen" {{#if (eq system.skill "schwere_waffen")}}selected{{/if}}>Schwere Waffen</option>
+                <option value="projektilwaffen" {{#if (eq system.skill "projektilwaffen")}}selected{{/if}}>Projektilwaffen</option>
+                <option value="wurfwaffen" {{#if (eq system.skill "wurfwaffen")}}selected{{/if}}>Wurfwaffen</option>
+                <option value="spruehwaffen" {{#if (eq system.skill "spruehwaffen")}}selected{{/if}}>Sprühwaffen</option>
+              </select>
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.AttackBonus"}} (+/- W6)</span>
+              <input type="number" name="system.attackBonus" value="{{system.attackBonus}}" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.Damage"}} (Formel)</span>
+              <input type="text" name="system.damageFormula" value="{{system.damageFormula}}" />
+            </label>
+            <label>
+              <span>Grundschaden (Flat TP)</span>
+              <input type="number" name="system.damageFlat" value="{{system.damageFlat}}" step="1" />
+            </label>
+            <label>
+              <span>Schaden einer Kugel (pro Treffer/Salve)</span>
+              <input type="number" name="system.damageBonusPerHit" value="{{system.damageBonusPerHit}}" min="0" step="1" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.Caliber"}}</span>
+              <input type="text" name="system.caliber" value="{{system.caliber}}" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.Magazine"}} (Text)</span>
+              <input type="text" name="system.magazine" value="{{system.magazine}}" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.MagazineCapacity"}} (Schuss)</span>
+              <input type="number" name="system.magazineCapacity" value="{{system.magazineCapacity}}" min="0" step="1" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.AmmoCurrent"}} (Geladen)</span>
+              <input type="number" name="system.ammoCurrent" value="{{system.ammoCurrent}}" min="0" step="1" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.AmmoLoaded"}}</span>
+              <select class="nr-item-weapon-ammo-select">
+                <option value="unload" {{#if (and (eq system.ammoCurrent 0) (eq system.loadedAmmoId ""))}}selected{{/if}}>
+                  – Nicht geladen –
+                </option>
+                {{#if compatibleAmmoItems.length}}
+                  <optgroup label="Inventar ({{system.caliber}})">
+                    {{#each compatibleAmmoItems}}
+                      <option value="item:{{this.id}}" {{#if (eq ../system.loadedAmmoId this.id)}}selected{{/if}}>
+                        {{this.name}} [{{this.system.ammoType}}] ({{this.system.quantity}}x)
+                      </option>
+                    {{/each}}
+                  </optgroup>
+                {{/if}}
+                <optgroup label="Munitionstyp (Standard)">
+                  {{#each ammoTypes}}
+                    <option value="type:{{this.code}}" {{#if (and (gt ../system.ammoCurrent 0) (eq ../system.loadedAmmoId "") (eq ../system.loadedAmmoType this.code))}}selected{{/if}}>
+                      {{this.label}} ({{this.effect}})
                     </option>
                   {{/each}}
                 </optgroup>
-              {{/if}}
-              <optgroup label="Munitionstyp (Standard)">
-                {{#each ammoTypes}}
-                  <option value="type:{{this.code}}" {{#if (and (gt ../system.ammoCurrent 0) (eq ../system.loadedAmmoId "") (eq ../system.loadedAmmoType this.code))}}selected{{/if}}>
-                    {{this.label}} ({{this.effect}})
-                  </option>
-                {{/each}}
-              </optgroup>
-            </select>
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.RD"}}</span>
-            <input type="number" name="system.recoilDampening" value="{{system.recoilDampening}}" min="0" />
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Combat.FireModes"}}</span>
-            <input type="text" name="system.fireModes" value="{{system.fireModes}}" />
-          </label>
-          <label>
-            <span>{{localize "NORETURN.Inventory.Price"}}</span>
-            <input type="number" name="system.price" value="{{system.price}}" min="0" />
-          </label>
+              </select>
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.RD"}}</span>
+              <input type="number" name="system.recoilDampening" value="{{system.recoilDampening}}" min="0" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.FireModes"}}</span>
+              <input type="text" name="system.fireModes" value="{{system.fireModes}}" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.Range"}}</span>
+              <input type="text" name="system.range" value="{{system.range}}" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Inventory.Price"}}</span>
+              <input type="number" name="system.price" value="{{system.price}}" min="0" />
+            </label>
+          {{else}}
+            <label>
+              <span>{{localize "NORETURN.Combat.Skill"}}</span>
+              <select name="system.skill">
+                <option value="nahkampf" {{#if (eq system.skill "nahkampf")}}selected{{/if}}>Nahkampf (KW / Natürliche Waffe)</option>
+                <option value="waffenkampf" {{#if (eq system.skill "waffenkampf")}}selected{{/if}}>Waffenkampf (DW)</option>
+              </select>
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.AttackBonus"}} (+/- W6)</span>
+              <input type="number" name="system.attackBonus" value="{{system.attackBonus}}" step="1" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.ParryBonus"}} (+/- W6)</span>
+              <input type="number" name="system.parryBonus" value="{{system.parryBonus}}" step="1" />
+            </label>
+            <label>
+              <span>Parade erlaubt (Distanzwaffe DW)</span>
+              <input type="checkbox" name="system.parryAllowed" {{checked system.parryAllowed}} />
+            </label>
+            <label>
+              <span>Fester Schadensbonus zu Stärke (+p. TP)</span>
+              <input type="number" name="system.damageFlat" value="{{system.damageFlat}}" step="1" />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Combat.Damage"}} (Formel, z. B. ST+20p.)</span>
+              <input type="text" name="system.damageFormula" value="{{system.damageFormula}}" />
+            </label>
+            <label class="full-span">
+              <span>Effektive Schadensberechnung (Stärke W6 inkl. Hazard-Di + fester Bonus)</span>
+              <input type="text" value="{{system.effectiveDamageDisplay}}" disabled />
+            </label>
+            <label>
+              <span>{{localize "NORETURN.Inventory.Price"}}</span>
+              <input type="number" name="system.price" value="{{system.price}}" min="0" />
+            </label>
+          {{/if}}
         </div>
       {{/if}}
 
       {{#if (eq itemType "armor")}}
         <div class="nr-stat-grid">
           <label>
-            <span>{{localize "NORETURN.Health.Armor"}}</span>
+            <span>{{localize "NORETURN.Health.Armor"}} (RW)</span>
             <input type="number" name="system.armorValue" value="{{system.armorValue}}" min="0" />
           </label>
           <label>
-            <span>{{localize "NORETURN.Health.MaterialCategory"}}</span>
+            <span>{{localize "NORETURN.Health.MaterialCategory"}} (MK)</span>
             <select name="system.materialCategory">
               <option value="A" {{#if (eq system.materialCategory "A")}}selected{{/if}}>A</option>
               <option value="B" {{#if (eq system.materialCategory "B")}}selected{{/if}}>B</option>
@@ -288,13 +338,28 @@
             </select>
           </label>
           <label>
-            <span>{{localize "NORETURN.Health.Zone"}}</span>
-            <input type="text" name="system.zonesLabel" value="{{system.zonesLabel}}" />
+            <span>Komfort (Min. KO ohne Malus)</span>
+            <input type="number" name="system.comfort" value="{{system.comfort}}" min="0" />
           </label>
           <label>
             <span>{{localize "NORETURN.Inventory.Price"}}</span>
             <input type="number" name="system.price" value="{{system.price}}" min="0" />
           </label>
+          <label class="full-span">
+            <span>Frei wählbare Einzelzone („je Zone“, z. B. Partielle Panzerungsglieder)</span>
+            <input type="checkbox" name="system.isSelectableZone" {{checked system.isSelectableZone}} />
+          </label>
+          <div class="full-span nr-armor-zones-section">
+            <span class="nr-section-label">Geschützte Trefferzonen (2 bis 12 – anklicken zum An-/Abwählen): <strong>{{system.zonesLabel}}</strong></span>
+            <div class="nr-armor-zones-grid">
+              {{#each armorZoneOptions}}
+                <label class="nr-armor-zone-chip {{#if this.checked}}active{{/if}}">
+                  <input type="checkbox" class="nr-armor-zone-checkbox" value="{{this.num}}" {{checked this.checked}} />
+                  <span>{{this.label}}</span>
+                </label>
+              {{/each}}
+            </div>
+          </div>
         </div>
       {{/if}}
 
@@ -555,8 +620,8 @@
 
       <hr />
       <label class="full-span">
-        <span>{{localize "NORETURN.Traits.Notes"}}</span>
-        <textarea class="nr-notes-area" name="system.description" rows="6">{{system.description}}</textarea>
+        <span>{{localize "NORETURN.Inventory.Description"}}</span>
+        <textarea class="nr-notes-area" name="system.description" rows="6">{{descriptionText}}</textarea>
       </label>
     </div>
   </section>

@@ -1,10 +1,21 @@
 import { ROBOT_ZONE_ORDER, ROBOT_MODELS } from "../data/robot-data.mjs";
 import { PLAYABLE_SPECIES_PRESETS } from "../data/character-data.mjs";
-import { AMMO_TYPE_DEFINITIONS, isAmmoCompatibleWithWeapon } from "../data/item-data.mjs";
+import {
+  AMMO_TYPE_DEFINITIONS,
+  HIT_ZONE_SHORT_LABELS,
+  formatArmorZonesLabel,
+  isAmmoCompatibleWithWeapon
+} from "../data/item-data.mjs";
 import { NoReturnRoll } from "../dice/roll.mjs";
 
 const { HandlebarsApplicationMixin } = foundry.applications.api;
 const { ActorSheetV2 } = foundry.applications.sheets;
+
+const SELECTABLE_ARMOR_ZONE_OPTIONS = [12, 8, 7, 6, 2, 9, 5, 10, 4, 11, 3].map((z) => ({
+  num: z,
+  code: String(z),
+  label: HIT_ZONE_SHORT_LABELS[String(z)] || `Zone ${z}`
+}));
 
 /**
  * Hybrid ApplicationV2 Sheet for NoReturn Robotics / Cyborg / Drone Actors.
@@ -50,6 +61,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       createItem: NoReturnRobotSheet.#onCreateItem,
       editItem: NoReturnRobotSheet.#onEditItem,
       deleteItem: NoReturnRobotSheet.#onDeleteItem,
+      stepItemNumeric: NoReturnRobotSheet.#onStepItemNumeric,
       toggleEquipped: NoReturnRobotSheet.#onToggleEquipped,
       toggleActive: NoReturnRobotSheet.#onToggleActive,
       toggleInstalled: NoReturnRobotSheet.#onToggleInstalled
@@ -233,6 +245,7 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       psiApps,
       weapons,
       armors,
+      selectableArmorZones: SELECTABLE_ARMOR_ZONE_OPTIONS,
       ammoItems,
       gear,
       consumables,
@@ -308,6 +321,48 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
             skipDialog: true
           });
         }
+      });
+    });
+
+    // Inline numeric inputs for Skills & Styleskills (Punkt 5)
+    const inlineInputs = root.querySelectorAll(".nr-inline-item-input");
+    inlineInputs.forEach((inp) => {
+      inp.addEventListener("change", async (ev) => {
+        ev.stopPropagation();
+        const itemId = inp.dataset.itemId || inp.closest("[data-item-id]")?.dataset.itemId;
+        const field = inp.dataset.field;
+        const item = this.document.items.get(itemId);
+        if (!item || !field) return;
+        let val = Number(inp.value);
+        if (Number.isNaN(val)) val = 0;
+        if (field === "system.level") {
+          if (item.type === "styleskill") {
+            const maxL = Number(item.system?.maxLevel) || 3;
+            val = Math.min(maxL, Math.max(1, Math.round(val)));
+          } else {
+            val = Math.max(0, Math.round(val));
+          }
+        } else {
+          val = Math.round(val);
+        }
+        await item.update({ [field]: val });
+      });
+    });
+
+    // Single-zone dropdown for selectable-zone armors like Partielle Panzerungsglieder (Punkt 2)
+    const armorZoneSelects = root.querySelectorAll(".nr-armor-single-zone-select");
+    armorZoneSelects.forEach((sel) => {
+      sel.addEventListener("change", async (ev) => {
+        ev.stopPropagation();
+        const itemId = sel.dataset.itemId || sel.closest("[data-item-id]")?.dataset.itemId;
+        const armor = this.document.items.get(itemId);
+        if (!armor) return;
+        const zNum = Number(sel.value) || 6;
+        await armor.update({
+          "system.coveredZones": [zNum],
+          "system.zones": [zNum],
+          "system.zonesLabel": formatArmorZonesLabel([zNum], true)
+        });
       });
     });
   }
@@ -697,8 +752,151 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
   static async #onCreateItem(event, target) {
     event.preventDefault();
     const type = target.dataset.type || "robotModule";
-    const name = `${game.i18n.localize(`TYPES.Item.${type}`)}`;
-    const itemData = { name, type };
+    const defaultName = `${game.i18n.localize(`TYPES.Item.${type}`)}`;
+
+    if (type === "weapon") {
+      const dialogRes = await NoReturnRoll._waitDialog({
+        title: game.i18n.localize("NORETURN.Combat.CreateWeaponDialogTitle") || "Neue Waffe anlegen",
+        rollLabel: "Waffe anlegen",
+        rollIcon: "fas fa-plus",
+        content: `
+          <div class="noreturn-roll-dialog">
+            <div class="form-group">
+              <label>Waffenname</label>
+              <input type="text" name="weaponName" value="Neue Waffe" />
+            </div>
+            <div class="form-group">
+              <label>Waffenart / Kategorie (GRW S. 64–65, 73 & 235–241)</label>
+              <select name="weaponPreset">
+                <option value="ranged">Fernkampfwaffe (Schießen / Schwere Waffen / Wurfwaffen)</option>
+                <option value="kurzdistanz">Kurzdistanzwaffe (KW) – Fertigkeit: Nahkampf (ohne Parade)</option>
+                <option value="distanzwaffe">Distanzwaffe (DW) – Fertigkeit: Waffenkampf (mit Parade)</option>
+                <option value="natural">Natürliche Waffe / Biowaffe – Fertigkeit: Nahkampf</option>
+              </select>
+            </div>
+          </div>
+        `,
+        parseForm: (form) => ({
+          weaponName: String(form.elements.weaponName?.value || "").trim(),
+          weaponPreset: String(form.elements.weaponPreset?.value || "ranged")
+        })
+      });
+
+      if (!dialogRes || dialogRes.cancelled) return;
+      const preset = dialogRes.weaponPreset;
+      let wData = {
+        name: dialogRes.weaponName || "Neue Fernkampfwaffe",
+        type: "weapon",
+        img: "systems/noreturn/assets/icons/weapon.svg",
+        system: {
+          weaponType: "ranged",
+          category: "faustfeuerwaffe",
+          skill: "schiessen",
+          caliber: "9mm (P3)",
+          magazine: "15(m)",
+          magazineCapacity: 15,
+          ammoCurrent: 0,
+          damageFormula: "20",
+          damageFlat: 20,
+          damageBonusPerHit: 4,
+          recoilDampening: 2,
+          fireModes: "Semi 1(5x)",
+          range: "Pistole",
+          useStrengthDamage: false,
+          parryAllowed: false,
+          equipped: true
+        }
+      };
+
+      if (preset === "kurzdistanz") {
+        wData = {
+          name:
+            dialogRes.weaponName && dialogRes.weaponName !== "Neue Waffe"
+              ? dialogRes.weaponName
+              : "Neue Kurzdistanzwaffe (KW)",
+          type: "weapon",
+          img: "systems/noreturn/assets/icons/melee.svg",
+          system: {
+            weaponType: "melee",
+            category: "kurzdistanz",
+            skill: "nahkampf",
+            caliber: "–",
+            magazine: "–",
+            magazineCapacity: 0,
+            ammoCurrent: 0,
+            damageFormula: "ST+15p.",
+            damageFlat: 15,
+            damageBonusPerHit: 0,
+            recoilDampening: 0,
+            fireModes: "Nahkampf",
+            range: "Kurzdistanzwaffe (KW)",
+            useStrengthDamage: true,
+            parryAllowed: false,
+            equipped: true
+          }
+        };
+      } else if (preset === "distanzwaffe") {
+        wData = {
+          name:
+            dialogRes.weaponName && dialogRes.weaponName !== "Neue Waffe"
+              ? dialogRes.weaponName
+              : "Neue Distanzwaffe (DW)",
+          type: "weapon",
+          img: "systems/noreturn/assets/icons/melee.svg",
+          system: {
+            weaponType: "melee",
+            category: "distanzwaffe",
+            skill: "waffenkampf",
+            caliber: "–",
+            magazine: "–",
+            magazineCapacity: 0,
+            ammoCurrent: 0,
+            damageFormula: "ST+25p.",
+            damageFlat: 25,
+            damageBonusPerHit: 0,
+            recoilDampening: 0,
+            fireModes: "Nahkampf",
+            range: "Distanzwaffe (DW)",
+            useStrengthDamage: true,
+            parryAllowed: true,
+            equipped: true
+          }
+        };
+      } else if (preset === "natural") {
+        wData = {
+          name:
+            dialogRes.weaponName && dialogRes.weaponName !== "Neue Waffe"
+              ? dialogRes.weaponName
+              : "Natürliche Waffe (z. B. Beißen / Krallen)",
+          type: "weapon",
+          img: "systems/noreturn/assets/icons/melee.svg",
+          system: {
+            weaponType: "melee",
+            category: "natural",
+            skill: "nahkampf",
+            caliber: "–",
+            magazine: "–",
+            magazineCapacity: 0,
+            ammoCurrent: 0,
+            damageFormula: "ST+20p.",
+            damageFlat: 20,
+            damageBonusPerHit: 0,
+            recoilDampening: 0,
+            fireModes: "Nahkampf",
+            range: "Natürliche Waffe",
+            useStrengthDamage: true,
+            parryAllowed: false,
+            equipped: true
+          }
+        };
+      }
+
+      const created = await this.document.createEmbeddedDocuments("Item", [wData]);
+      created?.[0]?.sheet?.render(true);
+      return;
+    }
+
+    const itemData = { name: defaultName, type };
     if (type === "ammo") {
       itemData.img = "systems/noreturn/assets/icons/ammo.svg";
       itemData.system = {
@@ -709,6 +907,28 @@ export class NoReturnRobotSheet extends HandlebarsApplicationMixin(ActorSheetV2)
       };
     }
     await this.document.createEmbeddedDocuments("Item", [itemData]);
+  }
+
+  static async #onStepItemNumeric(event, target) {
+    event.preventDefault();
+    event.stopPropagation();
+    const itemId = target.dataset.itemId || target.closest("[data-item-id]")?.dataset.itemId;
+    const field = target.dataset.field || "system.level";
+    const step = Number(target.dataset.step) || 1;
+    const item = this.document.items.get(itemId);
+    if (!item) return;
+
+    const currentVal = Number(foundry.utils.getProperty(item, field)) || 0;
+    let nextVal = currentVal + step;
+    if (field === "system.level") {
+      if (item.type === "styleskill") {
+        const maxL = Number(item.system?.maxLevel) || 3;
+        nextVal = Math.min(maxL, Math.max(1, nextVal));
+      } else {
+        nextVal = Math.max(0, nextVal);
+      }
+    }
+    await item.update({ [field]: nextVal });
   }
 
   static #onEditItem(event, target) {

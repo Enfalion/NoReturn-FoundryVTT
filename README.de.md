@@ -1,4 +1,4 @@
-# NoReturn – Foundry VTT System (v14) — Version 1.1.6 (Deutsch)
+# NoReturn – Foundry VTT System (v14) — Version 1.1.7 (Deutsch)
 
 Offizielle Systemimplementierung des postapokalyptischen Sci-Fi-Rollenspiels **NoReturn (1. Edition)** für **Foundry Virtual Tabletop v14** von **Enfalion**.
 
@@ -14,6 +14,28 @@ https://raw.githubusercontent.com/Enfalion/NoReturn-FoundryVTT/main/system/syste
 
 Direkter Release-Download:
 `https://github.com/Enfalion/NoReturn-FoundryVTT/releases/latest/download/noreturn.zip`
+
+---
+
+## Highlights & Neuerungen in v1.1.7
+
+1. **Horizontale Action-Buttons:**
+   - Würfel-, Bearbeiten- und Löschen-Buttons sind in allen Tabellenzeilen (Fertigkeiten, Styleskills, Krankheiten, Waffen, Rüstungen, Ausrüstung) horizontal nebeneinander als kompakte `28px × 28px` Buttons angeordnet.
+2. **Rüstungen & Kleidung mit Trefferzonen 2 bis 12:**
+   - Clickable Checkbox-Chips für Trefferzonen 2–12 im Rüstungs-Sheet.
+   - Alle 22 Rüstungen nach GRW S. 232–235 vorkonfiguriert (inkl. Komfort-Wert).
+   - Inline-Zonenauswahl direkt in der Rüstungstabelle für Teilpanzerungen (*Partielle Panzerungsglieder*).
+   - Bereinigtes Notiz-/Beschreibungsfeld ohne HTML-Tags.
+3. **Nahkampfwaffen & Natürliche Waffen:**
+   - Neuer Auswahldialog beim Hinzufügen von Waffen (*Fernkampf*, *Kurzdistanz KW*, *Distanzwaffe DW*, *Natürliche Waffe*).
+   - Stärke-Schadensformel (inkl. Hazard-Di) und Ausblendung von Fernkampffeldern.
+   - Alle Nahkampf- und Biowaffen aus GRW S. 64–73, 168–177 und 235–236 im Kompendium ergänzt.
+4. **Kompletter Ausrüstungsabgleich GRW S. 221–261:**
+   - Neue Ordner & Items für *Sprengstoffe*, *Waffen Add-Ons*, *Konstruktion & Crafting*, *Hort-Ausstattung*, *Spiel & Unterhaltung*, *Erotika*, *Kosmetik & Hygiene*, *Robotische Gefährten* (6 spielbare Modelle in Items und Bestiarium) sowie *Fahrzeuge* (18 Modelle).
+5. **Inline-Stepper für Fertigkeiten & Styleskills:**
+   - Stufen und Modifikatoren direkt auf dem Bogen per `−` / `+` Buttons oder Direkteingabe anpassbar.
+6. **Mouseover-Tooltips für Würfelpools:**
+   - Hover-Tooltips für alle Primär-, Sekundär-Attribute, Fertigkeiten und Waffen mit genauer Aufschlüsselung der Würfel-Zusammensetzung.
 
 ---
 

@@ -766,4 +766,186 @@ nav.sheet-tabs .item.active,
   color: #ffffff !important;
 }
 
+/* ============================================================================
+ * v1.1.7: Horizontale Action-Buttons (Punkt 1)
+ * ========================================================================== */
+.nr-table td.actions-cell,
+.nr-table .actions-cell,
+.nr-table .item-controls,
+.nr-table td.actions,
+.nr-table .row-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 4px !important;
+  white-space: nowrap !important;
+  min-width: 96px;
+}
+
+.nr-table td.actions-cell > button,
+.nr-table .actions-cell > button,
+.nr-table .item-controls > button,
+.nr-table td.actions > button,
+.nr-table .row-actions > button,
+.nr-table td.actions-cell .nr-roll-btn,
+.nr-table td.actions-cell .nr-icon-btn {
+  flex: 0 0 28px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+/* ============================================================================
+ * v1.1.7: Rüstungs-Trefferzonen (2 bis 12) Auswahl-Chips & Einzelzonen-Dropdown (Punkt 2)
+ * ========================================================================== */
+.nr-armor-zones-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nr-armor-zones-section .nr-section-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+  color: var(--nr-text-muted);
+}
+
+.nr-armor-zones-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.nr-armor-zone-chip {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px;
+  padding: 4px 7px;
+  background: #14181d;
+  border: 1px solid var(--nr-border);
+  border-radius: 4px;
+  font-size: 0.76rem;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.12s ease;
+}
+
+.nr-armor-zone-chip:hover {
+  border-color: var(--nr-amber);
+}
+
+.nr-armor-zone-chip.active {
+  background: rgba(217, 155, 38, 0.18);
+  border-color: var(--nr-amber);
+  color: #fff;
+  font-weight: 600;
+}
+
+.nr-armor-zone-chip input[type="checkbox"] {
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.nr-armor-single-zone-select {
+  max-width: 195px;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  background: #14181d;
+  color: #e6edf3;
+  border: 1px solid var(--nr-amber);
+  border-radius: 3px;
+}
+
+/* ============================================================================
+ * v1.1.7: Inline-Stepper (+/- & Direkt-Input) für Fertigkeiten & Styleskills (Punkt 5)
+ * ========================================================================== */
+.nr-stepper-cell {
+  white-space: nowrap;
+}
+
+.nr-inline-stepper {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.nr-step-btn {
+  flex: 0 0 20px !important;
+  width: 20px !important;
+  height: 22px !important;
+  min-width: 20px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: #22272e;
+  color: #e6edf3;
+  border: 1px solid var(--nr-border);
+  border-radius: 3px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nr-step-btn:hover {
+  background: var(--nr-accent);
+  border-color: var(--nr-accent-bright);
+  color: #fff;
+}
+
+.nr-inline-item-input,
+.noreturn-sheet input.nr-inline-item-input[type="number"] {
+  width: 38px !important;
+  height: 22px !important;
+  padding: 1px 3px !important;
+  margin: 0 !important;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #121519;
+  color: #fff;
+  border: 1px solid var(--nr-border);
+  border-radius: 3px;
+}
+
+.nr-item-mod-badge {
+  display: inline-block;
+  margin-left: 3px;
+  font-size: 0.72rem;
+  color: var(--nr-cyan);
+  font-weight: 600;
+  cursor: help;
+}
+
+/* ============================================================================
+ * v1.1.7: Mouseover-Tooltips für gelbe Würfelpools (Punkt 6)
+ * ========================================================================== */
+.nr-table .pool-cell[data-tooltip] {
+  cursor: help;
+}
+
+.nr-table .pool-cell[data-tooltip] strong {
+  border-bottom: 1px dotted rgba(217, 155, 38, 0.65);
+}
+
+
 
